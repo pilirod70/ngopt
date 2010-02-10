@@ -1,4 +1,5 @@
-#summary NextGenOptimator is a a project dedicated to developing tools for the analysis of output from genome sequencing and assembly pipelines.
+
+NextGenOptimator is a a project dedicated to developing tools for the analysis of output from genome sequencing and assembly pipelines.
 
 = Introduction =
 
