@@ -1,7 +1,7 @@
 #include <iostream>
 #include <libMems/IntervalList.h>
 #include <libMems/MatchList.h>
-#include "libMems/Backbone.h"
+#include <libMems/Backbone.h>
 using namespace std;
 using namespace mems;
 using namespace genome;

@@ -4,9 +4,15 @@ package org.halophiles.assembly.dcj;
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.StringTokenizer;
+import java.util.Vector;
+import java.util.regex.Pattern;
 
 
 public class Genome {
+	
+	private static String VALID_BLOCK_NAME = "[A-Za-z0-9_]+";
+	
+	private static String WHITESPACE = "[ \t\n\f\r]";
 	
 	/** A map for holding identifiers */
 	public static HashMap<String, Integer> blockIdMap = new HashMap<String, Integer>();
@@ -15,7 +21,7 @@ public class Genome {
 	
 	private int numChrom;
 	
-//	private Vector<Adjacency> adjacencies;
+	private Vector<Adjacency> adjacencies;
 	
 	private Adjacency[] adj;
 	
@@ -40,11 +46,16 @@ public class Genome {
 		chrom = new Chromosome[numChrom];
 		int i = 0;
 		while(tok.hasMoreTokens()){
-			chrom[i] = new Chromosome(tok.nextToken(),i);
-			if (!chrom[i].isCirc)
-				numLinear++;
+			String c = tok.nextToken();
+				chrom[i] = new Chromosome(c,i);
+				if (!chrom[i].isCirc && chrom[i].hasBlocks())
+					numLinear++;
+					
+			i++;
 		}
+	//	System.out.println("Found " + BLOCK_COUNT + " blocks ");
 		loc = new int[BLOCK_COUNT][2];
+		
 		// for N blocks and k linear chromosomes, the number of adjacencies = N + k
 		adj = new Adjacency[BLOCK_COUNT+numLinear];
 		addAdjacencies();  // we're doing a lot here... lets make a function for this.
@@ -57,6 +68,10 @@ public class Genome {
 		int adjIdx = 0;
 		for (int i = 0; i < chrom.length; i++){
 			Block[] blk = chrom[i].blocks;
+			if (blk.length == 0){
+				continue;
+			}
+		//	System.out.println(chrom[i].toString());
 			if (chrom[i].isCirc){
 				addLocations(blk[blk.length-1], blk[0], adjIdx);
 			//	ret.add(new Adjacency(blk[blk.length-1].getRightEnd(),blk[0].getLeftEnd()));
@@ -75,7 +90,7 @@ public class Genome {
 			}
 			for (int j = 1; j < blk.length; j++){
 				addLocations(blk[j-1], blk[j], adjIdx);
-			//	ret.add(new Adjacency(blk[j-1].getLeftEnd(), blk[j].getRightEnd()));
+			//	ret.add(new Adjacency(blk[j-1].getRightEnd(), blk[j].getLeftEnd()));
 				adj[adjIdx] = new Adjacency(blk[j-1].getRightEnd(), blk[j].getLeftEnd());
 				adjIdx++;
 			}
@@ -92,6 +107,10 @@ public class Genome {
 			}
 		}
 	//	return ret;
+	}
+	
+	public String getName(){
+		return name;
 	}
 
 	private void addLocations(Block first, Block second, int idx){
@@ -127,7 +146,7 @@ public class Genome {
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < chrom.length; i++){
 			sb.append(chrom[i].toString());
-			sb.append("$");
+		//	sb.append("$");
 		}
 		return sb.toString();
 	}
@@ -155,11 +174,23 @@ public class Genome {
 				isCirc = false;
 			}
 			StringTokenizer tok = new StringTokenizer(ch,",");
-			numBlocks = tok.countTokens();
+			numBlocks = 0;
+			while(tok.hasMoreTokens()){
+				String tmp = tok.nextToken().trim();
+				if (tmp.matches(VALID_BLOCK_NAME)){
+					numBlocks++;
+				}
+			}
+			tok =  new StringTokenizer(ch,",");
+		//	System.out.println(ch);
+		//	System.out.println("Found " + numBlocks + " blocks in this chromosome");
 			blocks = new Block[numBlocks];
 			int i = 0;  // i := block index/count
 			while (tok.hasMoreTokens()){
 				String block = tok.nextToken().trim();
+				if (!block.matches(VALID_BLOCK_NAME)){
+					continue;
+				}
 				// check to see if this block is inverted. 
 				boolean inv = false;
 				if (block.startsWith("-")){ 
@@ -167,10 +198,10 @@ public class Genome {
 					// remove "-" to get the actual name
 					block = block.substring(1);
 				}
-				blocks[i] = new Block(i++,block,inv);
-				
+				blocks[i] = new Block(i,block,inv);
+				i = i + 1;
 				// don't forget to manage our blockIdMap!
-				if (!blockIdMap.containsKey(block)){
+				if (!blockIdMap.containsKey(block) ){
 					blockIdMap.put(block, BLOCK_COUNT++);
 				}
 			}
@@ -178,6 +209,10 @@ public class Genome {
 		
 		public Block[] getBlocks(){
 			return blocks;
+		}
+		
+		public boolean hasBlocks(){
+			return blocks.length > 0;
 		}
 		
 		public String toString(){
@@ -191,6 +226,7 @@ public class Genome {
 			if(isCirc){
 				sb.append(Constants.CIRCULAR_CHAR);
 			}
+			sb.append("$");
 			return sb.toString();
 		}
 		
