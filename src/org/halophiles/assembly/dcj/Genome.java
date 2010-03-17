@@ -2,17 +2,18 @@ package org.halophiles.assembly.dcj;
 
 
 import java.io.PrintStream;
+
 import java.util.HashMap;
 import java.util.StringTokenizer;
-import java.util.Vector;
-import java.util.regex.Pattern;
+//import java.util.Vector;
+//import java.util.regex.Pattern;
 
 
 public class Genome {
 	
 	private static String VALID_BLOCK_NAME = "[A-Za-z0-9_]+";
 	
-	private static String WHITESPACE = "[ \t\n\f\r]";
+	//private static String WHITESPACE = "[ \t\n\f\r]";
 	
 	/** A map for holding identifiers */
 	public static HashMap<String, Integer> blockIdMap = new HashMap<String, Integer>();
@@ -21,7 +22,7 @@ public class Genome {
 	
 	private int numChrom;
 	
-	private Vector<Adjacency> adjacencies;
+//	private Vector<Adjacency> adjacencies;
 	
 	private Adjacency[] adj;
 	
@@ -163,10 +164,10 @@ public class Genome {
 		
 		private Block[] blocks;
 		
-		private int chromID;
+	//	private int chromID;
 		
 		public Chromosome (String ch, int id){
-			chromID = id;
+		//	chromID = id;
 			if (ch.endsWith(Constants.CIRCULAR_CHAR)) {
 				isCirc = true;
 				ch = ch.substring(0,ch.length()-1);

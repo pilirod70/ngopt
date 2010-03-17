@@ -70,6 +70,13 @@ public class dcjDistance {
 	//	AdjacencyGraph gag = new AdjacencyGraph(x,y);
 	//	proposeFullDcjPath(gag);
 	}
+	
+	public static int computeDCJ(Genome x, Genome y){
+		AdjacencyGraph agXY = new AdjacencyGraph(x, y);
+		int C = agXY.countCycles();
+		int I = agXY.countOddPathes();
+		return Genome.blockIdMap.size() - (C + I/2);
+	}
 
 	
 }

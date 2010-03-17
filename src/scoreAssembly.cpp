@@ -76,7 +76,7 @@ int main( int argc, char* argv[] )
 
 	// count gaps in the alignment
 	vector<int> ref_gaps;
-	vector<int> ass_gaps;
+	vector<int> ass_gaps;       // haha... ass gaps
 	for(int ivI=0; ivI < iv_list.size(); ivI++){
 		GetAlignment(iv_list[ivI], iv_list.seq_table, aln);
 		tallyGaps(aln, ref_gaps, 0);

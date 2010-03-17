@@ -15,7 +15,7 @@ public class AdjacencyGraph {
 		adjB = B.getAdjacencies();
 //		visitA = new boolean[adjA.length];
 //		visitB = new boolean[adjB.length];
-		FastAccessTable fatA = A.getFAT(); // this may be usefull later
+		FastAccessTable fatA = A.getFAT(); // this may be useful later
 		FastAccessTable fatB = B.getFAT();
 		for (int i = 0; i < adjA.length; i++){
 			if (adjA[i].isTelo()){
