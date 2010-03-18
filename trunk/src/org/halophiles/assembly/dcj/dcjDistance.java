@@ -25,7 +25,9 @@ public class dcjDistance {
 		}
 	
 		String genomeX = in.nextLine();
-		String genomeY = in.nextLine();
+		String genomeY = in.nextLine(); 
+		
+		System.out.println(genomeX +"\n" +genomeY);
 		
 		// make some toys
 		//String genomeX = "a,b,c,d,e,f,g,h*$";        
