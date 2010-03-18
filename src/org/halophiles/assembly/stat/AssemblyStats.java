@@ -20,7 +20,7 @@ public class AssemblyStats {
 	public static void main(String[] args) {
 		
 			if (args.length != 1){
-				System.err.println("Usage: java AssemblyStats <xmfa_file>");
+				System.err.println("Usage: java AssemblyStats <xmfa_file> <genome1> <genome2>");
 				System.exit(-1);
 			}
 			

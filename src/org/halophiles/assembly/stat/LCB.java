@@ -10,26 +10,31 @@ public class LCB implements Comparable<LCB> {
 	
 	private char[][] seqs;
 	
+	private String taxa1;
 	private int seq1Left;
 	private int seq1Right;
 	private boolean comp1;
+	private int ctg1;
 	
+	private String taxa2;
 	private int seq2Left;
 	private int seq2Right;
 	private boolean comp2;
-	
+	private int ctg2;
 	
 	private boolean linSpec;
 	
 	private int taxaIdx;
 	
-	public LCB(char[][] seqs, int s1L, int s1R, boolean s1Comp, int s2L, int s2R, boolean s2Comp){
+	public LCB(char[][] seqs, int s1L, int s1R, boolean s1Comp, int ctg1, int s2L, int s2R, boolean s2Comp, int ctg2){
 		seq1Left = s1L; 
 		seq1Right = s1R;
 		comp1 = s1Comp;
+		this.ctg1 = ctg1;
 		seq2Left = s2L;
 		seq2Right = s2R;
 		comp1 = s2Comp;
+		this.ctg2 = ctg2;
 		this.seqs = seqs;
 		lcbIdx = COUNT++;
 		linSpec = false;
