@@ -32,7 +32,7 @@ int main (int argc, char** argv) {
 	
 	string inFile = argv[1];
 	ifstream in(inFile.c_str());
-	string hdr, seq, qual;
+	string hdr, seq, hdr2, qual;
 
 	// use an unordered_map because it is implemented with a hash function and
 	// inserts and lookups are constant-time
@@ -50,6 +50,7 @@ int main (int argc, char** argv) {
 	in.seekg(0,ios::beg);	// back to beginning
 	size_t prev_progress = 99999;
 	cout << "Reading..";
+	size_t line_count = 0;
 	while (start_offset < file_size){
 		// print a progress message
 		if( (start_offset * 100) / file_size != prev_progress ){
@@ -60,8 +61,13 @@ int main (int argc, char** argv) {
 		// read the four components of a fastq entry
 		in >> hdr;
 		in >> seq;
-		in >> hdr;
+		line_count += 2;
+		if(seq[0] == '+'){
+			continue;	// empty entry!
+		}
+		in >> hdr2;
 		in >> qual;
+		line_count += 2;
 		// figure out where we are in the file and check for EOF
 		size_t end_offset = in.tellg();	
 		end_offset++; // assume 1-byte unix end-of-lines
@@ -70,9 +76,17 @@ int main (int argc, char** argv) {
 		}
 		
 		key = hdr.substr(0,hdr.length()-1);	// strip off the 1 or 2 identifier for illumina reads
+		if(key.length()==0){
+			cerr << "Missing read identifier near line " << line_count << endl;
+			return -1;
+		}
 		// look up the read ID and process depending on whether it's been seen before
 		seqloc& sl = pairlocs[key];
 		if(sl.length_1 != 0){
+			if(sl.length_2 != 0){
+				cerr << "Error at line " << line_count << ", " << key << " already has a pair!\n\n";
+				return -1;
+			}
 			sl.start_offset_2 = start_offset;
 			sl.length_2 = end_offset - start_offset;
 			sl.seqlength_2 = seq.length();
