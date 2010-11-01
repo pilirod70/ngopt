@@ -2,7 +2,9 @@
 #include <fstream>
 #include <istream>
 #include <map>
-#include <stdio.h>
+#include <cstdio>
+#include <cstring>
+
 using namespace std;
 
 struct read {
