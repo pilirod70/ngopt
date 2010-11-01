@@ -25,12 +25,13 @@ public:
 
 int main (int argc, char** argv) {
 	
-	if (argc != 2) {
-		cerr << "Usage: " << argv[0] << "  <in.fastq>" << endl;
+	if (argc != 3) {
+		cerr << "Usage: " << argv[0] << "  <in.fastq> <out base path>" << endl;
 		return 0;
 	}
 	
 	string inFile = argv[1];
+	string outBase = argv[2];
 	ifstream in(inFile.c_str());
 	string hdr, seq, hdr2, qual;
 
@@ -113,9 +114,9 @@ int main (int argc, char** argv) {
 	cout << "Unpaired Mbp: " << unilength / 1000000 << endl;
 
 	// now write out read pairs
-	ofstream p1out((inFile+"_p1.fastq").c_str());
-	ofstream p2out((inFile+"_p2.fastq").c_str());
-	ofstream upout((inFile+"_up.fastq").c_str());
+	ofstream p1out((outBase+"_p1.fastq").c_str());
+	ofstream p2out((outBase+"_p2.fastq").c_str());
+	ofstream upout((outBase+"_up.fastq").c_str());
 	
 	unordered_map<string, seqloc>::iterator it = pairlocs.begin();
 	char buf[10000];	// let's hope a read never uses more than 10k chars
