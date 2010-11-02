@@ -27,7 +27,7 @@ int main (int argc, char** argv) {
 	
 	if (argc != 3) {
 		cerr << "Usage: " << argv[0] << "  <in.fastq> <out base path>" << endl;
-		return 0;
+		return -1;
 	}
 	
 	string inFile = argv[1];
