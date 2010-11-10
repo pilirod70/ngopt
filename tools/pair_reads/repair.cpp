@@ -140,6 +140,24 @@ void print_shuffled(string prefix, string base, string suffix){
 	
 }
 
+void split_shuffled(istream& in, ofstream& p1out, ofstream& p2out){
+	string buf;
+	int stop = 2;
+	if (fastq) 
+		stop = 4;
+	while (in.good()){
+		for (int i = 0; i < stop; i++) {
+			in >> buf;
+			p1out << buf << endl;
+		}
+		for (int i = 0; i < stop; i++) {
+			in >> buf;
+			p2out << buf << endl;
+		}
+	}
+	
+}
+
 void usage(char* name){
 	cout << "Usage: "<<name<<" [options] <base> <reads.in>"<<endl;
 	cout << " where "<< endl;
@@ -153,7 +171,8 @@ void usage(char* name){
 	cout << "                    specify an output directory.\n";
 	cout << "        -s <string> the suffix to append to the output files.\n"; 
 	cout << "        --shuf      print pairs in one file where paired reads are printed\n";
-	cout << "                    on consecutive lines (a.k.a. shuffled).\n\n";
+	cout << "                    on consecutive lines (a.k.a. shuffled).\n";
+	cout << "        --split     split a set of shuffled reads up into two files.\n\n";
 	 
 }
 
@@ -169,6 +188,7 @@ int main (int argc, char** argv) {
 	string suffix = "";
 	string base = "";
 	bool shuffle = false;
+	bool split = false;
 	int start = 1;
 	int i = 1;
 	while (argv[i][0] == '-') {
@@ -184,6 +204,8 @@ int main (int argc, char** argv) {
 			argv[i]+=2;
 			if (strcmp(argv[i],"shuf"))
 				shuffle = true;
+			else if (strcmp(argv[i],"split"))
+				split = true;
 		} else {
 			cerr << "Unrecognized argument: " << argv[i] << endl;
 		}
@@ -191,20 +213,40 @@ int main (int argc, char** argv) {
 	char c;
 	istream* in;
 	base = argv[start++];
-	if (argc - start == 0) {
-		in = &cin;
-		fastq = in->peek() == '@';
-		load_reads(*in);
-	} else {
-		filebuf fb;
-		fb.open(argv[start++],ios::in);
-		in = new istream(&fb);
-		fastq = in->peek() == '@';
-		load_reads(*in);
-		for (int i = start; i < argc; i++){
-			fb.open(argv[i],ios::in);
+	if (split) {
+		ofstream p1out((prefix+base+"_p1"+suffix).c_str());
+		ofstream p2out((prefix+base+"_p2"+suffix).c_str());
+		if (argc - start == 0) {
+			in = &cin;
+			fastq = in->peek() == '@';
+		} else {
+			filebuf fb;
+			fb.open(argv[start++],ios::in);
 			in = new istream(&fb);
+			fastq = in->peek() == '@';
+			split_shuffled(*in,p1out,p2out);
+			for (int i = start; i < argc; i++){
+				fb.open(argv[i],ios::in);
+				in = new istream(&fb);
+				split_shuffled(*in,p1out,p2out);
+			}
+		}
+	} else{
+		if (argc - start == 0) {
+			in = &cin;
+			fastq = in->peek() == '@';
 			load_reads(*in);
+		} else {
+			filebuf fb;
+			fb.open(argv[start++],ios::in);
+			in = new istream(&fb);
+			fastq = in->peek() == '@';
+			load_reads(*in);
+			for (int i = start; i < argc; i++){
+				fb.open(argv[i],ios::in);
+				in = new istream(&fb);
+				load_reads(*in);
+			}
 		}
 	}
 
