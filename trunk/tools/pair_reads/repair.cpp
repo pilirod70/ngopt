@@ -201,11 +201,11 @@ int main (int argc, char** argv) {
 			prefix = argv[i++];
 			start+=2;
 		} else if (argv[i][1]=='-'){
-			argv[i]+=2;
-			if (strcmp(argv[i],"shuf")){
+		//	argv[i]+=2;
+			if (strcmp(argv[i],"--shuf"==0)){
 				shuffle = true;
 				cerr << "Shuffling" << endl;
-			} else if (strcmp(argv[i],"split"))
+			} else if (strcmp(argv[i],"--split")==0)
 				split = true;
 			i++;
 			start++;
