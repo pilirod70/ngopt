@@ -202,10 +202,13 @@ int main (int argc, char** argv) {
 			start+=2;
 		} else if (argv[i][1]=='-'){
 			argv[i]+=2;
-			if (strcmp(argv[i],"shuf"))
+			if (strcmp(argv[i],"shuf")){
 				shuffle = true;
-			else if (strcmp(argv[i],"split"))
+				cerr << "Shuffling" << endl;
+			} else if (strcmp(argv[i],"split"))
 				split = true;
+			i++;
+			start++;
 		} else {
 			cerr << "Unrecognized argument: " << argv[i] << endl;
 		}
