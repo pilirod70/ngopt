@@ -16,14 +16,15 @@ struct read {
 
 
 bool fastq;
-
+int load_reads_call = 0;
 map<string,struct read> pair1;
 map<string,struct read> pair2;
 
 void load_reads(istream& in){ 
-
+	load_reads_call++;
 	struct read r;
 	string hdr;
+	string q_hdr;
 	string seq;
 	string qual;
 	string key;
@@ -31,16 +32,19 @@ void load_reads(istream& in){
 		in >> hdr;
 		in >> seq;
 		if (fastq) {
-			in >> hdr;
+			in >> q_hdr;
 			in >> qual;
 		}
 		hdr = hdr.substr(1);
 		
 		r.hdr = hdr;
 		r.seq = seq;
-		if (fastq);
+		
+		if (fastq){
 			r.qual = qual;
-		key = hdr.substr(0,hdr.length()-1);
+		}
+		key = hdr.substr(0,hdr.length()-2);
+
 		if (hdr.at(hdr.length()-1) == '1') {
 			r.pair = 1;
 			pair1[key] = r;
@@ -56,7 +60,7 @@ void print_paired(string prefix, string base, string suffix){
 
 	ofstream p1out((prefix+base+"_p1"+suffix).c_str());
 	ofstream p2out((prefix+base+"_p2"+suffix).c_str());
-	ofstream upout((prefix+base+"_up"+suffix).c_str());
+	ofstream upout;
 	
 	map<string, struct read>::iterator it;
 	struct read*  tmp1;
@@ -75,6 +79,9 @@ void print_paired(string prefix, string base, string suffix){
 			}
 			pair2.erase(it->first);
 		} else {
+			if (!upout.is_open()){
+				upout.open((prefix+base+"_up"+suffix).c_str());
+			}
 			tmp1 = & it->second;
 			if (fastq)
 				upout << "@" << tmp1->hdr << "\n" << tmp1->seq << "\n+" << tmp1->hdr << "\n" << tmp1->qual << endl;
@@ -84,6 +91,9 @@ void print_paired(string prefix, string base, string suffix){
 	}
 	
 	for (it=pair2.begin(); it!=pair2.end(); it++) {
+		if (!upout.is_open()){
+			upout.open((prefix+base+"_up"+suffix).c_str());
+		}
 		tmp2 = & it->second;
 		if (fastq)
 			upout << "@" << tmp2->hdr << "\n" << tmp2->seq << "\n+" << tmp2->hdr << "\n" << tmp2->qual << endl;
@@ -93,14 +103,15 @@ void print_paired(string prefix, string base, string suffix){
 	
 	p1out.close();
 	p2out.close();
-	upout.close();
+	if (upout.is_open())
+		upout.close();
 	
 }
 
 void print_shuffled(string prefix, string base, string suffix){
 
 	ofstream paired((prefix+base+"_shuf"+suffix).c_str());
-	ofstream unpaired((prefix+base+"_up"+suffix).c_str());
+	ofstream unpaired;
 	
 	map<string, struct read>::iterator it;
 	struct read*  tmp1;
@@ -119,6 +130,9 @@ void print_shuffled(string prefix, string base, string suffix){
 			}
 			pair2.erase(it->first);
 		} else {
+			if (!unpaired.is_open()) {
+				unpaired.open((prefix+base+"_up"+suffix).c_str());
+			}
 			tmp1 = & it->second;
 			if (fastq)
 				unpaired << "@" << tmp1->hdr << "\n" << tmp1->seq << "\n+" << tmp1->hdr << "\n" << tmp1->qual << endl;
@@ -128,6 +142,9 @@ void print_shuffled(string prefix, string base, string suffix){
 	}
 	
 	for (it=pair2.begin(); it!=pair2.end(); it++) {
+		if (!unpaired.is_open()) {
+			unpaired.open((prefix+base+"_up"+suffix).c_str());
+		}
 		tmp2 = & it->second;
 		if (fastq)
 			unpaired << "@" << tmp2->hdr << "\n" << tmp2->seq << "\n+" << tmp2->hdr << "\n" << tmp2->qual << endl;
@@ -136,7 +153,8 @@ void print_shuffled(string prefix, string base, string suffix){
 	}
 	
 	paired.close();
-	unpaired.close();
+	if (unpaired.is_open())
+		unpaired.close();
 	
 }
 
@@ -193,25 +211,23 @@ int main (int argc, char** argv) {
 	int i = 1;
 	while (argv[i][0] == '-') {
 		if (argv[i][1]=='s'){
-			i++;
-			suffix = argv[i++];
+			suffix = argv[++i];
 			start+=2;
 		} else if (argv[i][1]=='p') {
-			i++;
-			prefix = argv[i++];
+			prefix = argv[++i];
 			start+=2;
 		} else if (argv[i][1]=='-'){
 		//	argv[i]+=2;
-			if (strcmp(argv[i],"--shuf"==0)){
+			if (strcmp(argv[i],"--shuf")==0){
 				shuffle = true;
 				cerr << "Shuffling" << endl;
 			} else if (strcmp(argv[i],"--split")==0)
 				split = true;
-			i++;
 			start++;
 		} else {
 			cerr << "Unrecognized argument: " << argv[i] << endl;
 		}
+		i++;
 	}
 	char c;
 	istream* in;
@@ -222,39 +238,49 @@ int main (int argc, char** argv) {
 		if (argc - start == 0) {
 			in = &cin;
 			fastq = in->peek() == '@';
+			cerr << "Loading reads from standard error." << endl;
+			split_shuffled(*in,p1out,p2out);
 		} else {
 			filebuf fb;
 			fb.open(argv[start++],ios::in);
 			in = new istream(&fb);
 			fastq = in->peek() == '@';
 			split_shuffled(*in,p1out,p2out);
+			cerr << "Loading reads from multiple files." << endl;
 			for (int i = start; i < argc; i++){
 				fb.open(argv[i],ios::in);
 				in = new istream(&fb);
 				split_shuffled(*in,p1out,p2out);
 			}
 		}
-	} else{
+		return 1;
+	} else{ // reads need to be re-paired using a hash
 		if (argc - start == 0) {
 			in = &cin;
 			fastq = in->peek() == '@';
+			cerr << "Loading reads from standard error." << endl;
 			load_reads(*in);
 		} else {
 			filebuf fb;
 			fb.open(argv[start++],ios::in);
 			in = new istream(&fb);
 			fastq = in->peek() == '@';
+			cerr << "Loading reads from multiple files." << endl;
 			load_reads(*in);
+			fb.close();
+			delete in;
 			for (int i = start; i < argc; i++){
 				fb.open(argv[i],ios::in);
 				in = new istream(&fb);
 				load_reads(*in);
+				fb.close();
+				delete in;
 			}
 		}
+		if (shuffle)
+			print_shuffled(prefix,base,suffix);
+		else
+			print_paired(prefix,base,suffix);
 	}
 
-	if (shuffle)
-		print_shuffled(prefix,base,suffix);
-	else
-		print_paired(prefix,base,suffix);
 }
