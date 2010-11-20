@@ -233,6 +233,7 @@ int main (int argc, char** argv) {
 	istream* in;
 	base = argv[start++];
 	if (split) {
+		cerr << "Splitting reads\n" ;
 		ofstream p1out((prefix+base+"_p1"+suffix).c_str());
 		ofstream p2out((prefix+base+"_p2"+suffix).c_str());
 		if (argc - start == 0) {
@@ -245,7 +246,7 @@ int main (int argc, char** argv) {
 			fb.open(argv[start++],ios::in);
 			in = new istream(&fb);
 			fastq = in->peek() == '@';
-			split_shuffled(*in,p1out,p2out);
+			split_shuffled(*in,p1out,	p2out);
 			cerr << "Loading reads from multiple files." << endl;
 			for (int i = start; i < argc; i++){
 				fb.open(argv[i],ios::in);
@@ -255,6 +256,7 @@ int main (int argc, char** argv) {
 		}
 		return 1;
 	} else{ // reads need to be re-paired using a hash
+		cerr << "Pairing reads\n" ;
 		if (argc - start == 0) {
 			in = &cin;
 			fastq = in->peek() == '@';
@@ -270,6 +272,7 @@ int main (int argc, char** argv) {
 			fb.close();
 			delete in;
 			for (int i = start; i < argc; i++){
+				cerr << "Loading reads from " << argv[i] << endl;
 				fb.open(argv[i],ios::in);
 				in = new istream(&fb);
 				load_reads(*in);
