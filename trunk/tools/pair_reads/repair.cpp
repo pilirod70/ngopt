@@ -35,6 +35,9 @@ void load_reads(istream& in){
 			in >> q_hdr;
 			in >> qual;
 		}
+		if (!in.good()) {
+			break;
+		}
 		hdr = hdr.substr(1);
 		
 		r.hdr = hdr;
@@ -246,6 +249,7 @@ int main (int argc, char** argv) {
 			fb.open(argv[start++],ios::in);
 			in = new istream(&fb);
 			fastq = in->peek() == '@';
+			cerr << start << "  " << argv[start] << endl;
 			split_shuffled(*in,p1out,	p2out);
 			cerr << "Loading reads from multiple files." << endl;
 			for (int i = start; i < argc; i++){
