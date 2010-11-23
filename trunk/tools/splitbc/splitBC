@@ -155,9 +155,9 @@ sub load_barcode_file ($) {
 	while (<BCFILE>) {
 		next if m/^#/;
 		chomp $_;
-		my ($ident, $barcode) = split(' ',$_,2);
-
-		$barcode = uc($barcode);
+		my @arr = split(' ',$_);
+		my $ident = $arr[0];
+		my $barcode = uc($arr[1]);
 
 		# Sanity checks on the barcodes
 		die "Error: bad data at barcode file ($filename) line $.\n" unless defined $barcode;
@@ -233,17 +233,22 @@ sub match_sequences {
 		my $sequence_fragment;
 
 		#Try all barcodes, find the one with the lowest mismatch count
+		if ($barcodes_at_bol) {
+			$sequence_fragment = substr $seq_bases, 0, $barcodes_length;
+		} else {
+			$sequence_fragment = substr $seq_bases, - $barcodes_length;
+		}
 		foreach my $barcoderef (@barcodes) {
 			my ($ident, $barcode) = @{$barcoderef};
 
 			# Get DNA fragment (in the length of the barcodes)
 			# The barcode will be tested only against this fragment
 			# (no point in testing the barcode against the whole sequence)
-			if ($barcodes_at_bol) {
-				$sequence_fragment = substr $seq_bases, 0, $barcodes_length;
-			} else {
-				$sequence_fragment = substr $seq_bases, - $barcodes_length;
-			}
+#			if ($barcodes_at_bol) {
+#				$sequence_fragment = substr $seq_bases, 0, $barcodes_length;
+#			} else {
+#				$sequence_fragment = substr $seq_bases, - $barcodes_length;
+#			}
 
 			my $mm = mismatch_count($sequence_fragment, $barcode) ; 
 
@@ -257,9 +262,9 @@ sub match_sequences {
 			}
 		}
 		
-		if ($best_barcode_mismatches_count<$allowed_mismatches){ 
+		if ($best_barcode_mismatches_count<=$allowed_mismatches){ 
 			#  trim the barcode and the ligator T/A
-			$seq_bases = substr $seq_bases, $barcodes_length+2, $seq_len; 
+			$seq_bases = substr $seq_bases, $barcodes_length+1, $seq_len; 
 			$seq_qualities = substr $seq_qualities, $barcodes_length+1, $seq_len;
 		}
 		if ( (!defined $best_barcode_ident) || ($best_barcode_mismatches_count>$allowed_mismatches)){ 
