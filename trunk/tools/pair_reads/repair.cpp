@@ -199,7 +199,7 @@ void usage(char* name){
 
 
 int main (int argc, char** argv) {
-	
+	cerr << argc << " arguments.\n";	
 	if (argc == 1) {
 		usage(argv[0]);
 	//	cerr << "Usage: " << argv[0] << "  <reads.in>" << endl;
@@ -223,9 +223,10 @@ int main (int argc, char** argv) {
 		//	argv[i]+=2;
 			if (strcmp(argv[i],"--shuf")==0){
 				shuffle = true;
-				cerr << "Shuffling" << endl;
+				cerr << "Shuffling reads" << endl;
 			} else if (strcmp(argv[i],"--split")==0)
 				split = true;
+				cerr << "Splitting reads" << endl;
 			start++;
 		} else {
 			cerr << "Unrecognized argument: " << argv[i] << endl;
@@ -242,7 +243,7 @@ int main (int argc, char** argv) {
 		if (argc - start == 0) {
 			in = &cin;
 			fastq = in->peek() == '@';
-			cerr << "Loading reads from standard error." << endl;
+			cerr << "Loading reads from standard input." << endl;
 			split_shuffled(*in,p1out,p2out);
 		} else {
 			filebuf fb;
@@ -264,7 +265,7 @@ int main (int argc, char** argv) {
 		if (argc - start == 0) {
 			in = &cin;
 			fastq = in->peek() == '@';
-			cerr << "Loading reads from standard error." << endl;
+			cerr << "Loading reads from standard input." << endl;
 			load_reads(*in);
 		} else {
 			filebuf fb;
