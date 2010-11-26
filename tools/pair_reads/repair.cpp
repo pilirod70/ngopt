@@ -235,7 +235,12 @@ int main (int argc, char** argv) {
 	}
 	char c;
 	istream* in;
-	base = argv[start++];
+	base = argv[start++];	
+	if (fopen(base.c_str(),"r")) {
+		cerr << "Missing <base> argument\n";
+		usage(argv[0]);
+		return 0;
+	}
 	if (split) {
 		cerr << "Splitting reads\n" ;
 		ofstream p1out((prefix+base+"_p1"+suffix).c_str());
