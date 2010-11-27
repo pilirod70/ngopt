@@ -28,15 +28,12 @@ void load_reads(istream& in){
 	string seq;
 	string qual;
 	string key;
-	while (in.good()){
+	while (in.peek() != -1){
 		in >> hdr;
 		in >> seq;
 		if (fastq) {
 			in >> q_hdr;
 			in >> qual;
-		}
-		if (!in.good()) {
-			break;
 		}
 		hdr = hdr.substr(1);
 		
@@ -59,10 +56,11 @@ void load_reads(istream& in){
 }
 
 void pipe_seq(istream& in, ostream& out) {
+	if (in.peek() == -1) 
+		return;
 	string hdr;
 	string seq;
 	in >> hdr;
-	if (!in.good()) return;
 	in >> seq;
 	out << hdr << '\n' << seq << endl;
 	
@@ -188,7 +186,7 @@ void split_shuffled(istream& in, ofstream& p1out, ofstream& p2out){
 	int stop = 2;
 	if (fastq) 
 		stop = 4;
-	while (in.good()){
+	while (in.peek() != -1){
 		for (int i = 0; i < stop; i++) {
 			in >> buf;
 			p1out << buf << endl;
