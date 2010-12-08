@@ -19,8 +19,6 @@ int main(int argc, char** argv) {
 
 	ifstream fa_in(argv[1]);
 
-	list<struct fa_entry> seqs;
-
 	bool first = true;		
 	struct fa_entry* tmp = new fa_entry;
 	char c = (int) fa_in.get();
@@ -33,10 +31,11 @@ int main(int argc, char** argv) {
 	tmp->name=buf;
 	tmp->length = 0;	
 
-	while (fa_in.good()){
+	while (fa_in.peek() != -1){
 		c = (char) fa_in.get();
 		if (c == '>'){
-			seqs.push_back(*tmp);
+			cout << tmp->name << "\t" << tmp->length << endl;
+			delete tmp;
 			tmp = new fa_entry;
 			fa_in.getline(buf,256,'\n');	
 			tmp->name=buf;
@@ -47,8 +46,5 @@ int main(int argc, char** argv) {
 			tmp->length++;
 		}
 	}
-	seqs.push_back(*tmp);
-	for(list<struct fa_entry>::iterator it = seqs.begin();it!=seqs.end();it++){
-		cout << it->name << "\t" << it->length << endl;
-	}
+	cout << tmp->name << "\t" << tmp->length << endl;
 }	
