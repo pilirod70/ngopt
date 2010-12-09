@@ -1,19 +1,20 @@
 #include <cstdio>
 #include <cstring>
-#include <unordered_set>
+#include <set>
 #include <iostream>
 #include <fstream>
 using namespace std;
 
+set<string> keepers;
 
-unordered_set<string> keepers;
-
-void add_read(string ln) {
+void add_read(string& ln) {
 	size_t pos = ln.find('\t',0);
-	keepers.insert(ln.substr(0,pos));	
+	string tmp = ln.substr(0,pos);
+	cerr << "Adding >>" << tmp << "<<" << endl;
+	keepers.insert(tmp);	
 }
 
-bool keep_read(string ln) {
+bool keep_read(string& ln) {
 	size_t pos = ln.find('/',0);
 	return keepers.find(ln.substr(1,ln.length()-2)) != keepers.end();
 }
@@ -31,19 +32,26 @@ int main (int argc, char** argv) {
 	}
 
 	ifstream sam_in(argv[1]);
-		
-	string line;
-	while (sam_in >> line){
-		if (line[0] == '@') 
+	char line[256];
+
+
+	cerr << "Found " << keepers.size() << " reads in SAM file\n";
+	while (sam_in.good()){	
+		sam_in.get(line,256);
+		if (line[0] == '@'){ 
+			cerr << "Skipping " << line << endl;
 			continue;
-		else 
-			add_read(line);
+		} else {
+			string* tmp = new string(line);
+			add_read(*tmp);
+		}
 	}
-	
+	cerr << "Found " << keepers.size() << " reads in SAM file\n";
 	ifstream fq_in(argv[2]);
-	
+	string* tmp;	
 	while (fq_in >> line) {
-		if (keep_read(line)) {
+		tmp = new string(line);
+		if (keep_read(*tmp)) {
 			cout << line << endl;
 			fq_in >> line;
 			cout << line << endl;
@@ -57,8 +65,5 @@ int main (int argc, char** argv) {
 			fq_in >> line;
 		}
 	}
-	
-	
-
 }
 
