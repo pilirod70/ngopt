@@ -3,12 +3,12 @@
 #include <fstream>
 #include <iostream>
 #include <cstring>
-#include <cstdlib>
+#include <sstream>
 
 using namespace std;
 
 struct fa_entry {
-	char* name;
+	const char* name;
 	list<char> seq;
 };
 
@@ -32,16 +32,22 @@ bool is_unk(char c) {
 int main(int argc, char** argv) {
 	
 	if (argc != 2) {
-		cout << "Usage: rmfanl <in.fasta>\n" << "Output printed to standard out\n";
+		cout << "Usage: spscaf <in.fasta>\n" << "Output printed to standard out\n";
 		return -1;
 	}
 
 	ifstream in(argv[1]);
 	string infile(argv[1]);
 	string base(infile.substr(0,infile.find_last_of(".fa")));	
-	ofstream out_cis(base+".cis.txt");
-	ofstream out_ctgs(base+".contigs.fasta");
-
+	
+	ofstream out_cis((base+".contigs.fasta").c_str());
+	ofstream out_ctgs((base+".cis.txt").c_str());
+/*
+	string cis_file(base+".cis.txt");
+	ofstream out_cis(cis_file.c_str());
+	string ctgs_file(base+".contigs.fasta");
+	ofstream out_ctgs(ctgs_file.c_str());
+*/
 	bool first = true;		
 	struct fa_entry* tmp = new fa_entry;
 	char c = (int) in.get();
@@ -55,7 +61,7 @@ int main(int argc, char** argv) {
 	scaf = buf;
 	tmp->name = "contig1";
 	int width = 0;
-	char itoa_buf[10];
+	stringstream ss;
 	int contig = 1;
 	while (in.good()){
 		c = (char) in.get();
@@ -68,14 +74,18 @@ int main(int argc, char** argv) {
 			tmp = new fa_entry;
 			in.getline(buf,256,'\n');	
 			scaf = buf;
-			tmp->name = "contig"+buf;
+			ss << "contig" << contig;
+			tmp->name = ss.str().c_str();
+			ss.flush();
 		} else if (is_unk(c)) {
 			print_seq(*tmp,out_ctgs);
 			out_cis << tmp->name << "\t" << scaf << "\n";
 			contig++;
 			delete tmp;
 			tmp = new fa_entry;
-			tmp->name = "contig"+buf;
+			ss << "contig" << contig;
+			tmp->name = ss.str().c_str();
+			ss.flush();
 			while (is_unk((char) in.peek())) in.get();	
 		} else if (c == '\n') {
 			continue;
