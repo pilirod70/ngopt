@@ -1,4 +1,7 @@
-all: fastalen revcomp rmctgs rmfanl exmap
+all: spscaf fastalen revcomp rmctgs rmfanl exmap
+
+spscaf: split_scaffolds.cpp
+	g++ -o spscaf split_scaffolds.cpp
 
 fastalen: fastalen.cpp
 	g++ -o fastalen fastalen.cpp
