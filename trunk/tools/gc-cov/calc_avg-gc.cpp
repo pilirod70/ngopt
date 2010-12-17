@@ -40,6 +40,8 @@ void addbase(char& b) {
 		case 'G': G++; tot['g']++; break;
 		case 'c': C++; tot['c']++; break;
 		case 'C': C++; tot['c']++; break;
+		case 'n': break;
+		case 'N': break;
 		default: cerr << "Unrecognizable character: " << b << endl;
 	}
 }

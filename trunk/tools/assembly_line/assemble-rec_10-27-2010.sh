@@ -12,12 +12,8 @@ function run {
 		 mkdir $base
 	fi	
 	
-	if [ -e $base.out ]; then
-		rm $base.out $base.err
-	fi
- 
-	echo "Contiging" >> $base.out
-	echo "Contiging" >> $base.err
+	echo "Contiging" > $base.out
+	echo "Contiging" > $base.err
 	
 	fa_reads=$base.rec.fasta
 	
