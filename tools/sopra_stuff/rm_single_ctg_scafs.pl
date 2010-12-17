@@ -16,6 +16,7 @@ my %keepers = ();
 
 open (CIS,"<",$cis_file);
 while (<CIS>) {
+	chomp;
 	my ($ctg,$scaf) = split;
 	print STDOUT ">$ctg< : >$scaf<\n" if $debug;
 	push(@{$ctg_in_scaf{$scaf}}, $ctg); 
@@ -63,7 +64,8 @@ while (<FA>) {
 				$num_rm++;
 			}
 		} else {
-			print STDERR "contig not found: ".$tmp[0]."\n";
+			print STDERR "contig not found in <ctginscaf.txt>: ".$tmp[0]."\n";
+			print SING ">$1\n";
 			$keep = 0;
 			$num_rm++;
 			$num_extra++;
