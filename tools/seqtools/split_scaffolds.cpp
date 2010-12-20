@@ -8,7 +8,7 @@
 using namespace std;
 
 struct fa_entry {
-	const char* name;
+	string name;
 	list<char> seq;
 };
 
@@ -25,75 +25,109 @@ void print_seq(struct fa_entry& fa, ostream& out) {
 }
 
 bool is_unk(char c) {
-	return c == '-' || c =='\n' || c == 'N' || c == 'n' || c == 'X' || c == 'x';
+	return c == '-' || c == 'N' || c == 'n' || c == 'X' || c == 'x';
 }
 
+bool is_nuc(char c) {
+	return c == 'A' || c == 'T' || c == 'G' || c == 'C' || 
+		   c == 'a' || c == 't' || c == 'g' || c == 'c' ; 
+}
 
 int main(int argc, char** argv) {
 	
-	if (argc != 2) {
-		cout << "Usage: spscaf <in.fasta>\n" << "Output printed to standard out\n";
+	if (argc != 3) {
+		cout << "Usage: spscaf <mingap> <in.fasta>\n"
+			 << "gaps longer than <mingap> will be split into two contigs\n"
+			 << "Output printed to standard out\n";
 		return -1;
 	}
 
-	ifstream in(argv[1]);
-	string infile(argv[1]);
-	string base(infile.substr(0,infile.find_last_of(".fa")));	
+	int MINGAP = atoi(argv[1]);
+	ifstream in(argv[2]);
+	string infile(argv[2]);
+	string base(infile.substr(0,infile.rfind(".fa")));	
 	
-	ofstream out_cis((base+".contigs.fasta").c_str());
-	ofstream out_ctgs((base+".cis.txt").c_str());
-/*
-	string cis_file(base+".cis.txt");
-	ofstream out_cis(cis_file.c_str());
-	string ctgs_file(base+".contigs.fasta");
-	ofstream out_ctgs(ctgs_file.c_str());
-*/
-	bool first = true;		
+	ofstream out_cis((base+".cis.txt").c_str());
+	ofstream out_ctgs((base+".contigs.fasta").c_str());
+
 	struct fa_entry* tmp = new fa_entry;
 	char c = (int) in.get();
 	if (c != '>') {
 		cerr << "File not in fasta format\n";
 		return -1;
 	}
+	cout << "Splitting scaffolds in " << argv[1] << endl
+		 << "Gaps of length " << MINGAP << " or longer will be split\n";
 	char* scaf;
  	char buf[256];	
 	in.getline(buf,256,'\n');	
 	scaf = buf;
-	tmp->name = "contig1";
-	int width = 0;
 	stringstream ss;
 	int contig = 1;
+	ss << "contig" << contig;
+	tmp->name = ss.str();
+	ss.str("");
+	c = (char) in.get();
 	while (in.good()){
-		c = (char) in.get();
-		if (!in.good()) break; 
+		//if (!in.good()) break; 
 		if (c == '>'){
-			print_seq(*tmp,out_ctgs);
-			out_cis << tmp->name << "\t" << scaf << "\n";
+			if (tmp->seq.size() > 1) {
+				print_seq(*tmp,out_ctgs);
+				out_cis << tmp->name << "\t" << buf << "\n";
+			}
 			contig++;
 			delete tmp;
 			tmp = new fa_entry;
-			in.getline(buf,256,'\n');	
-			scaf = buf;
+			in.getline(scaf,256,'\n');	
+		//	scaf = buf;
 			ss << "contig" << contig;
-			tmp->name = ss.str().c_str();
-			ss.flush();
+			cout << contig << "\t";
+			tmp->name = ss.str();
+			cout << tmp->name << endl;
+			ss.str("");
 		} else if (is_unk(c)) {
-			print_seq(*tmp,out_ctgs);
-			out_cis << tmp->name << "\t" << scaf << "\n";
+			int num_n = 1;
+			while ((is_unk(c) || c=='\n') && c != '>'){
+				c = (char) in.get();
+				if (is_unk(c)){
+					num_n++;
+				}	
+			}
+			if (num_n <= MINGAP) { 
+				cerr << "Found small gap of length " << num_n << endl;
+				for (int i = 0; i < num_n; i++){
+					tmp->seq.push_back('N');
+				}
+				continue;
+			}
+			if (tmp->seq.size() > 1) {
+				print_seq(*tmp,out_ctgs);
+				out_cis << tmp->name << "\t" << buf << "\n";
+			}
 			contig++;
 			delete tmp;
 			tmp = new fa_entry;
 			ss << "contig" << contig;
-			tmp->name = ss.str().c_str();
-			ss.flush();
-			while (is_unk((char) in.peek())) in.get();	
+			cout << contig << "\t";
+			tmp->name = ss.str();
+			cout << tmp->name << endl;
+			ss.str("");
+			if (is_nuc(c)) {
+				tmp->seq.push_back(c);
+			}
 		} else if (c == '\n') {
+			c = (char) in.get();
 			continue;
 		}  else {
-			tmp->seq.push_front(c);
+			tmp->seq.push_back(c);
 		}
+		c = (char) in.get();
 	}
-	print_seq(*tmp,out_ctgs);
-	out_cis << tmp->name << "\t" << scaf << "\n";		
+	
+	if (tmp->seq.size() > 1) {
+		print_seq(*tmp,out_ctgs);
+		out_cis << tmp->name << "\t" << scaf << "\n";		
+		cout << tmp->seq.size() << endl;
+	}
 	delete tmp;
 }	
