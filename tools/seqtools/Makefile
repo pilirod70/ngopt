@@ -16,4 +16,4 @@ rmfanl: rmfastanl.cpp
 	g++ -o rmfanl rmfastanl.cpp
 
 exmap: extract-mapped.cpp
-	g++ -O3 -static -std=c++0x -o exmap  extract-mapped.cpp
+	g++ -o exmap  extract-mapped.cpp
