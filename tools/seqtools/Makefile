@@ -1,4 +1,4 @@
-all: spscaf fastalen revcomp rmctgs rmfanl exmap
+all: spscaf fastalen revcomp rmctgs rmfanl rmfqnl exmap
 
 spscaf: split_scaffolds.cpp
 	g++ -o spscaf split_scaffolds.cpp
@@ -14,6 +14,9 @@ rmctgs: rmctgs.cpp
 
 rmfanl: rmfastanl.cpp
 	g++ -o rmfanl rmfastanl.cpp
+
+rmfqnl: rmfastqnl.cpp
+	g++ -o rmfqnl rmfastqnl.cpp
 
 exmap: extract-mapped.cpp
 	g++ -o exmap  extract-mapped.cpp
