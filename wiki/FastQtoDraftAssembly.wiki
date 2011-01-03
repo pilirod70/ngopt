@@ -11,7 +11,8 @@ This page will describe how create draft genome assemblies from raw Fastq reads.
  * [http://www.physics.rutgers.edu/~anirvans/SOPRA/ SOPRA] - statistical-optimization scaffolding
  * repair - pairs reads named using Illumina format sequence identifiers. Found in ngopt repository under trunk/tools/pair_reads
  * rmctgs - removes small contigs from Fasta file. Found in ngopt repository under trunk/tools/seqtools. 
-
+ * scaf_sopra_bwa.sh - wrapper script for scaffolding with BWA and SOPRA. Found in ngopt repository under trunk/tools/assembly_line.
+ * 
 = Details =
 
 Add your content here.  Format your content with:
