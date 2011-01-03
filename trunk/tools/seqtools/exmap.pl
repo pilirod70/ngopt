@@ -29,45 +29,50 @@ my $map_file = $base.".mapped.fasta";
 my $umap_file = $base.".unmapped.fasta";
 my $first = 1;
 my $fastq = 0;
-if (getc(FQ) == '@') {
+if (getc(FQ) eq '@') {
 	$fastq = 1;
 	$map_file = $base.".mapped.fastq";
 	$umap_file = $base.".unmapped.fastq";
+	
 }
 
 my $mapped = 0;
 my $unmapped = 0;
-open (MAP, ">", $base.".mapped.fastq");
-open (UMAP,">", $base.".unmapped.fastq");
+open (MAP, ">", $map_file);
+open (UMAP,">", $umap_file);
 while (<FQ>) {
 	chomp;
 	my $line;
 	my $hdr;
 	if ($first){
-		$hdr = substr($_,1,length($_)-3);
+		$hdr = $_;
 		$first = 0;
+		print STDOUT $hdr."\n";
+	} else {
+		$hdr = substr($_,1,length($_)-1);
 	}
 	if ($keepers{$hdr}) {
+		++$mapped; 
+		print STDOUT "PLUS ONE";
 		print MAP $_."\n";
 		print MAP <FQ>;
 		if ($fastq) {
 			print MAP <FQ>;
 			print MAP <FQ>;
 		}
-		$mapped++;
 	} else {
+		++$unmapped;
 		print UMAP $_."\n";
 		print UMAP <FQ>;
 		if ($fastq) {
 			print UMAP <FQ>;
 			print UMAP <FQ>;
 		}
-		$unmapped++;
 	}
 }
 
 close MAP;
 close UMAP;
 
-print STDOUT "Wrote $mapped to $map_file and $unmapped to $umap_file\n"; 
+print STDOUT "Wrote ".$mapped." to ".$map_file." and ".$unmapped." to ".$umap_file."\n"; 
 
