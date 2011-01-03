@@ -5,10 +5,10 @@
 This page will describe how create draft genome assemblies from raw Fastq reads.
 
 = Prerequisites = 
- * [[ Reptile | http://aluru-sun.ece.iastate.edu/doku.php?id=reptile ]] - error-correction software 
- * [[ IDBA | http://i.cs.hku.hk/~alse/hkubrg/projects/idba/ ]] - Iterative DeBruijn graph de novo assembler
- * [[ BWA | http://bio-bwa.sourceforge.net/ ]] - short-read aligner using Burrows-Wheeler transform
- * [[ SOPRA | http://www.physics.rutgers.edu/~anirvans/SOPRA/ ]] - statistical-optimization scaffolding 
+ * [http://aluru-sun.ece.iastate.edu/doku.php?id=reptile Reptile] - error-correction software 
+ * [http://i.cs.hku.hk/~alse/hkubrg/projects/idba/ IDBA] - Iterative DeBruijn graph de novo assembler
+ * [http://bio-bwa.sourceforge.net/ BWA] - short-read aligner using Burrows-Wheeler transform
+ * [http://www.physics.rutgers.edu/~anirvans/SOPRA/ SOPRA] - statistical-optimization scaffolding 
 
 = Details =
 
