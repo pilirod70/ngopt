@@ -30,18 +30,18 @@ repair --paired --shuf -s .fastq pe_shuf reads.fastq
   fastaq-converter.pl ./ ./  2 
   }}}
    This will create *two* files, `pe_shuf.fa` and `pe_shuf.q`
-   Note: All files ending in .fastq in the current directory will be processed.
+  Note: All files ending in .fastq in the current directory will be processed.
  # Copy and edit Reptile config-file template.
   {{{
   cp <path_to_reptile>/src/config~ ./pe_shuf.rec.conf
   vim pe_shuf.rec.conf
   }}}
- Edit `pe_shuf.rec.conf` to specify input and output files. 
+  Edit `pe_shuf.rec.conf` to specify input and output files. 
    * Modify line beginning with "`InFaFile`"  to contain `pe_shuf.fa`
    * Modify line beginning with "`IQFile`" to contain `pe_shuf.q`  
    * Modify line beginning with "`OErrFile`" to contain the desired name of the output file. 
     * This output file will not be corrected reads. We are going to run another command on this file to get our corrected reads. Let's call the file `reptile-output` 
- If you are more educated in the Reptile Error Correction process, feel free to modify any of other run configurations. 
+  If you are more educated in the Reptile Error Correction process, feel free to modify any of other run configurations. 
  # Run Reptile error correction
   {{{
   reptile pe_shuf.rec.conf
