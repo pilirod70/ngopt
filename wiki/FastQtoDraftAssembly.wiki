@@ -59,4 +59,4 @@ assembleIBS.sh ibs_asm 10 5 pe_shuf.rec.fasta 500
  * the third integer argument, `500`, is the estimated insert size of your library.
  Please note that the values used here are by no means suggested values. These three values need to be tailored to your library
 
-Final scaffolds will be in `ibs_asm/scaffolds_h2.2_L150_w5.fasta`
+ Final scaffolds will be in `ibs_asm/scaffolds_h2.2_L150_w5.fasta`
