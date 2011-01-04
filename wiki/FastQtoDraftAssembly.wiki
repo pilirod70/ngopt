@@ -5,6 +5,7 @@
 This page will describe how create draft genome assemblies from raw Fastq reads. 
 
 = Prerequisites = 
+You will need the following packages/programs:
  * [http://aluru-sun.ece.iastate.edu/doku.php?id=reptile Reptile] - error-correction software 
  * [http://i.cs.hku.hk/~alse/hkubrg/projects/idba/ IDBA] - Iterative DeBruijn graph de novo assembler
  * [http://bio-bwa.sourceforge.net/ BWA] - short-read aligner using Burrows-Wheeler transform
@@ -16,13 +17,17 @@ This page will describe how create draft genome assemblies from raw Fastq reads.
 
 = Assembling Paired Reads in FastQ format = 
 == Before we get started... ==
-You will need to shuffle your paired reads if they are not already shuffled. To do so, run *`repair`* like so:
+
+ 
+ # You will need to shuffle your paired reads if they are not already shuffled. To do so, run *`repair`* like so:
 {{{
 repair --paired --shuf -s .fastq pe_shuf reads.fastq
 }}} 
-where `pe_shuf` is the output basename for our shuffled reads. This will produce a file named `pe_shuf.fastq` in the current working directory.  The `-s` option or `repair`  can be used to output to a different directory.
+ where `pe_shuf` is the output basename for our shuffled reads. This will produce a file named `pe_shuf.fastq` in the current working directory.  The `-s` option or `repair`  can be used to output to a different directory.
 == Reptile Error Correction == 
  # Convert Fastq to fasta+qual files. In the directory containing `pe_shuf.fastq`, run:
 {{{
 fastaq-converter.pl ./ ./  2 
 }}}
+ Note: All files ending in .fastq in the current directory will be processed.
+ # 
