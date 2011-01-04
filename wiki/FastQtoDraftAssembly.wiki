@@ -2,7 +2,7 @@
 
 = Introduction =
 
-This page will describe how create draft genome assemblies from raw Fastq reads.
+This page will describe how create draft genome assemblies from raw Fastq reads. 
 
 = Prerequisites = 
  * [http://aluru-sun.ece.iastate.edu/doku.php?id=reptile Reptile] - error-correction software 
@@ -12,10 +12,18 @@ This page will describe how create draft genome assemblies from raw Fastq reads.
  * repair - pairs reads named using Illumina format sequence identifiers. Found in ngopt repository under trunk/tools/pair_reads
  * rmctgs - removes small contigs from Fasta file. Found in ngopt repository under trunk/tools/seqtools. 
  * scaf_sopra_bwa.sh - wrapper script for scaffolding with BWA and SOPRA. Found in ngopt repository under trunk/tools/assembly_line.
- * 
-= Details =
+ * assemblePE.sh - runs IDBA-BWA-SOPRA pipeline. Found in ngopt repository under trunk/tools/assembly_line
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+= Assembling Paired Reads in FastQ = 
+* For the rest of this tutorial, we will be assembling
+== Before we get started... ==
+You will need to shuffle your paired reads if they are not already shuffled. To do so, run *`repair`* like so:
+{{{
+repair --paired --shuf -s .fastq pe_shuf reads.fastq
+}}} 
+where `pe_shuf` is the output basename for our shuffled reads. This will produce a file named `pe_shuf.fastq` in the current working directory.  The `-s` option or `repair`  can be used to output to a different directory.
+== Reptile Error Correction == 
+#Convert Fastq to fasta+qual files. In the directory containing `pe_shuf.fastq`, run:
+{{{
+fastaq-converter.pl ./ ./  2 
+}}}
