@@ -1,15 +1,14 @@
 #summary A simple example of preprocessing of multiplexed Illumina.
 
 = Introduction =
-
+This page will describe how to preprocess custom-barcode multiplexed Illumina data. 
 = Prerequisites = 
 You will need the following software in your executable path.
  * [http://genome.gsc.riken.jp/osc/english/dataresource/ Tagdust] - eliminate artifactual sequence from NGS data
  * [http://code.google.com/p/ngopt/source/browse/trunk/tools/splitbc/splitBC?r=70 splitBC] - a script to split barcoded reads. 
 
-= Details =
+= Preprocess Multiplexed Data =
+== Remove artifactual DNA ==
+Often times during library preparations, DNA fragments consisting only of adapter sequence are inserted and sequenced. To get rid of reads containing these sequences, we will use the program `tagdust`. 
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+For this step, we will need a file containing our adapter sequences. 
