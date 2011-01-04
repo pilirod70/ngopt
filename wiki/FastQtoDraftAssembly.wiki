@@ -14,8 +14,7 @@ This page will describe how create draft genome assemblies from raw Fastq reads.
  * scaf_sopra_bwa.sh - wrapper script for scaffolding with BWA and SOPRA. Found in ngopt repository under trunk/tools/assembly_line.
  * assemblePE.sh - runs IDBA-BWA-SOPRA pipeline. Found in ngopt repository under trunk/tools/assembly_line
 
-= Assembling Paired Reads in FastQ = 
-* For the rest of this tutorial, we will be assembling
+= Assembling Paired Reads in FastQ format = 
 == Before we get started... ==
 You will need to shuffle your paired reads if they are not already shuffled. To do so, run *`repair`* like so:
 {{{
