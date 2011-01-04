@@ -53,3 +53,7 @@ repair --paired --shuf -s .fastq pe_shuf reads.fastq
 assembleIBS.sh ibs_asm 10 5 pe_shuf.rec.fasta 500
 }}}
  * `ibs_asm` is the basename for output files. It is also the name of the directory where all output files generated in the assembly line are stored.
+ * the first integer argument, 10, is the minimum frequency of a k-mer in the DeBruijn graph
+ * the second integer argument, 5, is the minimum number of pairs required to scaffold two contigs 
+ * `pe_shuf.rec.fasta` is our shuffled file of error corrected reads
+ * the third integer argument, 500, is the estimated insert size of your library.
