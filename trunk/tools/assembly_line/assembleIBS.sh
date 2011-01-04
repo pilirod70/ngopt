@@ -5,7 +5,7 @@
 	h="2.2"
 	
 if [ $# -ne 3 ]; then
-	echo "Usage: $0 <output_base> <kcut> <mnpair> <lib> <ins>"
+	echo "Usage: `basename $0` <output_base> <kcut> <mnpair> <lib> <ins>"
 	echo "<lib> must be shuffled and in fasta format."
 	exit -1
 fi
