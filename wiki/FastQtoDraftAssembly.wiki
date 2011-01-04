@@ -1,8 +1,8 @@
-#summary This page is under construction.
+#summary A simple pipeline for assembling a single paired-end Illumina library.
 
 = Introduction =
 
-This page will describe how create draft genome assemblies from raw Fastq reads. 
+This page will describe how create draft genome assemblies from paired-reads in Fastq format. 
 
 = Prerequisites = 
 You will need the following packages/programs:
