@@ -15,11 +15,12 @@ You will need the following sequence files:
  {{{
  BC1    ATGCTA
  BC2    TTGACT
-  .        .
-  .        .
-  .        .
+ BC3    GTAGGT
  }}}
- * your Illumina reads in a single file
+ * a single file containing all of your reads. They do not need to be shuffled if you have paired reads
 = Preprocess Multiplexed Data =
 == Remove artifactual DNA ==
 Often times during library preparations, DNA fragments consisting only of adapter sequence are inserted and sequenced. To get rid of reads containing these sequences, we will use the program `tagdust`. 
+{{{
+tagdust adapters.fasta reads.fastq
+}}}
