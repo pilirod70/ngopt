@@ -26,8 +26,24 @@ repair --paired --shuf -s .fastq pe_shuf reads.fastq
  where `pe_shuf` is the output basename for our shuffled reads. This will produce a file named `pe_shuf.fastq` in the current working directory.  The `-s` option or `repair`  can be used to output to a different directory.
 == Reptile Error Correction == 
  # Convert Fastq to fasta+qual files. In the directory containing `pe_shuf.fastq`, run:
+  {{{
+  fastaq-converter.pl ./ ./  2 
+  }}}
+   This will create *two* files, `pe_shuf.fa` and `pe_shuf.q`
+   Note: All files ending in .fastq in the current directory will be processed.
+ # Copy and edit Reptile config-file template.
 {{{
-fastaq-converter.pl ./ ./  2 
+cp <path_to_reptile>/src/config~ ./pe_shuf.rec.conf
+vim pe_shuf.rec.conf
 }}}
- Note: All files ending in .fastq in the current directory will be processed.
- # 
+ Edit `pe_shuf.rec.conf` to specify input and output files. 
+    * Modify line beginning with "`InFaFile`"  to contain `pe_shuf.fa`
+    * Modify line beginning with "`IQFile`" to contain `pe_shuf.q`  
+    * Modify line beginning with "`OErrFile`" to contain the desired name of the output file. 
+      * This output file will not be corrected reads. We are going to run another command on this file to get our corrected reads. Let's call the file `reptile-output` 
+   If you are more educated in the Reptile Error Correction process, feel free to modify any of other run configurations. 
+ # Run Reptile error correction
+  {{{
+   reptile pe_shuf.rec.conf
+   reptile_merger pe_shuf.fa reptile-output pe_shuf.rec.fasta
+  }}}
