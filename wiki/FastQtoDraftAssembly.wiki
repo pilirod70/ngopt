@@ -23,7 +23,7 @@ repair --paired --shuf -s .fastq pe_shuf reads.fastq
 }}} 
 where `pe_shuf` is the output basename for our shuffled reads. This will produce a file named `pe_shuf.fastq` in the current working directory.  The `-s` option or `repair`  can be used to output to a different directory.
 == Reptile Error Correction == 
-#Convert Fastq to fasta+qual files. In the directory containing `pe_shuf.fastq`, run:
+ # Convert Fastq to fasta+qual files. In the directory containing `pe_shuf.fastq`, run:
 {{{
 fastaq-converter.pl ./ ./  2 
 }}}
