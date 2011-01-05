@@ -19,8 +19,14 @@ You will need the following sequence files:
  }}}
  * a single file containing all of your reads. They do not need to be shuffled if you have paired reads
 = Preprocess Multiplexed Data =
-== Remove artifactual DNA ==
+== Remove Artifactual DNA ==
 Often times during library preparations, DNA fragments consisting only of adapter sequence are inserted and sequenced. To get rid of reads containing these sequences, we will use the program `tagdust`. 
 {{{
-tagdust adapters.fasta reads.fastq
+tagdust -o reads.clean.fastq -a reads.artifact.fastq adapters.fasta reads.fastq
+}}}
+where `reads.fastq` are our Illumina reads. Reads without adapter sequence will be output to `reads.clean.fastq`
+== Split Barcoded Reads == 
+To split our barcoded data set, we will use the `splitBC` from ngopt. 
+{{{
+splitBC reads.clean.fastq --bcfile barcodes.txt --prefix ./ --suffix .fastq --bol 
 }}}
