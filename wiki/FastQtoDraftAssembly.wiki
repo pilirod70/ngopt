@@ -17,9 +17,7 @@ You will need the following packages/programs. They will need to be in your exec
 
 = Assembling Paired Reads in FastQ format = 
 == Before we get started... ==
-
- 
- # You will need to shuffle your paired reads if they are not already shuffled. To do so, run *`repair`* like so:
+ You will need to shuffle your paired reads if they are not already shuffled. To do so, run *`repair`* like so:
 {{{
 repair --paired --shuf -s .fastq pe_shuf reads.fastq
 }}} 
