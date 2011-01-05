@@ -1,4 +1,4 @@
-#summary A tutorial for preprocessing of multiplexed Illumina reads with NGOPT tools.
+#summary A tutorial for preprocessing of multiplexed Illumina reads with NGOpt tools.
 
 = Introduction =
 This page will describe how to preprocess custom-barcode multiplexed Illumina data. 
