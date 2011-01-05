@@ -38,4 +38,5 @@ repair -p ./ -s .fastq BC1 BC1.fastq
 }}}
 This will produce *three* files in the current working directory: `BC1_p1.fastq`, `BC1_p2.fastq`, `BC1_up.fastq`.
 `BC1_up.fastq` will always contain reads whose pair was removed due to contamination. 
+
 If shuffled reads are desired, use the `--shuf` option for `repair`. `BC1_shuf.fastq` will be created instead of `BC1_p1.fastq` and `BC1_p2.fastq`
