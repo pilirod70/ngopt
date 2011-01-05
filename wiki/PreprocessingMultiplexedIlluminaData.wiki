@@ -5,9 +5,9 @@ This page will describe how to preprocess custom-barcode multiplexed Illumina da
 = Prerequisites = 
 You will need the following software in your executable path.
  * [http://genome.gsc.riken.jp/osc/english/dataresource/ Tagdust] - eliminate artifactual sequence from NGS data
- * [http://code.google.com/p/ngopt/source/browse/trunk/tools/splitbc/splitBC?r=70 splitBC] - a script to split barcoded reads. 
+ * [http://code.google.com/p/ngopt/source/browse/trunk/tools/splitbc/splitBC?r=70 splitBC] - a script to split barcoded reads. Found in ngopt repository under trunk/tools/splitbc
 If your reads are paired, you will also need the following program:
- * [http://code.google.com/p/ngopt/source/browse/trunk/tools/pair_reads/repair.cpp?r=85 repair] - a program for pairing and shuffling Illumina reads
+ * [http://code.google.com/p/ngopt/source/browse/trunk/tools/pair_reads/repair.cpp?r=85 repair] - a program for pairing and shuffling Illumina reads. Found in ngopt repository under trunk/tools/pair_reads
 
 You will need the following sequence files:
  * [http://code.google.com/p/ngopt/source/browse/trunk/adapter.fasta?r=85 adapter.fasta] - Illumina adapter sequences.
