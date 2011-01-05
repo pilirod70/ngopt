@@ -1,4 +1,4 @@
-#summary A simple example of preprocessing of multiplexed Illumina.
+#summary A tutorial for preprocessing of multiplexed Illumina reads with ngopt tools.
 
 = Introduction =
 This page will describe how to preprocess custom-barcode multiplexed Illumina data. 
