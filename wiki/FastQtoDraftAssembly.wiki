@@ -1,4 +1,4 @@
-#summary A simple pipeline for assembling a single paired-end Illumina library.
+#summary A simple pipeline for assembling a single paired-end Illumina library using NGOPT tools.
 
 = Introduction =
 
