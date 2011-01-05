@@ -24,9 +24,16 @@ Often times during library preparations, DNA fragments consisting only of adapte
 {{{
 tagdust -o reads.clean.fastq -a reads.artifact.fastq adapters.fasta reads.fastq
 }}}
-where `reads.fastq` are our Illumina reads. Reads without adapter sequence will be output to `reads.clean.fastq`
+where `reads.fastq` is our Illumina reads file. Reads without adapter sequence will be output to `reads.clean.fastq`
 == Split Barcoded Reads == 
 To split our barcoded data set, we will use the `splitBC` from ngopt. 
 {{{
 splitBC reads.clean.fastq --bcfile barcodes.txt --prefix ./ --suffix .fastq --bol 
 }}}
+A file will be created for each line in `barcodes.txt`. For example, if we used the example barcode file from above, we would now have *three* files, `BC1.fastq`, `BC2.fastq`, and `BC3.fastq`
+== Re-pairing of Paired Reads ==
+If you were processing paired-reads, your fastq files will likely contain broken pairings even if you shuffled them ahead of time. To fix this, you can use the `repair` program from ngopt. 
+{{{
+repair -p ./ -s .fastq BC1 BC1.fastq
+}}}
+This will produce *three* files: `BC1_p1.fastq`, `BC1_p2.fastq`, `BC1_up.fastq`. `BC1_up.fastq` will contain reads whose pair was removed due to contamination. 
