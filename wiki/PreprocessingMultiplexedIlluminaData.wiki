@@ -36,4 +36,4 @@ If you were processing paired-reads, your fastq files will likely contain broken
 {{{
 repair -p ./ -s .fastq BC1 BC1.fastq
 }}}
-This will produce *three* files: `BC1_p1.fastq`, `BC1_p2.fastq`, `BC1_up.fastq`. `BC1_up.fastq` will contain reads whose pair was removed due to contamination. 
+This will produce *three* files in the current working directory: `BC1_p1.fastq`, `BC1_p2.fastq`, `BC1_up.fastq`. If shuffled reads are desired, use the `--shuf` option for `repair`. This would produce *two* files: `BC1_shuf.fastq`, `BC1_up.fastq`. `BC1_up.fastq` will always contain reads whose pair was removed due to contamination. 
