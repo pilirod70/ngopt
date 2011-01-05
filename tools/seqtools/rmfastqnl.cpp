@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstring>
 #include <list>
 #include <fstream>
 #include <iostream>
@@ -23,7 +24,7 @@ void print_seq(struct fq_entry& fa) {
 	cout << '\n';
 	cout << '+' << fa.name << endl;
 	it = fa.qual.begin();
-	while (it != fa.seq.end()){
+	while (it != fa.qual.end()){
 		cout << *it;
 		it++;
 	}
@@ -50,7 +51,8 @@ int main(int argc, char** argv) {
 	}
  	char buf[256];	
 	in.getline(buf,256,'\n');	
-	tmp->name=buf;
+	tmp->name = new char[strlen(buf)];
+	strcpy(tmp->name,buf);
 	int width = 0;
 	int stretch = 0;
 	bool in_qual = false;
@@ -62,7 +64,8 @@ int main(int argc, char** argv) {
 			delete tmp;
 			tmp = new fq_entry;
 			in.getline(buf,256,'\n');	
-			tmp->name=buf;
+			tmp->name = new char[strlen(buf)];
+			strcpy(tmp->name,buf);
 		} else if (c == '\n') {
 			continue;
 		} else if (c == '+') {
