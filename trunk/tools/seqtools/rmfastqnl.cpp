@@ -53,8 +53,6 @@ int main(int argc, char** argv) {
 	in.getline(buf,256,'\n');	
 	tmp->name = new char[strlen(buf)];
 	strcpy(tmp->name,buf);
-	int width = 0;
-	int stretch = 0;
 	bool in_qual = false;
 	while (in.peek() != -1){
 		c = (char) in.get();
