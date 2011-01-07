@@ -7,7 +7,7 @@ This page will describe how create draft genome assemblies from paired-reads in 
 = Prerequisites = 
 You will need the following packages/programs. They will need to be in your executable path:
  * [http://aluru-sun.ece.iastate.edu/doku.php?id=reptile Reptile] - error-correction software 
- * [http://i.cs.hku.hk/~alse/hkubrg/projects/idba/ IDBA] - Iterative De Bruijn graph de novo assembler
+ * [http://i.cs.hku.hk/~alse/hkubrg/projects/idba/ IDBA] - Iterative De Bruijn graph de novo assembler.  See our [http://code.google.com/p/ngopt/wiki/IdbaBuildNotes IDBA build notes]
  * [http://bio-bwa.sourceforge.net/ BWA] - short-read aligner using Burrows-Wheeler transform
  * [http://www.physics.rutgers.edu/~anirvans/SOPRA/ SOPRA] - statistical-optimization scaffolding
  * [http://code.google.com/p/ngopt/source/browse/trunk/tools/pair_reads/repair.cpp?r=70 repair] - pairs reads named using Illumina format sequence identifiers. Found in ngopt repository under trunk/tools/pair_reads
