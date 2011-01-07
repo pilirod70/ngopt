@@ -28,11 +28,11 @@ fi
 	sm=$5
 	lg_ins=$6
 	lg=$7
-	fa_reads="$base.rec.fasta"
+	fa_reads="$base.fasta"
 	if [ ! -f $fa_reads ]; then
 		cat $sm_ins $lg_ins > $fa_reads 
 	fi
-	prefix="$a/$base.rec.idba"
+	prefix="$a/$base.idba"
 	idba -r $fa_reads -o $prefix --minCount $kcut > $stdout 2> $stderr 
 	echo "Done contiging\n" >> $stdout 2>> $stderr 
 	rmctgs $L $prefix-contig.fa > $prefix-contig.$L.fa
