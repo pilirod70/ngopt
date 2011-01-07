@@ -1,0 +1,5 @@
+#summary A simple example for correcting errors in Illumina reads
+
+= Introduction =
+
+This page will describe how to use NGOpt tools with Reptile to correct errors in Illumina reads.
