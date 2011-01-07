@@ -24,9 +24,9 @@ fi
 	lib=$4
 	ins=$5
 	prefix="$a/$base.idba"
-	echo "Begin contiging\n" >> $stdout 2>> $stderr 
+	echo "Begin contiging" > $stdout 2> $stderr 
 	idba -r $lib -o $prefix --minCount $kcut >> $stdout 2>> $stderr 
-	echo "Done contiging\n" >> $stdout 2>> $stderr 
+	echo "Done contiging" >> $stdout 2>> $stderr 
 	echo "Discarding contigs smaller than $L bp"
 	rmctgs $L $prefix-contig.fa > $prefix-contig.$L.fa
 	echo "Begin scaffolding" | tee -a $stdout $stderr
