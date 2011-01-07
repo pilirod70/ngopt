@@ -6,12 +6,13 @@
 This page will describe how to use NGOpt tools with Reptile to correct errors in Illumina reads.
 
 = Prerequisites =
-
+You will need the following packages/programs. They will need to be in your executable path:
+ * [http://aluru-sun.ece.iastate.edu/doku.php?id=reptile Reptile] - error-correction software 
 
 == Step 1.  Convert Fastq to fasta+qual files.== 
 In the directory containing `pe_shuf.fastq`, run:
   {{{
-  ngopt_trunk/tools/quality/reptile_fq-converter ./ ./  2 
+  <ngopt_trunk>/tools/quality/reptile_fq-converter ./ ./  2 
   }}}
    This will create *two* files, `pe_shuf.fa` and `pe_shuf.q`
   Note: All files ending in .fastq in the current directory will be processed.
