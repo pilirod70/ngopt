@@ -41,4 +41,6 @@ The third file, `BC1_up.fastq`, will contain reads whose pair was discarded due 
 
 If shuffled reads are desired, you can use the `--shuf` option for `repair`. `BC1_shuf.fastq` will be created instead of `BC1_p1.fastq` and `BC1_p2.fastq`
 
+* To correct errors with Reptile, consider using the ReptileErrorCorrection tutorial
+
 * To assemble paired reads, consider using the FastQtoDraftAssembly tutorial.
