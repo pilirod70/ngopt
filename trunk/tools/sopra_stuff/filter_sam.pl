@@ -14,12 +14,16 @@ if (scalar(@ARGV) != 2) {
 my %keepers;
 
 open (SAM ,"<", $ARGV[0]);
-
+open (FILT, ">", $ARGV[0].".filtered");
 while (<SAM>) {
 	chomp;
 	if ( substr($_,0,1) ne "@") {
 		my @tmp = split;
-		$keepers{$tmp[0]} = 1;
+		my $cigar = $tmp[5];
+		if ($tmp[5] eq  "49M") {
+			$keepers{$tmp[0]} = 1;
+			print FILT join('\t',@tmp)."\n";
+		}
 	}
 }
 
