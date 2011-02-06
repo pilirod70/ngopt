@@ -25,7 +25,7 @@ Often times during library preparations, DNA fragments consisting only of adapte
 tagdust -o reads.clean.fastq -a reads.artifact.fastq adapters.fasta reads.fastq
 }}}
 where `reads.fastq` is our Illumina reads file. Reads without adapter sequence will be output to `reads.clean.fastq`
-* TagDust has one key parameter, the false discovery rate (FDR). By default this is set to 0.01. This is the false discovery rate of incorrectly classifying a read as coming from '''contaminant''' library sequences. 
+ * TagDust has one key parameter, the false discovery rate (FDR). By default this is set to 0.01. This is the false discovery rate of incorrectly classifying a read as coming from '''contaminant''' library sequences. 
 == Split Barcoded Reads == 
 To split our barcoded data set, we will use the `splitBC` from ngopt. 
 {{{
