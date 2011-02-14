@@ -14,12 +14,79 @@ struct read {
 	int pair;
 };
 
-
+bool fastq;
 int pair_reads_call = 0;
 map<string,struct read> pair1;
 map<string,struct read> pair2;
 
-void pair_reads(istream& in, bool fastq){ 
+char comp(char b) {
+	switch(b){
+		case 'A': return 'T';
+		case 'a': return 't';
+		case 'T': return 'A';
+		case 't': return 'a';
+		case 'G': return 'C';
+		case 'g': return 'c';
+		case 'C': return 'G';
+		case 'c': return 'g';
+		case 'M': return 'K';
+		case 'm': return 'k';
+		case 'R': return 'Y';
+		case 'r': return 'y';
+		case 'W': return 'W';
+		case 'w': return 'w';
+		case 'S': return 'S';
+		case 's': return 's';
+		case 'Y': return 'R';
+		case 'y': return 'r';
+		case 'K': return 'M';
+		case 'k': return 'm';
+		case 'V': return 'B';
+		case 'v': return 'b';
+		case 'H': return 'D';
+		case 'h': return 'd';
+		case 'D': return 'H';
+		case 'd': return 'h';
+		case 'B': return 'V';
+		case 'b': return 'v';
+		case 'X': return 'X';
+		case 'x': return 'x';
+		case 'N': return 'N';
+		case 'n': return 'n';
+		default : { cerr << "Unrecognized character: " << b << endl;  
+					return '-';}
+	}
+}
+
+void rev_comp(struct read& r){
+	int j = -1;
+	int stop = -1;
+	if (r.seq.length() % 2 == 1)
+		stop = r.seq.length()/2; 
+	else
+		stop = r.seq.length()/2 - 1;
+
+	for (int i = 0; i < stop; i++){
+		j = r.seq.length()-1-i;
+		char to_j = comp(r.seq.at(i));
+		char to_i = comp(r.seq.at(j));
+		r.seq.replace(i,1,1,to_i);
+		r.seq.replace(j,1,1,to_j);
+	}
+	
+	if (fastq) {
+		for (int i = 0; i < stop; i++){
+			j = r.qual.length()-1-i;
+			char to_j = r.qual.at(i);
+			char to_i = r.qual.at(j);
+			r.qual.replace(i,1,1,to_i);
+			r.qual.replace(j,1,1,to_j);
+		}
+		
+	}
+} 
+
+void pair_reads(istream& in){ 
 	pair_reads_call++;
 	struct read r;
 	string hdr;
@@ -55,7 +122,7 @@ void pair_reads(istream& in, bool fastq){
 	}
 }
 
-void print_paired(string prefix, string base, string suffix, bool fastq, bool print_fasta){
+void print_paired(string prefix, string base, string suffix, bool print_fasta, bool revcomp){
 
 	ofstream p1out((prefix+base+"_p1"+suffix).c_str());
 	ofstream p2out((prefix+base+"_p2"+suffix).c_str());
@@ -68,6 +135,10 @@ void print_paired(string prefix, string base, string suffix, bool fastq, bool pr
 		if (pair2.find(it->first) != pair2.end()) {
 			tmp1 = & it->second;
 			tmp2 = & pair2.find(it->first)->second; 
+			if (revcomp) {
+				rev_comp(*tmp1);
+				rev_comp(*tmp2);
+			}
 			if (fastq && !print_fasta) {
 				p1out << "@" << tmp1->hdr << "\n" << tmp1->seq << "\n+" << tmp1->hdr << "\n" << tmp1->qual << endl;
 				p2out << "@" << tmp2->hdr << "\n" << tmp2->seq << "\n+" << tmp2->hdr << "\n" << tmp2->qual << endl;
@@ -82,10 +153,14 @@ void print_paired(string prefix, string base, string suffix, bool fastq, bool pr
 				upout.open((prefix+base+"_up"+suffix).c_str());
 			}
 			tmp1 = & it->second;
+			if (revcomp) {
+				rev_comp(*tmp1);
+			}
 			if (fastq && !print_fasta)
 				upout << "@" << tmp1->hdr << "\n" << tmp1->seq << "\n+" << tmp1->hdr << "\n" << tmp1->qual << endl;
-			else
+			else{
 				upout << ">" << tmp1->hdr << "\n" << tmp1->seq << endl;
+			}
 		}
 	}
 	
@@ -94,10 +169,14 @@ void print_paired(string prefix, string base, string suffix, bool fastq, bool pr
 			upout.open((prefix+base+"_up"+suffix).c_str());
 		}
 		tmp2 = & it->second;
+		if (revcomp) {
+			rev_comp(*tmp2);
+		}
 		if (fastq && !print_fasta)
 			upout << "@" << tmp2->hdr << "\n" << tmp2->seq << "\n+" << tmp2->hdr << "\n" << tmp2->qual << endl;
-		else 
+		else {
 			upout << ">" << tmp2->hdr << "\n" << tmp2->seq << endl;
+		}
 	}
 	
 	p1out.close();
@@ -107,7 +186,7 @@ void print_paired(string prefix, string base, string suffix, bool fastq, bool pr
 	
 }
 
-void print_shuffled(string prefix, string base, string suffix, bool fastq, bool print_fasta){
+void print_shuffled(string prefix, string base, string suffix, bool print_fasta, bool revcomp){
 
 	ofstream paired((prefix+base+"_shuf"+suffix).c_str());
 	ofstream unpaired;
@@ -119,6 +198,10 @@ void print_shuffled(string prefix, string base, string suffix, bool fastq, bool 
 		if (pair2.find(it->first) != pair2.end()) {
 			tmp1 = & it->second;
 			tmp2 = & pair2.find(it->first)->second; 
+			if (revcomp){
+				rev_comp(*tmp1);
+				rev_comp(*tmp2);
+			}
 			if (fastq && !print_fasta) {
 				paired << "@" << tmp1->hdr << "\n" << tmp1->seq << "\n+" << tmp1->hdr << "\n" << tmp1->qual << endl;
 				paired << "@" << tmp2->hdr << "\n" << tmp2->seq << "\n+" << tmp2->hdr << "\n" << tmp2->qual << endl;
@@ -133,10 +216,14 @@ void print_shuffled(string prefix, string base, string suffix, bool fastq, bool 
 				unpaired.open((prefix+base+"_up"+suffix).c_str());
 			}
 			tmp1 = & it->second;
+			if (revcomp){
+				rev_comp(*tmp1);
+			}
 			if (fastq && !print_fasta)
 				unpaired << "@" << tmp1->hdr << "\n" << tmp1->seq << "\n+" << tmp1->hdr << "\n" << tmp1->qual << endl;
-			else
+			else {
 				unpaired << ">" << tmp1->hdr << "\n" << tmp1->seq << endl;
+			}
 		}
 	}
 	
@@ -145,10 +232,14 @@ void print_shuffled(string prefix, string base, string suffix, bool fastq, bool 
 			unpaired.open((prefix+base+"_up"+suffix).c_str());
 		}
 		tmp2 = & it->second;
+		if (revcomp){
+			rev_comp(*tmp2);
+		}
 		if (fastq && !print_fasta)
 			unpaired << "@" << tmp2->hdr << "\n" << tmp2->seq << "\n+" << tmp2->hdr << "\n" << tmp2->qual << endl;
-		else 
+		else { 
 			unpaired << ">" << tmp2->hdr << "\n" << tmp2->seq << endl;
+		}
 	}
 	
 	paired.close();
@@ -157,36 +248,43 @@ void print_shuffled(string prefix, string base, string suffix, bool fastq, bool 
 	
 }
 
-void pipe_seq(istream& in, ostream& out, bool fastq, bool print_fasta) {
-	string hdr;
-	string seq;
-	if (in >> hdr){
-		in >> seq;
-		if (print_fasta) {
-			hdr.replace(0,1,1,'>');
-		}
-		out << hdr << '\n' << seq << endl;
+void pipe_seq(istream& in, ostream& out, bool print_fasta, bool revcomp) {
+	struct read r;
+	if (in >> r.hdr){
+		in >> r.seq;
 		if (fastq) {
-			in >> hdr;
-			in >> seq;
-			if (!print_fasta) {
-				out << hdr << '\n' << seq << endl;
-			}
+			in >> r.hdr;
+			in >> r.qual;
+			r.hdr.replace(0,1,1,'@');
 		}
-	}
+		if (revcomp) 
+			rev_comp(r);
+
+		if (fastq && !print_fasta){
+			out << r.hdr << endl;
+			out << r.seq << endl;
+			r.hdr.replace(0,1,1,'+');
+			out << r.hdr << endl;
+			out << r.qual << endl;
+		} else {
+			r.hdr.replace(0,1,1,'>');
+			out << r.hdr << endl;
+			out << r.seq << endl;
+		}
+	}	
 }
 
-void shuffle_paired(ifstream& in1, ifstream& in2, ofstream& out, bool fastq, bool print_fasta) {
+void shuffle_paired(ifstream& in1, ifstream& in2, ofstream& out, bool print_fasta, bool revcomp) {
 	while (in1.good() && in2.good()){
-		pipe_seq(in1,out,fastq,print_fasta);
-		pipe_seq(in2,out,fastq,print_fasta);
+		pipe_seq(in1,out,print_fasta,revcomp);
+		pipe_seq(in2,out,print_fasta,revcomp);
 	}
 }
 
-void split_shuffled(istream& in, ofstream& p1out, ofstream& p2out, bool fastq, bool print_fasta){
+void split_shuffled(istream& in, ofstream& p1out, ofstream& p2out, bool print_fasta, bool revcomp){
 	while (in.good()){
-		pipe_seq(in,p1out,fastq,print_fasta);
-		pipe_seq(in,p2out,fastq,print_fasta);
+		pipe_seq(in,p1out,print_fasta,revcomp);
+		pipe_seq(in,p2out,print_fasta,revcomp);
 	}
 }
 
@@ -206,6 +304,7 @@ void usage(char* name){
 	cout << "                    on consecutive lines (a.k.a. shuffled).\n";
 	cout << "        --paired    assume reads are paired.\n";
 	cout << "        --fasta     output in fasta format.\n";
+	cout << "        --rev       reverse complement each sequence.\n";
 	cout << "        --quiet     do not print progress messages.\n";
 	cout << "        --debug     run in debug mode.\n\n";
 	 
@@ -220,7 +319,7 @@ int main (int argc, char** argv) {
 	string prefix = "";
 	string suffix = "";
 	string base = "";
-	bool fastq;
+	bool revcomp = false;
 	bool output_fasta=false;
 	bool shuffle = false;
 	bool paired = false;
@@ -246,6 +345,8 @@ int main (int argc, char** argv) {
 				debug = true;
 			} else if (strcmp(argv[i],"--fasta")==0){
 				output_fasta = true;
+			} else if (strcmp(argv[i],"--rev")==0){
+				revcomp = true;
 			}
 			start++;
 		} else {
@@ -271,7 +372,7 @@ int main (int argc, char** argv) {
 				ofstream out((prefix+base+"_shuf"+suffix).c_str());
 				fastq = in1.peek()=='@';
 				if (!quiet) cout << "Shuffling paired reads from " << argv[start-2] << " and " << argv[start-1] << "\n";
-				shuffle_paired(in1,in2,out,fastq,output_fasta);
+				shuffle_paired(in1,in2,out,output_fasta,revcomp);
 			} else {
 				cerr << "Two files are required for shuffling paired reads.\n";
 				usage(argv[0]);
@@ -284,7 +385,7 @@ int main (int argc, char** argv) {
 				in = &cin;
 				fastq = in->peek() == '@';
 				if (!quiet) cout << " standard input.\n";
-				split_shuffled(*in,p1out,p2out,fastq,output_fasta);
+				split_shuffled(*in,p1out,p2out,output_fasta,revcomp);
 			} else {
 				filebuf fb;
 				do {			
@@ -293,7 +394,7 @@ int main (int argc, char** argv) {
 					in = new istream(&fb);
 					fastq = in->peek() == '@';
 				//	if (debug) cerr << start << "  " << argv[start] << endl;
-					split_shuffled(*in,p1out,p2out,fastq,output_fasta);
+					split_shuffled(*in,p1out,p2out,output_fasta,revcomp);
 					delete in;
 				} while (start < argc);
 				if (!quiet) cout << '\n';
@@ -310,7 +411,7 @@ int main (int argc, char** argv) {
 			in = &cin;
 			fastq = in->peek() == '@';
 			if (!quiet) cout << " standard input.\n";
-			pair_reads(*in,fastq);
+			pair_reads(*in);
 		} else {
 			filebuf fb;
 			do {
@@ -318,7 +419,7 @@ int main (int argc, char** argv) {
 				if (!quiet) cout << "\n\t" << argv[start-1];
 				in = new istream(&fb);
 				fastq = in->peek() == '@';
-				pair_reads(*in,fastq);
+				pair_reads(*in);
 				fb.close();
 				delete in;
 			} while (start < argc);
@@ -333,9 +434,9 @@ int main (int argc, char** argv) {
 //			}
 		}
 		if (shuffle)
-			print_shuffled(prefix,base,suffix,fastq,output_fasta);
+			print_shuffled(prefix,base,suffix,output_fasta,revcomp);
 		else
-			print_paired(prefix,base,suffix,fastq,output_fasta);
+			print_paired(prefix,base,suffix,output_fasta,revcomp);
 	}
 
 }
