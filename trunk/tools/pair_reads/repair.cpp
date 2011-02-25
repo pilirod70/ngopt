@@ -393,7 +393,8 @@ void usage(const char* name){
 	cout << "        --split        split pairs from one or more shuffled files into two files\n";
 	cout << "                       Note: this option is only applicable when reads are already paired.\n";
 	cout << "        -r <double>    randomly sample reads or read-pairs with specified probability\n"; 
-	cout << "        --seed <long>  seed for randomly sampling reads\n";
+	cout << "        --seed <long>  seed for randomly sampling reads\n";	
+	cout << "        --rev          reverse complement each sequence.\n";
 	cout << "        --fasta        output in fasta format.\n";
 	cout << "        --quiet        do not print progress messages.\n";
 	cout << "        --debug        run in debug mode.\n\n";
@@ -411,6 +412,7 @@ int main (int argc, const char** argv) {
 	string base = "";
 	unsigned int seed = time(NULL);
 	bool fastq;
+	bool revcomp = false;
 	bool output_fasta=false;
 	bool shuffle = false;
 	bool split = false;
@@ -523,13 +525,13 @@ int main (int argc, const char** argv) {
 			in = &cin;
 			fastq = in->peek() == '@';
 			if (!quiet) cout << " standard input.\n";
-			pair_reads(*in);
+			pair_reads(*in,fastq);
 		} else {
 			do {
 				if (!quiet) cout << "\n\t" << argv[start-1];
 				in = new ifstream(argv[start++],ifstream::in);
 				fastq = in->peek() == '@';
-				pair_reads(*in);
+				pair_reads(*in,fastq);
 				delete in;
 			} while (start < argc);
 			if (!quiet) cout << '\n';
