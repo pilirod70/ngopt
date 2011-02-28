@@ -1,20 +1,23 @@
 #!/bin/bash
 
-if [ $# -ne 4 ] ; then
-	echo "Usage: `basename $0` <ref> <pair1> <pair2> <max_ins> <output_dir>"
+if [ $# -ne 5 ] ; then
+	echo "Usage: `basename $0` <output_dir> <ref> <pair1> <pair2> <max_ins>"
 	exit
 fi
 
-ref=$1
-p1=$2
-p2=$3
-ins=$4
-out=$5
-prefix=$out/$ref.bwa
+out=$1
+ref=$2
+ref_base=`basename $ref`
+p1=$3
+b1=`basename $p1`
+p2=$4
+b2=`basename $p2`
+ins=$5
+prefix=$out/$ref_base.bwa
 
 bwa index -a is -p $prefix $ref > $out/index.out
-bwa aln $prefix $p1 > $out/$p1.sai
-bwa aln $prefix $p2 > $out/$p2.sai
-bwa sampe -n 1 -a $ins $prefix $out/$p1.sai $out/$p2.sai $p1 $p2 > $out/$ref.sam
+bwa aln $prefix $p1 > $out/$b1.sai
+bwa aln $prefix $p2 > $out/$b2.sai
+bwa sampe -n 1 -a $ins $prefix $out/$b1.sai $out/$b2.sai $p1 $p2 > $out/$ref_base.sam
 
-samtools view -bhS $out/$ref.sam | samtools sort -o - $out/$ref | samtools pileup -f $ref -  
+samtools view -bhS $out/$ref_base.sam | samtools sort -o - $out/$ref_base | samtools pileup -f $ref -  
