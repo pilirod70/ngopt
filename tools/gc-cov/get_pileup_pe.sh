@@ -2,6 +2,7 @@
 
 if [ $# -ne 5 ] ; then
 	echo "Usage: `basename $0` <output_dir> <ref> <pair1> <pair2> <max_ins>"
+	echo "Final pileup file is printed to stdout"
 	exit
 fi
 

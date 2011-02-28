@@ -3,6 +3,7 @@
 if [ $# -lt 2 ] ; then
 	echo "Usage: `basename $0` <output_dir> <ref> <reads>"
 	echo "<reads> can be read from stdin"
+	echo "Final pileup file is printed to stdout"
 	exit
 fi
 
