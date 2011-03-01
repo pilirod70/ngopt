@@ -5,6 +5,7 @@ use File::Basename;
 
 if (scalar(@ARGV) != 2) {
 	print "Usage: ".basename($0)." <window_size> <pileup_file> \n";
+	print "set <window_size> to -1 to calculate per contig\n";
 	exit 1;
 }
 
@@ -24,6 +25,7 @@ my $curr_ctg = $line[0];
 $curr_cov += $line[1];
 $curr_gc++ if (lc($line[2]) eq "c" || lc($line[2]) eq "g");
 $curr_len++;
+print "name\t" if ($win == -1);
 print "cov\tgc\tlen\n";
 while (<PLP>) {
 	chomp;
@@ -44,6 +46,7 @@ while (<PLP>) {
 		if ($curr_len > 0.0) {
 			$curr_gc /= $curr_len;
 			$curr_cov /= $curr_len;
+			print "$curr_ctg\t"  if ($win == -1);
 			print "$curr_cov\t$curr_gc\t$curr_len\n";
 		}
 		$curr_ctg = $line[0];
@@ -60,5 +63,6 @@ while (<PLP>) {
 if ($curr_len != 0.0) {
 	$curr_gc /= $curr_len;
 	$curr_cov /= $curr_len;
+	print "$curr_ctg\t"  if ($win == -1);
 	print "$curr_cov\t$curr_gc\t$curr_len\n";
 }
