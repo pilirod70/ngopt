@@ -6,7 +6,7 @@ use Scalar::Util qw(looks_like_number);
 
 sub build_lengths($);	
 
-if (scalar(@ARGV) != 2) {
+if (scalar(@ARGV) >= 1) {
 	print "Usage: ".basename($0)." <window_size|contigs.fasta> <pileup_file> \n";
 	print "pass contigs.fasta as first argument to calculate per contig\n";
 	exit 1;
@@ -19,16 +19,13 @@ if (!looks_like_number($win)) {
 	$win = -1;
 }
 
-my $plp_file = shift;
-
 my $curr_len = 0;
 my $curr_cov = 0;
 my $curr_gc = 0;
-open (PLP,"<",$plp_file);
 
 #node0_0_0_93995	12	C	1	^FT	~
 #node0_0_0_93995	13	G	1	.	~
-my $tmp = <PLP>;
+my $tmp = <>;
 my @line = split(/\t/,$tmp);
 my $curr_ctg = $line[0];
 $curr_cov += $line[1];
@@ -36,7 +33,7 @@ $curr_gc++ if (lc($line[2]) eq "c" || lc($line[2]) eq "g");
 $curr_len++;
 print "name\t" if ($win == -1);
 print "cov\tgc\tlen\n";
-while (<PLP>) {
+while (<>) {
 	chomp;
 	@line = split /\t/;
 	if ($line[0] eq $curr_ctg) {

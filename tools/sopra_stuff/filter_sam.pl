@@ -2,10 +2,10 @@
 
 use strict;
 use warnings;
-
+use File::Basename;
 if (scalar(@ARGV) != 2) {
 	print STDOUT "Splits a set of reads into mapped and unmapped files\n";
-	print STDOUT "Usage: exmap.pl <sam_file> <reads_file>\n";
+	print STDOUT "Usage: ".basename($0)." <sam_file> <reads_file>\n";
 	print STDOUT "Reads can be in either fasta or fastq format\n";
 	print STDOUT "Two output files will be created: reads_base.mapped.fasta/q and reads_base.unmapped.fasta/q\n";
 	exit 1;
