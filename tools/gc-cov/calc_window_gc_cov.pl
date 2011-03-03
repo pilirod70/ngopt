@@ -6,7 +6,7 @@ use Scalar::Util qw(looks_like_number);
 
 sub build_lengths($);	
 
-if (scalar(@ARGV) >= 1) {
+if (scalar(@ARGV) == 0) {
 	print "Usage: ".basename($0)." <window_size|contigs.fasta> <pileup_file> \n";
 	print "pass contigs.fasta as first argument to calculate per contig\n";
 	exit 1;
