@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use File::Basename;
 sub muvar (\@);
-if (scalar(@ARGV) == 0 || $ARGV[0] == "-h" || $ARGV[0] == "--help") { 
+if (scalar(@ARGV) == 0 || $ARGV[0] eq "-h" || $ARGV[0] eq "--help") { 
 	print "Usage: ".basename($0)." <tabd_file(s)>\n"; 
 	exit;
 }
