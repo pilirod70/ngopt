@@ -3,8 +3,10 @@ use strict;
 use warnings;
 use File::Basename;
 sub muvar (\@);
-print "Usage: ".basename($0)." <tabd_file(s)>\n" if (scalar(@ARGV) < 2);
-exit  if (scalar(@ARGV)<2);
+if (scalar(@ARGV) == 0 || $ARGV[0] == "-h" || $ARGV[0] == "--help") { 
+	print "Usage: ".basename($0)." <tabd_file(s)>\n"; 
+	exit;
+}
 
 while (@ARGV) {
 	my $file = shift;
