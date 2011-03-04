@@ -28,25 +28,30 @@ while (<IN>){
 }
 print STDERR "keeping ".scalar(keys %orf)." orfs\n";
 while (my $line = <>) {
-	chomp $line;
 	if ($line =~ m/^>/){
+LINE:{	chomp $line;
 		my $name = (split(' ',substr($line,1)))[0];
 		if (defined ($orf{$name})){
 			my $hdr = $line;
 			$line = <>;
 			chomp $line;
 			my $seq;
-			while (!($line =~ m/^>/)){
-				$seq .= $line;
-				$line = <>;
+			while ($line = <>){
 				chomp $line;
+				if ($line !~ m/^>/) {
+					$seq .= $line;
+				} else {
+					if (length($seq) < $max && length($seq) > $min) {
+						print $hdr."\n";
+						printNwide(80,$seq);
+					} else {
+						print STDERR "$name is not within length limit\n";
+					}
+					redo LINE;
+				}
 			} 
-			if (length($seq) < $max && length($seq) > $min) {
-				print $hdr."\n";
-				printNwide(80,$seq);
-			}
-			redo;
 		}
+	}
 	} 
 }
 
