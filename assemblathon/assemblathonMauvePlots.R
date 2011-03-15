@@ -1,0 +1,274 @@
+#!/usr/bin/env Rscript
+
+#
+# Assemblathon Mauve scoring summary graphics generation
+# (c) 2011 Aaron Darling
+# Licensed under the GPL
+#
+#
+# Usage: assemblathonMauvePlots.R <alignment files>
+#
+
+plotChromobounds <- function() {
+	# now plot chromosome bounds
+	chromos <- read.table("chromosomes.txt")
+	abline(v=chromos$V2, lwd=2, col=2)
+	text(x=chromos$V2, y=rep(0,length(chromos$V2)), labels=chromos$V1, pos=4)
+}
+
+#
+# read and plot all the miscalled bases files
+#
+
+plotCalls <- function(files, extension, plottitle, pdfname, totalname, column) {
+	# first read the total number from each table
+	totals <- vector()
+	maxpoint<-0
+	for(i in 1:length(files)){
+		mcname <- paste( files[i], extension, sep="" )
+		mc <- read.table( mcname, header=T )
+		totals[i] <- nrow(mc)
+		maxpoint <- max(maxpoint, mc[,column])
+	}
+
+	#read chromosome bounds
+	chromos <- read.table("chromosomes.txt")
+
+	# simplify the assembly names
+	pnames <- sub( ".fa_scoring\\/\\d+\\/alignment\\d\\/alignment\\d", '', files, perl=TRUE)
+	pnames <- sub( ".fa_scoring\\/\\d+\\/alignment\\d", '', pnames, perl=TRUE)
+	pnames <- sub( ".*\\/", '', pnames, perl=TRUE)
+	
+	# set up a multi-row figure with one plot for every "maxseries" data series
+	maxseries <- 7
+	plotrows <- ceiling(length(files) / maxseries)
+	pdf(paste("mauve_", pdfname,sep=""),width=10,height=(plotrows*2.25))
+	par(mfrow=c(plotrows,1), mar=c(0.25,4,1,2)+0.1, oma=c(5,0,3,0)+0.1)
+	plotcount <- 1
+	plotinit <- 0
+	s <- 1
+
+	# start plotting data series
+	for(i in 1:length(files)){
+		if( i %% maxseries == 1 ){
+			if(plotcount > 1){
+				plotChromobounds()
+				ss <- i-1
+				legend("bottomright", legend=pnames[s:ss], lty=seq(s,ss), col=seq(s,ss))
+				s <- i
+			}
+			plotcount <- plotcount + 1
+			plotinit <- 0
+		}
+		mcname <- paste( files[i], extension, sep="" )
+		mc <- read.table( mcname, header=T )
+		den <- density(c(-1,-1))
+		if(nrow(mc)>0){
+			den <- density(mc[,column], adjust=0.05)
+		}
+		#normalize to unit height
+		den$y <- den$y / max(den$y)
+		# now scale relative to the 'worst'
+		den$y <- den$y * totals[i]
+		# now add a zero point
+		den$x <- c(0,0,den$x)
+		den$y <- c(0,den$y[1],den$y)
+		# and a max point
+		den$x <- c(den$x, den$x[length(den$x)], maxpoint)
+		den$y <- c(den$y, 0, 0)
+		if(plotinit==0){
+			plot(den, las=1, xaxt="n", lty=i, col=i, xlim=c(0,maxpoint*1.1), ylim=c(0,max(totals)), main="", xlab="Concatenated chromosome coordinates", ylab="")
+			axis(1, labels=(plotcount==plotrows+1))
+			plotinit <- 1
+			if(i==1){
+				title(plottitle)
+			}
+		}else{
+			lines(den, lty=i, col=i)
+		}
+	}
+	plotChromobounds()
+	legend("bottomright", legend=pnames[s:i], lty=seq(s,i), col=seq(s,i))
+	dev.off()
+	
+	# now make a PDF barplot with total counts
+	pdf(paste("mauve_total_",pdfname,sep=""))
+	barplot(height=totals,names.arg=pnames, main=totalname, las=2, cex.names=0.8)
+	dev.off()
+}
+
+
+plotGapSizes <- function(files, extension, plottitle, sequence, pdfname, totalname) {
+	totals <- vector()
+	maxpoint<-0
+	for(i in 1:length(files)){
+		mcname <- paste( files[i], extension, sep="" )
+		mc <- read.table( mcname, header=T )
+		totals[i] <- 0
+		totals[i] <- sum(mc$Sequence==sequence)
+		if(nrow(mc)==0){
+			next
+		}
+		den <- density(log2(mc$Length[mc$Sequence==sequence]), adjust=0.15)
+		maxpoint <- max(maxpoint, den$x)
+	}
+
+
+	pnames <- sub( ".fa_scoring\\/\\d+\\/alignment\\d\\/alignment\\d", '', files, perl=TRUE)
+	pnames <- sub( ".fa_scoring\\/\\d+\\/alignment\\d", '', pnames, perl=TRUE)
+	pnames <- sub( ".*\\/", '', pnames, perl=TRUE)
+
+	# set up a multi-row figure with one plot for every "maxseries" data series
+	maxseries <- 7
+	plotrows <- ceiling(length(files) / maxseries)
+	pdf(paste("mauve_", pdfname,sep=""),width=10,height=(plotrows*2.25))
+	par(mfrow=c(plotrows,1), mar=c(0.25,4,1,2)+0.1, oma=c(5,0,3,0)+0.1)
+	plotcount <- 1
+	plotinit <- 0
+	s<-1
+	for(i in 1:length(files)){
+		if( i %% maxseries == 1 ){
+			if(plotcount > 1){
+				ss <- i-1
+				legend("topright", legend=pnames[s:ss], lty=seq(s,ss), col=seq(s,ss))
+				s <- i
+			}
+			plotcount <- plotcount + 1
+			plotinit <- 0
+		}
+		mcname <- paste( files[i], extension, sep="" )
+		mc <- read.table( mcname, header=T )
+		den <- density(c(-1,-1))
+		if(nrow(mc)>0){
+			den <- density(log2(mc$Length[mc$Sequence==sequence]), adjust=0.15)
+		}
+		#normalize to unit height
+		den$y <- den$y / max(den$y)
+		# now scale relative to the 'worst'
+		den$y <- den$y * log2(totals[i])
+		# now add a zero point
+		den$x <- c(0,0,den$x)
+		den$y <- c(0,den$y[1],den$y)
+		# and a max point
+		den$x <- c(den$x, den$x[length(den$x)], maxpoint)
+		den$y <- c(den$y, 0, 0)
+		if(plotinit==0){
+			plot(den, las=1, xaxt="n", lty=i, col=i, ylim=c(0, log2(max(totals))), xlim=c(0, maxpoint*0.9), main="", xlab="log2 segment sizes", ylab="")
+			axis(1, labels=(plotcount==plotrows+1))
+			plotinit <- 1
+			if(i==1){
+				title(plottitle)
+			}
+		}else{
+			lines(den, lty=i, col=i)
+		}
+	}
+	legend("topright", legend=pnames[s:i], lty=seq(s,i), col=seq(s,i))
+	dev.off()
+	
+	# now make a PDF with total counts
+	pdf(paste("mauve_total_",pdfname,sep=""))
+	barplot(height=totals,names.arg=pnames, main=totalname, las=2, cex.names=0.8)
+	dev.off()
+}
+
+plotCalls(commandArgs(trailing=T), "__miscalls.txt", "Density of miscalled bases in genome", "miscalls.pdf", "Total number of miscalled bases", 4)
+plotCalls(commandArgs(trailing=T), "__uncalls.txt", "Density of uncalled bases in genome", "uncalls.pdf", "Total number of uncalled bases", 4)
+plotCalls(commandArgs(trailing=T), "__gaps.txt", "Density of missing and extra segments in genome", "missingextra.pdf", "Total number of missing or extra bases", 6)
+plotGapSizes(commandArgs(trailing=T), "__gaps.txt", "Size distribution of missing segments", "assembly", "missing_sizes.pdf", "Total number of missing segments")
+plotGapSizes(commandArgs(trailing=T), "__gaps.txt", "Size distribution of extra segments", "reference", "extra_sizes.pdf", "Total number of extra segments")
+
+
+scoresum <- read.table("summaries.txt",header=T)
+pnames <- sub( ".fa.fas", "", scoresum$AssemblyName, perl=TRUE)
+
+
+pdf("mauve_scaffold_counts.pdf")
+scafs <- log10(scoresum$NumContigs)
+scafs[is.infinite(scafs)]<-0
+maxy<-ceiling(max(scafs))
+barplot(height=scafs, names.arg=pnames, ylab="count (log10 scale)", main="Scaffold counts", las=2, cex.names=0.5,yaxt="n")
+axis(side=2,at=seq(0,maxy),labels=10^seq(0,maxy,by=1))
+dev.off()
+
+pdf("mauve_lcb_counts.pdf")
+bpoints <- log10(scoresum$NumLCBs)
+bpoints[is.infinite(bpoints)]<-0
+maxy2<-ceiling(max(bpoints))
+barplot(height=bpoints, names.arg=pnames, ylab="count (log10 scale)", main="Breakpoints", las=2, cex.names=0.5,yaxt="n")
+axis(side=2,at=seq(0,maxy2),labels=10^seq(0,maxy2,by=1))
+dev.off()
+
+pdf("mauve_dcj_dist.pdf")
+dcjdist <- log10(scoresum$DCJ_Distance)
+dcjdist[is.infinite(dcjdist)]<-0
+maxy3<-ceiling(max(dcjdist))
+barplot(height=dcjdist, names.arg=pnames, ylab="count (log10 scale)", main="DCJ Distance", las=2, cex.names=0.5,yaxt="n")
+axis(side=2,at=seq(0,maxy3),labels=10^seq(0,maxy3,by=1))
+dev.off()
+
+pdf("mauve_scaffold_vs_lcb.pdf")
+plot(bpoints,scafs, main="Scaffold count and Breakpoint count",yaxt="n",xaxt="n",ylab="Scaffold count (log10)",xlab="LCB count (log10)")
+axis(side=2,at=seq(0,maxy),labels=10^seq(0,maxy,by=1))
+axis(side=1,at=seq(0,maxy2),labels=10^seq(0,maxy2,by=1))
+dev.off()
+
+
+pdf("mauve_basecall_precision.pdf", width=10, height=6)
+baseacc <- scoresum$V4-scoresum$V10-scoresum$V11-scoresum$V16
+poscalls <- baseacc / scoresum$V4
+barplot(height=poscalls, names.arg=pnames, ylab="fraction", main="Precision of bases called in haplotype", las=2, cex.names=0.5)
+dev.off()
+
+pdf("mauve_basecall_recall.pdf", width=10, height=6)
+baseacc <- scoresum$V5-scoresum$V10-scoresum$V11-scoresum$V14
+poscalls <- baseacc / scoresum$V5
+barplot(height=poscalls, names.arg=pnames, ylab="fraction", main="Recall of bases in haplotype", las=2, cex.names=0.5)
+dev.off()
+
+
+#
+# Make the base miscall bias plot
+#
+
+normalizer <- blob$AA+blob$AC+blob$AG+blob$AT+blob$CA+blob$CC+blob$CG+blob$CT+blob$GA+blob$GC+blob$GG+blob$GT+blob$TA+blob$TC+blob$TG+blob$TT
+normalizer[normalizer==0]<-1
+#mlim <- max(abs( c(blob$AA/normalizer,blob$AC/normalizer,blob$AG/normalizer,blob$AT/normalizer,blob$CA/normalizer,blob$CC/normalizer,blob$CG/normalizer,blob$CT/normalizer,blob$GA/normalizer,blob$GC/normalizer,blob$GG/normalizer,blob$GT/normalizer,blob$TA/normalizer,blob$TC/normalizer,blob$TG/normalizer,blob$TT/normalizer) ))
+
+submlim <- cbind(blob$AA[0:88]/normalizer[0:88],blob$AC[0:88]/normalizer[0:88],blob$AG[0:88]/normalizer[0:88],blob$AT[0:88]/normalizer[0:88],blob$CA[0:88]/normalizer[0:88],blob$CC[0:88]/normalizer[0:88],blob$CG[0:88]/normalizer[0:88],blob$CT[0:88]/normalizer[0:88],blob$GA[0:88]/normalizer[0:88],blob$GC[0:88]/normalizer[0:88],blob$GG[0:88]/normalizer[0:88],blob$GT[0:88]/normalizer[0:88],blob$TA[0:88]/normalizer[0:88],blob$TC[0:88]/normalizer[0:88],blob$TG[0:88]/normalizer[0:88],blob$TT[0:88]/normalizer[0:88]) 
+
+h2mat <- matrix(data=c(blob$AA[92]/normalizer[92],blob$AC[92]/normalizer[92],blob$AG[92]/normalizer[92],blob$AT[92]/normalizer[92],blob$CA[92]/normalizer[92],blob$CC[92]/normalizer[92],blob$CG[92]/normalizer[92],blob$CT[92]/normalizer[92],blob$GA[92]/normalizer[92],blob$GC[92]/normalizer[92],blob$GG[92]/normalizer[92],blob$GT[92]/normalizer[92],blob$TA[92]/normalizer[92],blob$TC[92]/normalizer[92],blob$TG[92]/normalizer[92],blob$TT[92]), nrow=88, ncol=16,byrow=TRUE)
+
+ranger <- submlim/h2mat
+ranger[h2mat==0] <- 1
+mlims <- range(ranger)
+mlim <- max(1/mlims[1],mlims[2])
+
+coltable <- hsv(h=rep(0.5,100), s=seq(0.495,0,by=-0.005), v=seq(0.505,1,by=0.005))
+coltable <- c(coltable,rev(heat.colors(100)))
+
+pdf("mauve_basecall_bias.pdf",width=8,height=11)
+par(mfrow=c(12,8), mar=c(0,0,0,0)+1, oma=c(5,0,3,0)+0.1, mex=0.7, mgp=c(3,0,0), cex.axis=0.6)
+
+i<-92
+haplo2mat <- cbind( c(blob$AA[i],blob$AC[i],blob$AG[i],blob$AT[i]), c(blob$CA[i],blob$CC[i],blob$CG[i],blob$CT[i]), c(blob$GA[i],blob$GC[i],blob$GG[i],blob$GT[i]), c(blob$TA[i],blob$TC[i],blob$TG[i],blob$TT[i]) )
+haplo2mat <- haplo2mat / sum(haplo2mat)
+
+
+for(i in 1:92){
+	submat <- cbind( c(blob$AA[i],blob$AC[i],blob$AG[i],blob$AT[i]), c(blob$CA[i],blob$CC[i],blob$CG[i],blob$CT[i]), c(blob$GA[i],blob$GC[i],blob$GG[i],blob$GT[i]), c(blob$TA[i],blob$TC[i],blob$TG[i],blob$TT[i]) )
+	submat <- submat / sum(submat)
+	differ <- submat/haplo2mat
+	differ[haplo2mat==0]<-1
+	image(differ,zlim=c(2-mlim, mlim),col=coltable,xaxt="n",yaxt="n", mex=0.7, mgp=c(3,0,0), cex.axis=0.6,main=pnames[i], cex.main=0.7)
+	axis(side=1,at=seq(0,1,by=(1/3)),labels=c("A","C","G","T"),tick=F, mgp=c(3,0,0), cex.axis=0.6)
+	axis(side=2,at=seq(0,1,by=(1/3)),labels=c("A","C","G","T"),tick=F, mgp=c(3,0,0), cex.axis=0.6)
+}
+
+mlimticks <- seq(1,mlim,by=((mlim-1)/50))
+mlimticks <- c(rev(1/mlimticks),mlimticks[2:length(mlimticks)])
+
+image(x=mlimticks,y=c(1),z=matrix( mlimticks[1:100], nrow=100, ncol=1 ), zlim=c(2-mlim,mlim), col=coltable,yaxt="n", mex=0.7, mgp=c(3,0,0), cex.axis=0.6, main="Key: obs/exp", cex.main=0.7)
+
+dev.off()
+
