@@ -25,6 +25,7 @@ perl -p -i -e 's/dsm11551/Halogeometricum_borinquense_DSM_11551/g' $1
 perl -p -i -e 's/jcm14265/Halorubrum_ejinorense_JCM_14265/g' $1
 perl -p -i -e 's/atcc700873/Halorubrum_hochstenium_ATCC_700873/g' $1
 perl -p -i -e 's/atccBAA-652/Haloarcula_sp_GUBF-9_ATCC_BAA_652/g' $1
+perl -p -i -e 's/dsm13077/Natrialba_aegyptia_DSM_13077/g' $1
 perl -p -i -e 's/dsm1307/Halococcus_morrhuae_DSM_1307/g' $1
 perl -p -i -e 's/dsm8989/Halococcus_salifodinae_DSM_8989/g' $1
 perl -p -i -e 's/jcm12892/Halococcus_hamelinensis_JCM_12892/g' $1
@@ -69,7 +70,6 @@ perl -p -i -e 's/dsm2160/Natronomonas_pharaonis_DSM_2160/g' $1
 perl -p -i -e 's/dsm12281/Natrialba_taiwanensis_DSM_12281/g' $1
 perl -p -i -e 's/atcc43099/Natrialba_magadii_ATCC_43099/g' $1
 perl -p -i -e 's/dsm10524/Natronococcus_amylolyticus_DSM_10524/g' $1
-perl -p -i -e 's/dsm13077/Natrialba_aegyptia_DSM_13077/g' $1
 perl -p -i -e 's/jcm14089/Natronorubrum_sulfidifaciens_JCM_14089/g' $1
 perl -p -i -e 's/dsm3751/Natrinema_pallidum_DSM_3751/g' $1
 perl -p -i -e 's/dsm12278/Natrialba_asiatica/g' $1
