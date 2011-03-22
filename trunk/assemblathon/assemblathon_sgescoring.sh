@@ -9,9 +9,9 @@
 # Script to score an assembly in SGE using Mauve
 # Depends on existence of a VNC or real X server
 #
-MAUVEDIR="/home/koadman/software/mauve_2.4.0_beta/"
-MAUVE="/home/koadman/software/jre1.6.0_20/bin/java -Xmx2000m -cp Mauve.jar "
-WORKDIR="/state/partition1/koadman/assemblathon/$JOB_ID"
+MAUVEDIR="/home/$USER/software/mauve_2.4.0_beta/"
+MAUVE="/home/$USER/software/jre1.6.0_20/bin/java -Xmx2000m -cp Mauve.jar "
+WORKDIR="/state/partition1/$USER/assemblathon/$JOB_ID"
 export TMP="$WORKDIR/tmp"
 export TMPDIR="$WORKDIR/tmp"
 
