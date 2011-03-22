@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstdlib>
 #include <list>
 #include <fstream>
 #include <iostream>
@@ -34,8 +35,10 @@ int main(int argc, const char** argv) {
 		cout << "Usage: samprd <fract[float]> <in.fasta>\n" << "If <in.fasta> absent, read from stdin\nOutput printed to standard out\n";
 		return -1;
 	}
+	unsigned int SEED = (unsigned)time(NULL);
 	double p = atof(argv[1]);
-	srand((unsigned)time(NULL));
+	srand(SEED);
+	cerr << "seed: " << SEED << endl;
 	istream* in;
 	if (argc == 3) {
 		in = new ifstream(argv[2]);
@@ -75,7 +78,7 @@ int main(int argc, const char** argv) {
 			tmp->seq.push_back(c);
 		}
 	}
-	if (((double) rand() / (RAND_MAX+1)) <= p) 
+	if ((rand() / double(RAND_MAX)) <= p) 
 		print_seq(*tmp,width);		
 	delete tmp;
 }	
