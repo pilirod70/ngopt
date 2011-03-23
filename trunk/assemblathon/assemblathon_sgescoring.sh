@@ -17,8 +17,10 @@ export TMPDIR="$WORKDIR/tmp"
 
 mkdir -p $WORKDIR
 mkdir -p $TMPDIR
+# the following will send useless display requests to an unattended Vnc
 export DISPLAY="merlot.genomecenter.ucdavis.edu:1"
-export LD_LIBRARY_PATH=$HOME/lib64:$HOME/lib
+# the following is necessary on merlot to pick up a missing X-windows lib libXtst.so
+export LD_LIBRARY_PATH=/home/koadman/lib64:/home/koadman/lib
 cd $MAUVEDIR
 #  MAUVE org.gel.mauve.contigs.ContigOrderer -output $WORKDIR -ref $1 -draft $2
 $MAUVE org.gel.mauve.assembly.ScoreAssembly -reference $1 -assembly $2 -reorder $WORKDIR -outputDir $WORKDIR
