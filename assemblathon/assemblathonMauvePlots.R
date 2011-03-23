@@ -42,7 +42,7 @@ plotCalls <- function(files, extension, plottitle, pdfname, totalname, column) {
 	# set up a multi-row figure with one plot for every "maxseries" data series
 	maxseries <- 7
 	plotrows <- ceiling(length(files) / maxseries)
-	pdf(paste("mauve_", pdfname,sep=""),width=10,height=(plotrows*2.25))
+	pdf(paste("mauve_", pdfname,sep=""),width=10,height=(plotrows*2.25)+2)
 	par(mfrow=c(plotrows,1), mar=c(0.25,4,1,2)+0.1, oma=c(5,0,3,0)+0.1)
 	plotcount <- 1
 	plotinit <- 0
@@ -121,7 +121,7 @@ plotGapSizes <- function(files, extension, plottitle, sequence, pdfname, totalna
 	# set up a multi-row figure with one plot for every "maxseries" data series
 	maxseries <- 7
 	plotrows <- ceiling(length(files) / maxseries)
-	pdf(paste("mauve_", pdfname,sep=""),width=10,height=(plotrows*2.25))
+	pdf(paste("mauve_", pdfname,sep=""),width=10,height=(plotrows*2.25)+2)
 	par(mfrow=c(plotrows,1), mar=c(0.25,4,1,2)+0.1, oma=c(5,0,3,0)+0.1)
 	plotcount <- 1
 	plotinit <- 0
@@ -215,14 +215,14 @@ dev.off()
 
 
 pdf("mauve_basecall_precision.pdf", width=10, height=6)
-baseacc <- scoresum$V4-scoresum$V10-scoresum$V11-scoresum$V16
-poscalls <- baseacc / scoresum$V4
+baseacc <- scoresum$NumAssemblyBases-scoresum$NumMisCalled-scoresum$NumUnCalled-scoresum$ExtraBases
+poscalls <- baseacc / scoresum$NumAssemblyBases
 barplot(height=poscalls, names.arg=pnames, ylab="fraction", main="Precision of bases called in haplotype", las=2, cex.names=0.5)
 dev.off()
 
 pdf("mauve_basecall_recall.pdf", width=10, height=6)
-baseacc <- scoresum$V5-scoresum$V10-scoresum$V11-scoresum$V14
-poscalls <- baseacc / scoresum$V5
+baseacc <- scoresum$NumReferenceBases-scoresum$NumMisCalled-scoresum$NumUnCalled-scoresum$TotalBasesMissed
+poscalls <- baseacc / scoresum$NumReferenceBases
 barplot(height=poscalls, names.arg=pnames, ylab="fraction", main="Recall of bases in haplotype", las=2, cex.names=0.5)
 dev.off()
 
@@ -230,32 +230,48 @@ dev.off()
 #
 # Make the base miscall bias plot
 #
-
+blob<-scoresum
 normalizer <- blob$AA+blob$AC+blob$AG+blob$AT+blob$CA+blob$CC+blob$CG+blob$CT+blob$GA+blob$GC+blob$GG+blob$GT+blob$TA+blob$TC+blob$TG+blob$TT
 normalizer[normalizer==0]<-1
 #mlim <- max(abs( c(blob$AA/normalizer,blob$AC/normalizer,blob$AG/normalizer,blob$AT/normalizer,blob$CA/normalizer,blob$CC/normalizer,blob$CG/normalizer,blob$CT/normalizer,blob$GA/normalizer,blob$GC/normalizer,blob$GG/normalizer,blob$GT/normalizer,blob$TA/normalizer,blob$TC/normalizer,blob$TG/normalizer,blob$TT/normalizer) ))
 
-submlim <- cbind(blob$AA[0:88]/normalizer[0:88],blob$AC[0:88]/normalizer[0:88],blob$AG[0:88]/normalizer[0:88],blob$AT[0:88]/normalizer[0:88],blob$CA[0:88]/normalizer[0:88],blob$CC[0:88]/normalizer[0:88],blob$CG[0:88]/normalizer[0:88],blob$CT[0:88]/normalizer[0:88],blob$GA[0:88]/normalizer[0:88],blob$GC[0:88]/normalizer[0:88],blob$GG[0:88]/normalizer[0:88],blob$GT[0:88]/normalizer[0:88],blob$TA[0:88]/normalizer[0:88],blob$TC[0:88]/normalizer[0:88],blob$TG[0:88]/normalizer[0:88],blob$TT[0:88]/normalizer[0:88]) 
-
-h2mat <- matrix(data=c(blob$AA[92]/normalizer[92],blob$AC[92]/normalizer[92],blob$AG[92]/normalizer[92],blob$AT[92]/normalizer[92],blob$CA[92]/normalizer[92],blob$CC[92]/normalizer[92],blob$CG[92]/normalizer[92],blob$CT[92]/normalizer[92],blob$GA[92]/normalizer[92],blob$GC[92]/normalizer[92],blob$GG[92]/normalizer[92],blob$GT[92]/normalizer[92],blob$TA[92]/normalizer[92],blob$TC[92]/normalizer[92],blob$TG[92]/normalizer[92],blob$TT[92]), nrow=88, ncol=16,byrow=TRUE)
+equalfreqs <- c(0,1/12,1/12,1/12, 1/12,0,1/12,1/12, 1/12,1/12,0,1/12, 1/12,1/12,1/12,0)
+assemblathon<-0
+rowlimit <- nrow(blob)
+if(assemblathon==1){
+	rowlimit <- 88
+	truerow<-92
+	h2mat <- matrix(data=c(blob$AA[truerow]/normalizer[truerow],blob$AC[truerow]/normalizer[truerow],blob$AG[truerow]/normalizer[truerow],blob$AT[truerow]/normalizer[truerow],blob$CA[truerow]/normalizer[truerow],blob$CC[truerow]/normalizer[truerow],blob$CG[truerow]/normalizer[truerow],blob$CT[truerow]/normalizer[truerow],blob$GA[truerow]/normalizer[truerow],blob$GC[truerow]/normalizer[truerow],blob$GG[truerow]/normalizer[truerow],blob$GT[truerow]/normalizer[truerow],blob$TA[truerow]/normalizer[truerow],blob$TC[truerow]/normalizer[truerow],blob$TG[truerow]/normalizer[truerow],blob$TT[truerow]), nrow=88, ncol=16,byrow=TRUE)
+}else{
+	
+	h2mat <- matrix(equalfreqs, nrow=rowlimit, ncol=16, byrow=TRUE)
+}
+submlim <- cbind(blob$AA[0:rowlimit]/normalizer[0:rowlimit],blob$AC[0:rowlimit]/normalizer[0:rowlimit],blob$AG[0:rowlimit]/normalizer[0:rowlimit],blob$AT[0:rowlimit]/normalizer[0:rowlimit],blob$CA[0:rowlimit]/normalizer[0:rowlimit],blob$CC[0:rowlimit]/normalizer[0:rowlimit],blob$CG[0:rowlimit]/normalizer[0:rowlimit],blob$CT[0:rowlimit]/normalizer[0:rowlimit],blob$GA[0:rowlimit]/normalizer[0:rowlimit],blob$GC[0:rowlimit]/normalizer[0:rowlimit],blob$GG[0:rowlimit]/normalizer[0:rowlimit],blob$GT[0:rowlimit]/normalizer[0:rowlimit],blob$TA[0:rowlimit]/normalizer[0:rowlimit],blob$TC[0:rowlimit]/normalizer[0:rowlimit],blob$TG[0:rowlimit]/normalizer[0:rowlimit],blob$TT[0:rowlimit]/normalizer[0:rowlimit]) 
 
 ranger <- submlim/h2mat
 ranger[h2mat==0] <- 1
 mlims <- range(ranger)
+if(mlims[1]==0){
+	mlims[1]<-mlims[2]-1
+}
 mlim <- max(1/mlims[1],mlims[2])
 
 coltable <- hsv(h=rep(0.5,100), s=seq(0.495,0,by=-0.005), v=seq(0.505,1,by=0.005))
 coltable <- c(coltable,rev(heat.colors(100)))
 
-pdf("mauve_basecall_bias.pdf",width=8,height=11)
-par(mfrow=c(12,8), mar=c(0,0,0,0)+1, oma=c(5,0,3,0)+0.1, mex=0.7, mgp=c(3,0,0), cex.axis=0.6)
+maxseries <- 8
+plotrows <- ceiling(nrow(blob) / maxseries)
+pdf("mauve_basecall_bias.pdf",width=8,height=(plotrows*1.75))
+par(mfrow=c(plotrows,maxseries), mar=c(0,0,0,0)+1, oma=c(5,0,3,0)+0.1, mex=0.7, mgp=c(3,0,0), cex.axis=0.6)
 
-i<-92
-haplo2mat <- cbind( c(blob$AA[i],blob$AC[i],blob$AG[i],blob$AT[i]), c(blob$CA[i],blob$CC[i],blob$CG[i],blob$CT[i]), c(blob$GA[i],blob$GC[i],blob$GG[i],blob$GT[i]), c(blob$TA[i],blob$TC[i],blob$TG[i],blob$TT[i]) )
-haplo2mat <- haplo2mat / sum(haplo2mat)
+haplo2mat <- equalfreqs
+if(assemblathon==1){
+	i<-truerow
+	haplo2mat <- cbind( c(blob$AA[i],blob$AC[i],blob$AG[i],blob$AT[i]), c(blob$CA[i],blob$CC[i],blob$CG[i],blob$CT[i]), c(blob$GA[i],blob$GC[i],blob$GG[i],blob$GT[i]), c(blob$TA[i],blob$TC[i],blob$TG[i],blob$TT[i]) )
+	haplo2mat <- haplo2mat / sum(haplo2mat)
+}
 
-
-for(i in 1:92){
+for(i in 1:nrow(blob)){
 	submat <- cbind( c(blob$AA[i],blob$AC[i],blob$AG[i],blob$AT[i]), c(blob$CA[i],blob$CC[i],blob$CG[i],blob$CT[i]), c(blob$GA[i],blob$GC[i],blob$GG[i],blob$GT[i]), c(blob$TA[i],blob$TC[i],blob$TG[i],blob$TT[i]) )
 	submat <- submat / sum(submat)
 	differ <- submat/haplo2mat
