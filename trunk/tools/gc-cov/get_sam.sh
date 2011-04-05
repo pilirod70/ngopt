@@ -15,8 +15,7 @@ prefix=$out/`basename $ref`
 reads=$3
 base=`basename $reads`
 bwa index -a is -p $prefix $ref > $out/index.out
-bwa aln $prefix $reads 2> $out/aln.err | bwa samse $prefix - $reads > $out/$ref_base.sam 2> $out/samse.err  
-samtools view -bhS $out/$ref_base.sam 2> $out/view.err | samtools sort -o - $out/$base.sort 2> $out/sort.err | samtools mpileup -f $ref -  
+bwa aln $prefix $reads 2> $out/aln.err | bwa samse $prefix - $reads 2> $out/samse.err  
 
 #bwa aln $prefix $reads 2> $out/aln.err | bwa samse $prefix - $reads 2> $out/samse.err > $out/out.sam 
 #samtools view -bhS $out/out.sam 2> $out/view.err > $out/out.bam 
