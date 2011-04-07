@@ -56,8 +56,8 @@ perl -p -i -e 's/jcm13560/Halorubrum_aidingense/g' $1
 perl -p -i -e 's/jcm13916/Halorubrum_arcis/g' $1
 perl -p -i -e 's/dsm19288/Halorubrum_californiensis/g' $1
 perl -p -i -e 's/dsm10284/Halorubrum_coriense/g' $1
-perl -p -i -e 's/jcm10118/Halorubrum_distributum/g' $1
-perl -p -i -e 's/jcm9100/Halorubrum_distributum/g' $1
+perl -p -i -e 's/jcm10118/Halorubrum_distributum_JCM_10118/g' $1
+perl -p -i -e 's/jcm9100/Halorubrum_distributum_JCM_9100/g' $1
 perl -p -i -e 's/dsm21995/Halorubrum_lipolyticum/g' $1
 perl -p -i -e 's/dsm1137/Halorubrum_saccharovorum/g' $1
 perl -p -i -e 's/dsm14210/Halorubrum_tebenquichense/g' $1
