@@ -8,8 +8,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.jgrapht.EdgeFactory;
+import org.jgrapht.VertexFactory;
 import org.jgrapht.alg.EdmondsKarpMaximumFlow;
+import org.jgrapht.graph.ClassBasedEdgeFactory;
+import org.jgrapht.graph.ClassBasedVertexFactory;
 import org.jgrapht.graph.DirectedWeightedMultigraph;
+import org.jgrapht.graph.DefaultWeightedEdge;
 
 public class CountMaxFlow {
 
@@ -20,9 +25,9 @@ public class CountMaxFlow {
 			System.err.println("Usage: java CountMaxFlow <sam1> <ins1> <err1> .... <samN> <insN> <errN>");
 			System.exit(-1);
 		}
-		//VertexFactory<Contig> vf = new ClassBasedVertexFactory<Contig>(Contig.class);
-		//EdgeFactory<String,Integer> ef = new ClassBasedEdgeFactory<String, Integer>(Integer.class);
-		DirectedWeightedMultigraph<Contig,Adjacency> dg = new DirectedWeightedMultigraph<Contig, Adjacency>(Adjacency.class);
+		VertexFactory<Contig> vf = new ClassBasedVertexFactory<Contig>(Contig.class);
+		EdgeFactory<Contig,DefaultWeightedEdge> ef = new ClassBasedEdgeFactory<Contig, DefaultWeightedEdge>(DefaultWeightedEdge.class);
+		DirectedWeightedMultigraph<Contig,DefaultWeightedEdge> dg = new DirectedWeightedMultigraph<Contig, DefaultWeightedEdge>(ef);
 		contigs = new HashMap<String, Contig>();
 		reads = new HashMap<String, ReadPair>();
 		for (int i = 0; i < args.length;i+=3){
@@ -35,7 +40,8 @@ public class CountMaxFlow {
 			
 				while (nextCharIs(br,'@')){
 					String[] line = br.readLine().split("\t");
-					Contig tmp = new Contig(line[1].substring(3), Integer.parseInt(line[2].substring(3)));
+					Contig tmp = vf.createVertex();
+					tmp.setInfo(line[1].substring(3), Integer.parseInt(line[2].substring(3)));
 					contigs.put(tmp.name, tmp);
 				}
 				ReadPair tmp = null;
@@ -64,21 +70,25 @@ public class CountMaxFlow {
 				for (int cI = 0; cI < ctgRef.length; cI++){
 					for (int cJ = cI+1; cJ < ctgRef.length; cJ++){
 						int nlink = ctgRef[cI].nLinks(ctgRef[cJ]);
-						if (nlink < 0) continue;
-						dg.addVertex(ctgRef[cI]);
-						dg.addVertex(ctgRef[cJ]);
-						Adjacency adj = dg.addEdge(ctgRef[cI], ctgRef[cJ]);
+						if (nlink <= 0) continue;
+						if (!dg.containsVertex(ctgRef[cI]))	dg.addVertex(ctgRef[cI]);
+						if (!dg.containsVertex(ctgRef[cJ])) dg.addVertex(ctgRef[cJ]);
+						
+						DefaultWeightedEdge adj = dg.addEdge(ctgRef[cI], ctgRef[cJ]);
+						//dg.addEdge(ctgRef[cI], ctgRef[cJ]);
 						dg.setEdgeWeight(adj, nlink);
 					}
 				}
 				
-				EdmondsKarpMaximumFlow<Contig, Adjacency> ekmf = new EdmondsKarpMaximumFlow<Contig, Adjacency>(dg);
+				EdmondsKarpMaximumFlow<Contig, DefaultWeightedEdge> ekmf = new EdmondsKarpMaximumFlow<Contig, DefaultWeightedEdge>(dg);
 				for (int cI = 0; cI < ctgRef.length; cI++){
+					if (!dg.containsVertex(ctgRef[cI])) continue;
 					for (int cJ = cI+1; cJ < ctgRef.length; cJ++){
+						if (!dg.containsVertex(ctgRef[cJ])) continue;
 						ekmf.calculateMaximumFlow(ctgRef[cI], ctgRef[cJ]);
 						double maxFlow = ekmf.getMaximumFlowValue();
+						if (maxFlow <= 0.0) continue;
 						System.out.println(ctgRef[cI] + "\t" + ctgRef[cJ] + "\t" + maxFlow);
-						
 					}
 				}
 			} catch (Exception e){
@@ -117,10 +127,10 @@ public class CountMaxFlow {
 	}
 	
 	public static class Adjacency{
-		public final Contig ctg1;
-		public final char end1;
-		public final Contig ctg2;
-		public final char end2;
+		public Contig ctg1;
+		public char end1;
+		public Contig ctg2;
+		public char end2;
 		public Adjacency(Contig c1, char e1, Contig c2, char e2){
 			ctg1 = c1;
 			end1 = e1;
@@ -130,10 +140,10 @@ public class CountMaxFlow {
 	}
 	
 	public static class Contig {
-		public final String name;
-		public final int len;
+		public String name;
+		public int len;
 		public Map<Contig,Integer> counts;
-		public Contig(String name, int len){
+		public void setInfo(String name, int len){
 			this.name = name;
 			this.len = len;
 			counts = new HashMap<Contig,Integer>();
