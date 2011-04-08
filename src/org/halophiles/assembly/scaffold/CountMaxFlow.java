@@ -7,9 +7,11 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import org.jgrapht.EdgeFactory;
 import org.jgrapht.VertexFactory;
+import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.EdmondsKarpMaximumFlow;
 import org.jgrapht.graph.ClassBasedEdgeFactory;
 import org.jgrapht.graph.ClassBasedVertexFactory;
@@ -81,14 +83,24 @@ public class CountMaxFlow {
 				}
 				
 				EdmondsKarpMaximumFlow<Contig, DefaultWeightedEdge> ekmf = new EdmondsKarpMaximumFlow<Contig, DefaultWeightedEdge>(dg);
-				for (int cI = 0; cI < ctgRef.length; cI++){
-					if (!dg.containsVertex(ctgRef[cI])) continue;
-					for (int cJ = cI+1; cJ < ctgRef.length; cJ++){
-						if (!dg.containsVertex(ctgRef[cJ])) continue;
-						ekmf.calculateMaximumFlow(ctgRef[cI], ctgRef[cJ]);
-						double maxFlow = ekmf.getMaximumFlowValue();
-						if (maxFlow <= 0.0) continue;
-						System.out.println(ctgRef[cI] + "\t" + ctgRef[cJ] + "\t" + maxFlow);
+				ConnectivityInspector ci = new ConnectivityInspector<Contig, DefaultWeightedEdge>(dg);
+				Iterator<Set<Contig>> ccIt = ci.connectedSets().iterator();
+				System.out.println(ci.connectedSets().size());
+				int ccCount = 0;
+				while(ccIt.hasNext()){
+					Set<Contig> cc = ccIt.next();
+					ccCount++;
+					ctgRef = new Contig[cc.size()];
+					cc.toArray(ctgRef);
+					for (int cI = 0; cI < ctgRef.length; cI++){
+						if (!dg.containsVertex(ctgRef[cI])) continue;
+						for (int cJ = cI+1; cJ < ctgRef.length; cJ++){
+							if (!dg.containsVertex(ctgRef[cJ])) continue;
+							ekmf.calculateMaximumFlow(ctgRef[cI], ctgRef[cJ]);
+							double maxFlow = ekmf.getMaximumFlowValue();
+							if (maxFlow <= 0.0) continue;
+							System.out.println(ccCount +"\t" + ctgRef[cI] + "\t" + ctgRef[cJ] + "\t" + maxFlow);
+						}
 					}
 				}
 			} catch (Exception e){
