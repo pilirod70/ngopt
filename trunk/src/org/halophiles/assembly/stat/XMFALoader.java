@@ -195,7 +195,7 @@ public class XMFALoader {
 			} else if (seq2Left < 0) {
 				return new LCB(seqs, seq1Left, seq1Right, comp1);
 			} else {
- 				return new LCB(seqs, seq1Left, seq1Right, comp1, seq2Left, seq2Right, comp2);
+ 				return null; //new LCB(seqs, seq1Left, seq1Right, comp1, seq2Left, seq2Right, comp2);
 			}
 		}
 		

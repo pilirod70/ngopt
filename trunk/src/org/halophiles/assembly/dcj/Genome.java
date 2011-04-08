@@ -14,7 +14,7 @@ import org.halophiles.assembly.stat.LCB;
 public class Genome {
 	
 	
-	
+	/*
 	//private static String WHITESPACE = "[ \t\n\f\r]";
 	
 	/** A map for holding identifiers */
@@ -38,7 +38,7 @@ public class Genome {
 	
 	private FastAccessTable fat;
 	
-	private Chromosome[] chrom;
+//	private Chromosome[] chrom;
 	
 	
 	private int numLinear;
@@ -52,7 +52,7 @@ public class Genome {
 		this.name = name;
 		StringTokenizer tok = new StringTokenizer(g,"$");
 		numChrom = tok.countTokens();
-		chrom = new Chromosome[numChrom];
+/*		chrom = new Chromosome[numChrom];
 		int i = 0;
 		while(tok.hasMoreTokens()){
 			String c = tok.nextToken();
@@ -60,7 +60,7 @@ public class Genome {
 				if (!chrom[i].isCirc() && chrom[i].hasBlocks())
 					numLinear++;
 			i++;
-		}
+		}*/
 	//	System.out.println("Found " + BLOCK_COUNT + " blocks ");
 		
 		loc = new int[BLOCK_COUNT][2];
@@ -72,11 +72,11 @@ public class Genome {
 		
 	}
 	
-	public Genome(Chromosome[] chrom){
+/*	public Genome(Chromosome[] chrom){
 		id = GENOME_COUNT++;
 		this.chrom = chrom;
 		
-	}
+	}*/
 	
 	public void addLCBs(LCB[] lcbs){
 		
@@ -85,7 +85,7 @@ public class Genome {
 	private void addAdjacencies(){
 	//	Vector<Adjacency> ret = new Vector<Adjacency>();
 		int adjIdx = 0;
-		for (int i = 0; i < chrom.length; i++){
+/*		for (int i = 0; i < chrom.length; i++){
 			Block[] blk = chrom[i].getBlocks();
 			if (blk.length == 0){
 				continue;
@@ -124,7 +124,7 @@ public class Genome {
 				adj[adjIdx] = new Adjacency(blk[blk.length-1].getRightEnd());
 				adjIdx++;
 			}
-		}
+		}*/
 	//	return ret;
 	}
 	
@@ -163,10 +163,10 @@ public class Genome {
 	
 	public String toString(){
 		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < chrom.length; i++){
-			sb.append(chrom[i].toString());
+//		for (int i = 0; i < chrom.length; i++){
+//			sb.append(chrom[i].toString());
 		//	sb.append("$");
-		}
+//		}
 		return sb.toString();
 	}
 	
