@@ -77,13 +77,14 @@ public class CountMaxFlow {
 						if (!dg.containsVertex(ctgRef[cJ])) dg.addVertex(ctgRef[cJ]);
 						
 						DefaultWeightedEdge adj = dg.addEdge(ctgRef[cI], ctgRef[cJ]);
-						//dg.addEdge(ctgRef[cI], ctgRef[cJ]);
+						dg.setEdgeWeight(adj, nlink);
+						adj = dg.addEdge(ctgRef[cJ], ctgRef[cI]);
 						dg.setEdgeWeight(adj, nlink);
 					}
 				}
 				
 				EdmondsKarpMaximumFlow<Contig, DefaultWeightedEdge> ekmf = new EdmondsKarpMaximumFlow<Contig, DefaultWeightedEdge>(dg);
-				ConnectivityInspector ci = new ConnectivityInspector<Contig, DefaultWeightedEdge>(dg);
+				ConnectivityInspector<Contig, DefaultWeightedEdge> ci = new ConnectivityInspector<Contig, DefaultWeightedEdge>(dg);
 				Iterator<Set<Contig>> ccIt = ci.connectedSets().iterator();
 				System.out.println(ci.connectedSets().size());
 				int ccCount = 0;
