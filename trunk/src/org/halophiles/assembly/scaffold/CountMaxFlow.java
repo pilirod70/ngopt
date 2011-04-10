@@ -99,8 +99,12 @@ public class CountMaxFlow {
 							if (!dg.containsVertex(ctgRef[cJ])) continue;
 							ekmf.calculateMaximumFlow(ctgRef[cI], ctgRef[cJ]);
 							double maxFlow = ekmf.getMaximumFlowValue();
-							if (maxFlow <= 0.0) continue;
-							System.out.println(ccCount +"\t" + ctgRef[cI] + "\t" + ctgRef[cJ] + "\t" + maxFlow);
+							if (maxFlow > 0.0) 
+								System.out.println(ccCount +"\t" + ctgRef[cI] + "\t" + ctgRef[cJ] + "\t" + maxFlow);
+							ekmf.calculateMaximumFlow(ctgRef[cJ], ctgRef[cI]);
+							maxFlow = ekmf.getMaximumFlowValue();
+							if (maxFlow > 0.0) 
+								System.out.println(ccCount +"\t" + ctgRef[cJ] + "\t" + ctgRef[cI] + "\t" + maxFlow);
 						}
 					}
 				}
