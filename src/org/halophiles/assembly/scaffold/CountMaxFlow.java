@@ -19,7 +19,7 @@ import org.jgrapht.graph.DirectedWeightedMultigraph;
 import org.jgrapht.graph.DefaultWeightedEdge;
 
 public class CountMaxFlow {
-
+	private static int MIN_LINK = 2;
 	private static HashMap<String,Contig> contigs;
 	private static HashMap<String,ReadPair> reads;
 	public static void main(String[] args){
@@ -40,11 +40,17 @@ public class CountMaxFlow {
 			try {
 				br = new BufferedReader(new FileReader(samFile));
 			
-				while (nextCharIs(br,'@')){
-					String[] line = br.readLine().split("\t");
-					Contig tmp = vf.createVertex();
-					tmp.setInfo(line[1].substring(3), Integer.parseInt(line[2].substring(3)));
-					contigs.put(tmp.name, tmp);
+				if (contigs.size() == 0) {
+					while (nextCharIs(br,'@')){
+						String[] line = br.readLine().split("\t");
+						Contig tmp = vf.createVertex();
+						tmp.setInfo(line[1].substring(3), Integer.parseInt(line[2].substring(3)));
+						contigs.put(tmp.name, tmp);
+					}
+				} else {
+					while (nextCharIs(br,'@')){ 
+						br.readLine();
+					}
 				}
 				ReadPair tmp = null;
 				while(br.ready()){
@@ -72,7 +78,7 @@ public class CountMaxFlow {
 				for (int cI = 0; cI < ctgRef.length; cI++){
 					for (int cJ = cI+1; cJ < ctgRef.length; cJ++){
 						int nlink = ctgRef[cI].nLinks(ctgRef[cJ]);
-						if (nlink <= 0) continue;
+						if (nlink <= MIN_LINK) continue;
 						if (!dg.containsVertex(ctgRef[cI]))	dg.addVertex(ctgRef[cI]);
 						if (!dg.containsVertex(ctgRef[cJ])) dg.addVertex(ctgRef[cJ]);
 						
@@ -101,10 +107,6 @@ public class CountMaxFlow {
 							double maxFlow = ekmf.getMaximumFlowValue();
 							if (maxFlow > 0.0) 
 								System.out.println(ccCount +"\t" + ctgRef[cI] + "\t" + ctgRef[cJ] + "\t" + maxFlow);
-							ekmf.calculateMaximumFlow(ctgRef[cJ], ctgRef[cI]);
-							maxFlow = ekmf.getMaximumFlowValue();
-							if (maxFlow > 0.0) 
-								System.out.println(ccCount +"\t" + ctgRef[cJ] + "\t" + ctgRef[cI] + "\t" + maxFlow);
 						}
 					}
 				}
