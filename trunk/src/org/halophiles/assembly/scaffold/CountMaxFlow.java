@@ -179,7 +179,6 @@ public class CountMaxFlow {
 				AsUndirectedGraph<Contig,DefaultWeightedEdge> udg = new AsUndirectedGraph<Contig,DefaultWeightedEdge>(dg);
 				
 				Iterator<DefaultWeightedEdge> edgeIt = udg.edgeSet().iterator();
-				//new DWEComparator(dg)
 				Set<DefaultWeightedEdge> disc = new HashSet<DefaultWeightedEdge>(); 
 				while(edgeIt.hasNext()){
 					DefaultWeightedEdge e = edgeIt.next();
@@ -200,7 +199,7 @@ public class CountMaxFlow {
 				EdgeNameProvider<DefaultWeightedEdge> enp = new DWENameProvider(udg);
 				ComponentAttributeProvider<DefaultWeightedEdge> eap = new DWEAttributeProvider(udg);
 				ComponentAttributeProvider<Contig> vap = new ContigAttributeProvider();
-				DOTExporter<Contig,DefaultWeightedEdge> dotexp = new DOTExporter<Contig,DefaultWeightedEdge>(inp,snp,enp,null,eap);
+				DOTExporter<Contig,DefaultWeightedEdge> dotexp = new DOTExporter<Contig,DefaultWeightedEdge>(inp,snp,enp,vap,eap);
 				dotexp.export(new PrintWriter(dotOut), udg);
 				dotOut.close();
 				mfOut.close();
@@ -277,7 +276,7 @@ public class CountMaxFlow {
 		}
 	}
 	
-	public static class DWEComparator implements Comparator<DefaultWeightedEdge>{
+	/*public static class DWEComparator implements Comparator<DefaultWeightedEdge>{
 
 		private Graph<Contig,DefaultWeightedEdge> g;
 		
@@ -292,7 +291,7 @@ public class CountMaxFlow {
 				 return g.getEdgeSource(arg0).compareTo(g.getEdgeSource(arg1));
 		}
 		
-	}
+	}*/
 	
 	public static class DWENameProvider implements EdgeNameProvider<DefaultWeightedEdge>{
 		
@@ -333,7 +332,7 @@ public class CountMaxFlow {
 		@Override
 		public Map<String, String> getComponentAttributes(Contig arg0) {
 			Map<String,String> map = new HashMap<String,String>();
-			map.put("label", arg0.name);
+			map.put("label", arg0.name.substring(arg0.name.indexOf('|')+1));
 			map.put("length", Integer.toString(arg0.len));
 			map.put("cov", Double.toString(arg0.cov));
 			return null;
