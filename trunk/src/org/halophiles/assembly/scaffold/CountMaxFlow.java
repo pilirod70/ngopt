@@ -1,19 +1,30 @@
 package org.halophiles.assembly.scaffold;
 
 import java.io.BufferedReader;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
 import org.jgrapht.EdgeFactory;
+import org.jgrapht.Graph;
 import org.jgrapht.VertexFactory;
 import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.alg.EdmondsKarpMaximumFlow;
+import org.jgrapht.ext.ComponentAttributeProvider;
+import org.jgrapht.ext.DOTExporter;
+import org.jgrapht.ext.EdgeNameProvider;
+import org.jgrapht.ext.IntegerEdgeNameProvider;
+import org.jgrapht.ext.IntegerNameProvider;
+import org.jgrapht.ext.StringEdgeNameProvider;
+import org.jgrapht.ext.StringNameProvider;
+import org.jgrapht.ext.VertexNameProvider;
 import org.jgrapht.graph.ClassBasedEdgeFactory;
 import org.jgrapht.graph.ClassBasedVertexFactory;
 import org.jgrapht.graph.DirectedWeightedMultigraph;
@@ -57,6 +68,7 @@ public class CountMaxFlow {
 			File maxFlowFile = new File(outdir,"max_flow.txt");
 			File edgeWeightsFile = new File(outdir,"edge_weights.txt");
 			File cnctTypeFile = new File(outdir,"connection_counts.txt");
+			File dotFile = new File(outdir,"normalized_graph.dot");
 			try {
 				if (!maxFlowFile.exists()) maxFlowFile.createNewFile();
 				if (!edgeWeightsFile.exists()) edgeWeightsFile.createNewFile();
@@ -64,6 +76,7 @@ public class CountMaxFlow {
 				PrintStream mfOut = new PrintStream(maxFlowFile);
 				PrintStream ewOut = new PrintStream(edgeWeightsFile);
 				PrintStream ctOut = new PrintStream(cnctTypeFile);
+				PrintStream dotOut = new PrintStream(dotFile);
 				br = null;
 				File samFile = new File(args[i]);
 				int ins = Integer.parseInt(args[i+1]);
@@ -157,6 +170,16 @@ public class CountMaxFlow {
 						}
 					}
 				}
+				VertexNameProvider<Contig> inp = new IntegerNameProvider<Contig>();
+				VertexNameProvider<Contig> snp = new StringNameProvider<Contig>();
+				//EdgeNameProvider<DefaultWeightedEdge> senp = new StringEdgeNameProvider<DefaultWeightedEdge>();
+				//EdgeNameProvider<DefaultWeightedEdge> ienp = new IntegerEdgeNameProvider<DefaultWeightedEdge>();
+				EdgeNameProvider<DefaultWeightedEdge> enp = new DWENameProvider(dg);
+				ComponentAttributeProvider<DefaultWeightedEdge> eap = new DWEAttributeProvider(dg);
+				ComponentAttributeProvider<Contig> vap = new ContigAttributeProvider();
+				DOTExporter<Contig,DefaultWeightedEdge> dotexp = new DOTExporter<Contig,DefaultWeightedEdge>(inp,snp,enp,null,eap);
+				dotexp.export(new PrintWriter(dotOut), dg);
+				dotOut.close();
 				mfOut.close();
 			} catch (Exception e){
 				e.printStackTrace();
@@ -225,6 +248,45 @@ public class CountMaxFlow {
 		public void addEndSpanningPair(){
 			numSelfConnect++;
 		}
+	}
+	
+	public static class DWENameProvider implements EdgeNameProvider<DefaultWeightedEdge>{
+		private DirectedWeightedMultigraph<Contig,DefaultWeightedEdge> g;
+		public DWENameProvider(DirectedWeightedMultigraph<Contig,DefaultWeightedEdge> dg){
+			this.g = dg;
+		}
+		@Override
+		public String getEdgeName(DefaultWeightedEdge arg0) {
+			return g.getEdgeSource(arg0).toString()+":"+g.getEdgeTarget(arg0).toString();
+		}
+	}
+	
+	public static class DWEAttributeProvider implements ComponentAttributeProvider<DefaultWeightedEdge>{
+		private DirectedWeightedMultigraph<Contig,DefaultWeightedEdge> g;
+		public DWEAttributeProvider(DirectedWeightedMultigraph<Contig, DefaultWeightedEdge> g){
+			this.g = g;
+		}
+		@Override
+		public Map<String, String> getComponentAttributes(DefaultWeightedEdge arg0) {
+			Map<String,String> map = new HashMap<String,String>();
+			map.put("label", g.getEdgeSource(arg0).toString()+":"+g.getEdgeTarget(arg0).toString());
+			map.put("weight", Double.toString(g.getEdgeWeight(arg0)));
+			map.put("nlinks", Integer.toString(g.getEdgeSource(arg0).counts.get(g.getEdgeTarget(arg0))));
+			return map;
+		}
+	}
+	
+	public static class ContigAttributeProvider implements ComponentAttributeProvider<Contig>{
+
+		@Override
+		public Map<String, String> getComponentAttributes(Contig arg0) {
+			Map<String,String> map = new HashMap<String,String>();
+			map.put("label", arg0.name);
+			map.put("length", Integer.toString(arg0.len));
+			map.put("cov", Double.toString(arg0.cov));
+			return null;
+		}
+		
 	}
 	
 	private static boolean nextCharIs(BufferedReader br, char c) throws IOException{
