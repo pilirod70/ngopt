@@ -335,7 +335,7 @@ public class CountMaxFlow {
 			map.put("label", arg0.name.substring(arg0.name.indexOf('|')+1));
 			map.put("length", Integer.toString(arg0.len));
 			map.put("cov", Double.toString(arg0.cov));
-			return null;
+			return map;
 		}
 		
 	}
