@@ -7,10 +7,15 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.text.NumberFormat;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.jgrapht.EdgeFactory;
 import org.jgrapht.Graph;
@@ -25,6 +30,7 @@ import org.jgrapht.ext.IntegerNameProvider;
 import org.jgrapht.ext.StringEdgeNameProvider;
 import org.jgrapht.ext.StringNameProvider;
 import org.jgrapht.ext.VertexNameProvider;
+import org.jgrapht.graph.AsUndirectedGraph;
 import org.jgrapht.graph.ClassBasedEdgeFactory;
 import org.jgrapht.graph.ClassBasedVertexFactory;
 import org.jgrapht.graph.DirectedWeightedMultigraph;
@@ -170,15 +176,32 @@ public class CountMaxFlow {
 						}
 					}
 				}
+				AsUndirectedGraph<Contig,DefaultWeightedEdge> udg = new AsUndirectedGraph<Contig,DefaultWeightedEdge>(dg);
+				
+				Iterator<DefaultWeightedEdge> edgeIt = udg.edgeSet().iterator();
+				//new DWEComparator(dg)
+				Set<DefaultWeightedEdge> disc = new HashSet<DefaultWeightedEdge>(); 
+				while(edgeIt.hasNext()){
+					DefaultWeightedEdge e = edgeIt.next();
+					if (disc.contains(e)) 
+						continue;
+					Contig src = udg.getEdgeSource(e);
+					Contig tgt = udg.getEdgeTarget(e);
+					if (udg.containsEdge(tgt, src)) 
+						disc.add(udg.getEdge(tgt, src));
+				}
+				edgeIt = disc.iterator();
+				while(edgeIt.hasNext())
+					udg.removeEdge(edgeIt.next());
+				
+				System.err.println(udg.edgeSet().size()+" edges");
 				VertexNameProvider<Contig> inp = new IntegerNameProvider<Contig>();
 				VertexNameProvider<Contig> snp = new StringNameProvider<Contig>();
-				//EdgeNameProvider<DefaultWeightedEdge> senp = new StringEdgeNameProvider<DefaultWeightedEdge>();
-				//EdgeNameProvider<DefaultWeightedEdge> ienp = new IntegerEdgeNameProvider<DefaultWeightedEdge>();
-				EdgeNameProvider<DefaultWeightedEdge> enp = new DWENameProvider(dg);
-				ComponentAttributeProvider<DefaultWeightedEdge> eap = new DWEAttributeProvider(dg);
+				EdgeNameProvider<DefaultWeightedEdge> enp = new DWENameProvider(udg);
+				ComponentAttributeProvider<DefaultWeightedEdge> eap = new DWEAttributeProvider(udg);
 				ComponentAttributeProvider<Contig> vap = new ContigAttributeProvider();
 				DOTExporter<Contig,DefaultWeightedEdge> dotexp = new DOTExporter<Contig,DefaultWeightedEdge>(inp,snp,enp,null,eap);
-				dotexp.export(new PrintWriter(dotOut), dg);
+				dotexp.export(new PrintWriter(dotOut), udg);
 				dotOut.close();
 				mfOut.close();
 			} catch (Exception e){
@@ -215,7 +238,7 @@ public class CountMaxFlow {
 			}
 		}
 	}
-	public static class Contig {
+	public static class Contig implements Comparable<Contig> {
 		public String name;
 		public int len;
 		public double cov;
@@ -248,22 +271,51 @@ public class CountMaxFlow {
 		public void addEndSpanningPair(){
 			numSelfConnect++;
 		}
+		@Override
+		public int compareTo(Contig arg0) {
+			return this.name.compareTo(arg0.name);
+		}
+	}
+	
+	public static class DWEComparator implements Comparator<DefaultWeightedEdge>{
+
+		private Graph<Contig,DefaultWeightedEdge> g;
+		
+		public DWEComparator(Graph<Contig,DefaultWeightedEdge> g){
+			this.g = g;
+		}
+		@Override
+		public int compare(DefaultWeightedEdge arg0, DefaultWeightedEdge arg1) {
+			if (g.getEdgeSource(arg0).equals(g.getEdgeSource(arg1)))
+				return g.getEdgeTarget(arg0).compareTo(g.getEdgeTarget(arg1));
+			else 
+				 return g.getEdgeSource(arg0).compareTo(g.getEdgeSource(arg1));
+		}
+		
 	}
 	
 	public static class DWENameProvider implements EdgeNameProvider<DefaultWeightedEdge>{
-		private DirectedWeightedMultigraph<Contig,DefaultWeightedEdge> g;
-		public DWENameProvider(DirectedWeightedMultigraph<Contig,DefaultWeightedEdge> dg){
+		
+		private static NumberFormat nf; 
+		//private DirectedWeightedMultigraph<Contig,DefaultWeightedEdge> g;
+		private Graph<Contig,DefaultWeightedEdge> g;
+		public DWENameProvider(Graph<Contig,DefaultWeightedEdge> dg){
 			this.g = dg;
+			if (nf == null){
+				nf =  NumberFormat.getInstance();
+				nf.setMaximumFractionDigits(6);
+			}
 		}
 		@Override
 		public String getEdgeName(DefaultWeightedEdge arg0) {
-			return g.getEdgeSource(arg0).toString()+":"+g.getEdgeTarget(arg0).toString();
+			return nf.format(g.getEdgeWeight(arg0));
+			//return Double.toString(g.getEdgeWeight(arg0));
 		}
 	}
 	
 	public static class DWEAttributeProvider implements ComponentAttributeProvider<DefaultWeightedEdge>{
-		private DirectedWeightedMultigraph<Contig,DefaultWeightedEdge> g;
-		public DWEAttributeProvider(DirectedWeightedMultigraph<Contig, DefaultWeightedEdge> g){
+		private Graph<Contig,DefaultWeightedEdge> g;
+		public DWEAttributeProvider(Graph<Contig, DefaultWeightedEdge> g){
 			this.g = g;
 		}
 		@Override
