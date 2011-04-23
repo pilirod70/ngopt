@@ -5,5 +5,18 @@
 	<classpathentry kind="lib" path="ext/colt.jar"/>
 	<classpathentry kind="lib" path="ext/concurrent.jar"/>
 	<classpathentry kind="lib" path="ext/jgrapht-jdk1.6.debug.jar" sourcepath="/Users/andrew/JavaPackages/jgrapht-0.8.2/src"/>
+	<classpathentry kind="lib" path="ext/jgraph.jar"/>
+	<classpathentry kind="lib" path="ext/junit.jar"/>
+	<classpathentry kind="lib" path="ext/svnant.jar"/>
+	<classpathentry kind="lib" path="ext/svnClientAdapter.jar"/>
+	<classpathentry kind="lib" path="ext/TGGraphLayout.jar"/>
+	<classpathentry kind="lib" path="ext/xmlunit1.0.jar"/>
+	<classpathentry kind="lib" path="ext/ajt-2.5.jar"/>
+	<classpathentry kind="lib" path="ext/commons-math-1.2.jar"/>
+	<classpathentry kind="lib" path="ext/Jama-1.0.2.jar"/>
+	<classpathentry kind="lib" path="ext/javaml-0.1.6.jar"/>
+	<classpathentry kind="lib" path="ext/libsvm.jar"/>
+	<classpathentry kind="lib" path="ext/weka.jar"/>
+	<classpathentry kind="lib" path="ext/jsc.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
