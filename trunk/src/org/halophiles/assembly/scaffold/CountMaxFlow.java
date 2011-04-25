@@ -22,6 +22,9 @@ import java.util.zip.GZIPInputStream;
 import jsc.datastructures.PairedData;
 import jsc.regression.PearsonCorrelation;
 
+import org.halophiles.assembly.Contig;
+import org.halophiles.assembly.ReadPair;
+import org.halophiles.assembly.SAMFileParser;
 import org.jgrapht.EdgeFactory;
 import org.jgrapht.Graph;
 import org.jgrapht.VertexFactory;
@@ -47,8 +50,6 @@ public class CountMaxFlow {
 	private static HashMap<String,ReadPair> reads;
 	private static File outdir; 
 	private static HashMap<String,Vector<Double>> mapPoints;
-	private static File fishDir;
-	private static HashMap<String,PrintStreamPair> matchesOut;
 	
 	public static void main(String[] args){
 		if (/*args.length % 3 != 0 ||*/args.length == 0){
@@ -64,24 +65,21 @@ public class CountMaxFlow {
 		contigs = new HashMap<String, Contig>();
 		reads = new HashMap<String, ReadPair>();
 		outdir = new File(args[0]);
-		fishDir = new File(outdir,"fish_dat");
 		
-		matchesOut = new HashMap<String,PrintStreamPair>();
 		mapPoints = new HashMap<String,Vector<Double>>();
 		
-		File gclFile = new File(args[1]);
+	//	File gclFile = new File(args[1]);
 		BufferedReader br = null;
 		
 		try {
-			if (!fishDir.exists()) fishDir.mkdirs();
-			br = new BufferedReader(new FileReader(gclFile));
+/*			br = new BufferedReader(new FileReader(gclFile));
 			br.readLine();
 			while(br.ready()){
 				String[] line = br.readLine().split("\t");
 				Contig tmp = vf.createVertex();
 				tmp.setInfo(line[0], Integer.parseInt(line[3]), Double.parseDouble(line[1]));
 				contigs.put(tmp.name, tmp);
-			}
+			}*/
 		} catch (Exception e){
 			e.printStackTrace();
 			System.exit(-1);
@@ -94,8 +92,6 @@ public class CountMaxFlow {
 			File insDistFile = new File(outdir,"insert_distribution.txt");
 			File conflictSAMFile = new File(outdir,"conflicting_pairs.sam");
 			File conflictTDFile = new File(outdir,"conflicting_pairs.txt");
-			File correlationsFile = new File(outdir,"correlation.txt");
-			File controlFile = new File(outdir,"control.txt");
 			try {
 				maxFlowFile.createNewFile();
 				edgeWeightsFile.createNewFile();
@@ -103,7 +99,6 @@ public class CountMaxFlow {
 				dotFile.createNewFile();
 				insDistFile.createNewFile();
 				conflictSAMFile.createNewFile();
-				controlFile.createNewFile();
 				PrintStream mfOut = new PrintStream(maxFlowFile);
 				PrintStream ewOut = new PrintStream(edgeWeightsFile);
 				PrintStream ctOut = new PrintStream(cnctTypeFile);
@@ -111,63 +106,34 @@ public class CountMaxFlow {
 				PrintStream idOut = new PrintStream(insDistFile);
 				PrintStream cftSAMOut = new PrintStream(conflictSAMFile);
 				PrintStream cftTDOut = new PrintStream(conflictTDFile);
-				PrintStream corrOut = new PrintStream(correlationsFile);
-				PrintStream ctrlOut = new PrintStream(controlFile);
 
-				String ctgStr = null;
 				br = null;
-				File samFile = new File(args[i]);
+				SAMFileParser sfp = new SAMFileParser(args[i], args[1]);
 				int ins = Integer.parseInt(args[i+1]);
 				double err = Double.parseDouble(args[i+2]);
-				if (samFile.getName().endsWith(".gz")||samFile.getName().endsWith(".Z")||samFile.getName().endsWith(".z"))
-					br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(samFile))));
-				else
-					br = new BufferedReader(new FileReader(samFile));
-				while(nextCharIs(br, '@')) 
-					br.readLine();
-				int rdlen = 0;
-				int den = 0;
-				Vector<Double> tmpPts = null;
-				while(br.ready()){
-					ReadPair tmp = null;
-					String[] line = br.readLine().split("\t");
-					int left = Integer.parseInt(line[3]);
-					boolean rev = isReverse(line[1]);
-					int len = cigarLength(line[5]);
-					rdlen += len;
-					den++;
-					ctgStr = line[2].split("\\|")[0];
-					if (len <= 0) continue;
-					Contig tmpCtg = contigs.get(ctgStr);
-					if (reads.containsKey(line[0]))
-						tmp = reads.get(line[0]);
-					else {
-						tmp = new ReadPair(line[0]);
-						reads.put(line[0], tmp);
-					}
-					int val = tmp.addRead(left, rev, tmpCtg, line);
-					if (mapPoints.containsKey(tmpCtg.name)){
-						tmpPts = mapPoints.get(tmpCtg.name);
-					} else {
-						tmpPts = new Vector<Double>();
-						mapPoints.put(tmpCtg.name, tmpPts);
-					}
-					if (rev)
-						left = left * -1;
-					if (tmp.paired)
-						tmpPts.add(new Double(left));
-					if (val == -1)
-						System.err.println("ambiguous mapping for read " + line[0]);
+				
+				Iterator<Contig> ctgIt = sfp.getContigs();
+				while(ctgIt.hasNext()){
+					Contig tmpCtg = ctgIt.next();
+					if (!contigs.containsKey(tmpCtg.name))
+						contigs.put(tmpCtg.name, tmpCtg);
 				}
 				
-				Iterator<String> it = mapPoints.keySet().iterator();
-				ctrlOut.println("-maps");
+				Iterator<ReadPair> rpIt = sfp.getReadPairs();
+				Vector<Double> tmpPts = null;
+				while(rpIt.hasNext()){
+					ReadPair tmpRp = rpIt.next();
+					if (!reads.containsKey(tmpRp.hdr))
+						reads.put(tmpRp.hdr, tmpRp);
+				}
+				
+		/*		Iterator<String> it = mapPoints.keySet().iterator();
 				while(it.hasNext()){
 					String ctg = it.next();
 					Vector<Double> tmp = mapPoints.get(ctg);
 					Double[] ar = new Double[tmp.size()];
 					tmp.toArray(ar);
-					File ctgMapFile = new File(fishDir,"map."+ctg.charAt(8)+".txt");
+					File ctgMapFile = new File(fishDir,"map."+contigs.get(ctg).getId()+".txt");
 					PrintStream ctgMapOut = new PrintStream(ctgMapFile);
 					
 					Arrays.sort(ar, new Comparator<Double>(){
@@ -177,18 +143,19 @@ public class CountMaxFlow {
 							 else return 0;
 						}	
 					});
-					for (Double d: ar)
-						ctgMapOut.println("c"+ctg.charAt(8)+"p"+Math.abs(d.intValue())+"\t"+(d < 0 ? -1 : 1));
+					for (Double d: ar){
+						if (d.doubleValue()==904)
+							System.out.print("");
+						ctgMapOut.println("c"+contigs.get(ctg).getId()+"p"+Math.abs(d.intValue())+"\t"+(d < 0 ? -1 : 1));
+					}
 					ctgMapOut.close();
 					String dir = ctgMapFile.getParentFile().getName();
-					ctrlOut.println(ctg.charAt(8)+"\t"+dir+"/"+ctgMapFile.getName());
-				}
+					ctrlOut.println(contigs.get(ctg).getId()+"\t"+dir+"/"+ctgMapFile.getName());
+				}*/
 				
-				rdlen = rdlen/den;
-				it = reads.keySet().iterator();
+				int rdlen = sfp.getReadLength();
+				Iterator<String> it = reads.keySet().iterator();
 				HashSet<ReadPair> conflicts = new HashSet<ReadPair>();
-				PrintStreamPair matchOut = null;
-				ctrlOut.println("-matches");
 				while(it.hasNext()) {
 					ReadPair tmp = reads.get(it.next());
 					if (tmp.ctg1 == null || tmp.ctg2 == null) 
@@ -211,29 +178,15 @@ public class CountMaxFlow {
 							conflicts.add(tmp);
 						}
 					}
-					ctgStr = tmp.contigString();
-					if (matchesOut.containsKey(ctgStr))
-						matchOut = matchesOut.get(ctgStr);
-					else {
-						matchOut = new PrintStreamPair(tmp.ctg1,tmp.ctg2);
-						matchOut.printControl(ctrlOut);
-						matchesOut.put(ctgStr, matchOut);
-					}
-					matchOut.print(tmp);
 				}
-				ctrlOut.println("end");
-				ctrlOut.close();
-				
-				it = matchesOut.keySet().iterator(); 
-				while(it.hasNext())
-					matchesOut.get(it.next()).close();
+			
 				idOut.close();
 				it = contigs.keySet().iterator();
 				while (it.hasNext()){
 					Contig tmp = contigs.get(it.next());
 					cftSAMOut.println("@SQ\tSN:"+tmp.name+"\tLN:"+tmp.len);
 				}
-				Iterator<ReadPair> rpIt = conflicts.iterator();
+				rpIt = conflicts.iterator();
 				Vector<double[]> dat = null;
 				HashMap<String,Vector<double[]>> datSets = new HashMap<String,Vector<double[]>>();
 				
@@ -261,43 +214,18 @@ public class CountMaxFlow {
 				cftTDOut.close();
 				cftSAMOut.close();
 				it = datSets.keySet().iterator();
-				while(it.hasNext()){
-					String ctgKey = it.next();
-					String[] ctg = ctgKey.split(":");		
-					dat = datSets.get(ctgKey);
-					double[][] ar = new double[dat.size()][];
-					dat.toArray(ar);
-					double[] x = new double[ar.length];
-					double[] y = new double[ar.length];
-					if (ar.length <= 2) 
-						continue;
-					for (int pI = 0; pI < ar.length; pI++){
-						x[pI] = ar[pI][0];
-						y[pI] = ar[pI][1];
-					}
-					PairedData pdat = new PairedData(x, y);
-					try {
-						PearsonCorrelation lm = new PearsonCorrelation(pdat);
-						corrOut.println(ctg[0]+"\t"+ctg[1]+"\t"+lm.getB()+"\t"+lm.getR()+"\t"+lm.getN());
-					} catch (IllegalArgumentException iae){
-						iae.printStackTrace();
-						System.exit(-1);
-					}
-					
-				}
-				corrOut.close();
 				
 				
-				
-				
-			
 				Contig[] ctgRef = new Contig[contigs.values().size()];
 				contigs.values().toArray(ctgRef);
 				for (int cI = 0; cI < ctgRef.length; cI++){
-					ctOut.println(ctgRef[cI].name+"\t"+ctgRef[cI].counts.size()+"\t"+ctgRef[cI].numSelfConnect);
+					ctOut.println(ctgRef[cI].name+"\t"+ctgRef[cI].getNumLinkedContigs()+"\t"+ctgRef[cI].numSelfConnect);
 					for (int cJ = cI+1; cJ < ctgRef.length; cJ++){
 						int nlink = ctgRef[cI].nLinks(ctgRef[cJ]);
-						if (nlink < MIN_LINK) continue;
+						if (nlink < MIN_LINK) 
+							continue; 
+						else 
+							System.out.print("");
 						if (!dg.containsVertex(ctgRef[cI]))	dg.addVertex(ctgRef[cI]);
 						if (!dg.containsVertex(ctgRef[cJ])) dg.addVertex(ctgRef[cJ]);
 						double L = Math.min(Math.min(ins*(1.0+err), ctgRef[cI].len), Math.min(ins*(1.0+err), ctgRef[cJ].len));
@@ -366,147 +294,7 @@ public class CountMaxFlow {
 		}
 	}
 	
-	static class PrintStreamPair {
-		private PrintStream out1;
-		private PrintStream out2;
-		final File file1;
-		final File file2;
-		private Contig ctg1;
-		private Contig ctg2;
-		public PrintStreamPair(Contig ctg1, Contig ctg2) throws IOException{
-			file1 = new File(fishDir,"match."+ctg1.name.charAt(8)+"v"+ctg2.name.charAt(8)+".txt");
-			file2 = new File(fishDir,"match."+ctg2.name.charAt(8)+"v"+ctg1.name.charAt(8)+".txt");
-			file1.createNewFile();
-			out1 = new PrintStream(file1);
-			file2.createNewFile();
-			out2 = new PrintStream(file2);
-			this.ctg1 = ctg1;
-			this.ctg2 = ctg2;
-		}
-		public void print(ReadPair pair){
-			if ((ctg1 == pair.ctg1 && ctg2 == pair.ctg2)) {
-				out1.println("c"+ctg1.name.charAt(8)+"p"+pair.pos1+"\tc"+ctg2.name.charAt(8)+pair.pos2+"\t100");
-				out2.println("c"+ctg2.name.charAt(8)+"p"+pair.pos2+"\tc"+ctg1.name.charAt(8)+pair.pos1+"\t100");
-			} else if((ctg1 == pair.ctg2 && ctg2 == pair.ctg1)){
-				out1.println("c"+ctg1.name.charAt(8)+"p"+pair.pos2+"\tc"+ctg2.name.charAt(8)+pair.pos1+"\t100");
-				out2.println("c"+ctg2.name.charAt(8)+"p"+pair.pos1+"\tc"+ctg1.name.charAt(8)+pair.pos2+"\t100");
-			} else {
-				throw new IllegalArgumentException("pair doesn't connect contigs");
-			}
-		}
-		
-		public void close(){
-			out1.close();
-			out2.close();
-		}
-		
-		public void printControl(PrintStream ctrlOut){
-			if (ctg1 == ctg2){
-				ctrlOut.println(ctg1.name.charAt(8)+"\t"+ctg2.name.charAt(8)+"\t"+fishDir.getName()+"/"+file1.getName());
-			} else {
-				ctrlOut.println(ctg1.name.charAt(8)+"\t"+ctg2.name.charAt(8)+"\t"+fishDir.getName()+"/"+file1.getName());
-				ctrlOut.println(ctg2.name.charAt(8)+"\t"+ctg1.name.charAt(8)+"\t"+fishDir.getName()+"/"+file2.getName());
-			}
-		}
-	}
 	
-	static class ReadPair{
-		public final String hdr;
-		public int pos1 = 0;
-		public boolean rev1 = false;
-		public Contig ctg1;
-		public String[] sam1;
-		public int pos2 = 0;
-		public boolean rev2 = false;
-		public Contig ctg2;
-		public String[] sam2;
-		public boolean paired;
-		public ReadPair(String hdr){
-			this.hdr=hdr;
-		}
-		public String contigString(){
-			return ctg1.name+"-"+ctg2.name;
-		}
-		public int addRead(int pos, boolean rev, Contig ctg, String[] sam){
-			if (pos1 == 0){
-				pos1 = pos;
-				rev1 = rev;
-				ctg1 = ctg;
-				sam1 = sam;
-				paired = false;
-				return 1;
-			} else if (pos2 == 0){
-				if (ctg1.name.compareTo(ctg.name)<0){ // alphabetize for consistency
-					pos2 = pos;
-					rev2 = rev;
-					ctg2 = ctg;
-					sam2 = sam;
-				} else {
-					pos2 = pos1;
-					rev2 = rev1;
-					ctg2 = ctg1;
-					sam2 = sam1;
-					pos1 = pos;
-					rev1 = rev;
-					ctg1 = ctg;
-					sam1 = sam;
-				}
-				paired = true;
-				return 2;
-			} else {
-				return -1;
-			}
-		}
-	}
-	public static class Contig implements Comparable<Contig> {
-		private static int CONCAT_START = 1;
-		public String name;
-		public int len;
-		public double cov;
-		private int start;
-		public Map<Contig,Integer> counts;
-		public int numSelfConnect;
-		public void setInfo(String name, int len, double cov){
-			String[] spl = name.split("\\|");
-			this.name = spl[0];
-			this.len = len;
-			this.cov = cov;
-			numSelfConnect = 0;
-			start=CONCAT_START;
-			CONCAT_START+=len;
-			counts = new HashMap<Contig,Integer>();
-		}
-		public boolean equals(Contig c){ 
-			return this.name.equals(c.name);
-		}
-		public void addLink(Contig c){
-			if (!counts.containsKey(c)) counts.put(c, 1);
-			else counts.put(c, counts.get(c)+1);
-		}
-		public int nLinks(Contig c){
-			if (!counts.containsKey(c)) return 0;
-			return counts.get(c);
-		}
-		public int hashCode(){
-			return name.hashCode();
-		}
-		public String toString(){
-			return name;
-		}
-		public void addEndSpanningPair(){
-			numSelfConnect++;
-		}
-		public int getConcatCoord(int pos){
-		/*	if (pos < start) 
-				return -1;
-			else*/
-				return start+pos-1;
-		}
-		@Override
-		public int compareTo(Contig arg0) {
-			return this.name.compareTo(arg0.name);
-		}
-	}
 	
 	public static class DWENameProvider implements EdgeNameProvider<DefaultWeightedEdge>{
 		
@@ -537,7 +325,7 @@ public class CountMaxFlow {
 			Map<String,String> map = new HashMap<String,String>();
 			map.put("label", g.getEdgeSource(arg0).toString()+":"+g.getEdgeTarget(arg0).toString());
 			map.put("weight", Double.toString(g.getEdgeWeight(arg0)));
-			map.put("nlinks", Integer.toString(g.getEdgeSource(arg0).counts.get(g.getEdgeTarget(arg0))));
+			map.put("nlinks", Integer.toString(g.getEdgeSource(arg0).getNumLinks(g.getEdgeTarget(arg0))));
 			return map;
 		}
 	}
@@ -555,34 +343,6 @@ public class CountMaxFlow {
 		
 	}
 	
-	private static boolean nextCharIs(BufferedReader br, char c) throws IOException{
-		if (!br.ready()){ return false; }
-		boolean ret = false;
-		br.mark(1);
-		char b = (char) br.read();
-		if (b == c) ret = true; 
-		else ret = false;
-		br.reset();
-		return ret;
-	}
-	
-	private static boolean isReverse(String flag){
-		int iflag = Integer.parseInt(flag);
-		if (getBit(4,iflag) == 1) return true;
-		else return false;
-	}
-	
-	private static int getBit (int bit, int flag) { 
-        int mod = 0;  
-        int dig = 0;
-        while( flag != 0 && dig <= bit) {  
-            mod = flag % 2;
-            flag = flag / 2;
-            dig++;
-        }
-        return mod;  
-    }  
-	
 	private static boolean isTerminal(int left, int right, int ins, double err, Contig ctg){
 		if (ctg.len < (ins)*(1.0+err)) return true;
 		if (left < (ins)*(1.0+err)) {
@@ -591,23 +351,6 @@ public class CountMaxFlow {
 			return true;
 		}
 		return false;
-	}
-	
-	/**
-	 * Return mapping length for CIGAR String if there is a match (i.e. string contains 'M') else return -1
-	 * @param cig the CIGAR string to parse
-	 * @return the length of the match indicated by the CIGAR string. Return -1 if no match
-	 */
-	private static int cigarLength(String cig){
-		if (cig.contains("M"))
-			return Integer.parseInt(cig.substring(0,cig.indexOf('M')));
-		else return -1;
-	}
-	
-	private static double normLinkWeight(Contig src, Contig sink, int ins, double err, int rdlen){
-		double nLink = src.counts.get(sink);
-		double L = Math.min(ins*(1.0+err), src.len);
-		return (rdlen*nLink)/(src.cov*L);
 	}
 	
 	private static boolean spansTerminal(ReadPair pm, int ins, double err, int rdlen){
@@ -638,11 +381,4 @@ public class CountMaxFlow {
 			return -1;
 		return (pm.pos1 < pm.pos2) ? (pm.pos2+rdlen-pm.pos1) : (pm.pos1+rdlen-pm.pos2);
 	}
-	
-	private static double getDistance(ReadPair p1, ReadPair p2){
-		double dx = p1.pos1 - p2.pos1;
-		double dy = p1.pos2 - p2.pos2;
-		return Math.sqrt(Math.pow(dx, 2)+Math.pow(dy,2));
-	}
-	
 }
