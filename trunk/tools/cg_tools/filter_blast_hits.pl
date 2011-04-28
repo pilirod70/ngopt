@@ -171,11 +171,11 @@ sub usage {
 
 
 sub summary {
-	print "minimum alignment length: $min_aln\n";
-	print "minimum percent identity: $min_pid\n";
-	print "minimum bit score:        $min_bit\n";
-	print "maximum E-val:            $max_eval\n";
-	print "maximum no. mismatches:   $max_mis\n";
-	print "maximum no. gap openings: $max_gap \n";
-	print "keep reflexive hits?      ".($no_reflexive ? "no" : "yes")."\n";
+	print STDERR "minimum alignment length: $min_aln\n";
+	print STDERR "minimum percent identity: $min_pid\n";
+	print STDERR "minimum bit score:        $min_bit\n";
+	print STDERR "maximum E-val:            $max_eval\n";
+	print STDERR "maximum no. mismatches:   $max_mis\n";
+	print STDERR "maximum no. gap openings: $max_gap \n";
+	print STDERR "keep reflexive hits?      ".($no_reflexive ? "no" : "yes")."\n";
 }
