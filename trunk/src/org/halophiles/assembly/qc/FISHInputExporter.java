@@ -1,6 +1,7 @@
 package org.halophiles.assembly.qc;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -159,7 +160,7 @@ public class FISHInputExporter {
 				matchOut.addMatchFile(matchFiles);
 				matchesOut.put(ctgStr, matchOut);
 			}
-			matchOut.print(tmp);
+			matchOut.add(tmp);
 		}
 		
 		Iterator<MatchFile> mfIt = matchFiles.iterator();
@@ -212,7 +213,7 @@ public class FISHInputExporter {
 	}
 	
 	
-	static class PrintStreamPair{
+	private static class PrintStreamPair{
 		private static Random r = new Random(123456789);
 		private File fishDir;
 		private PrintStream out1;
@@ -221,27 +222,31 @@ public class FISHInputExporter {
 		File file2;
 		private Contig ctg1;
 		private Contig ctg2;
+		private Vector<ReadPair> reads;
+		
 		public PrintStreamPair(Contig ctg1, Contig ctg2, File outdir) throws IOException{
 			fishDir = outdir;
+			reads = new Vector<ReadPair>();
 			if (ctg1==ctg2){
 				file1 = new File(fishDir,"match."+ctg1.getId()+"v"+ctg2.getId()+".txt");
 				file1.createNewFile();
-				out1 = new PrintStream(file1);
 				this.ctg1 = ctg1;
 				this.ctg2 = ctg2;
 			} else { 
 				file1 = new File(fishDir,"match."+ctg1.getId()+"v"+ctg2.getId()+".txt");
 				file2 = new File(fishDir,"match."+ctg2.getId()+"v"+ctg1.getId()+".txt");
 				file1.createNewFile();
-				out1 = new PrintStream(file1);
 				file2.createNewFile();
-				out2 = new PrintStream(file2);
 				this.ctg1 = ctg1;
 				this.ctg2 = ctg2;
 			}
 		}
 		
-		public void print(ReadPair pair){
+		public void add(ReadPair pair){
+			reads.add(pair);
+		}
+		
+		private void print(ReadPair pair){
 			if ((ctg1 == pair.ctg1 && ctg2 == pair.ctg2)) {
 				
 				out1.println("c"+ctg1.getId()+"p"+pair.pos1+"\tc"+ctg2.getId()+"p"+pair.pos2+"\t"+(r.nextInt(100)+201));
@@ -258,7 +263,18 @@ public class FISHInputExporter {
 			}
 		}
 		
-		public void close(){
+		public void close() throws FileNotFoundException{
+			if (ctg1==ctg2){
+				out1 = new PrintStream(file1);
+			} else {
+				out1 = new PrintStream(file1);
+				out2 = new PrintStream(file2);
+			}
+			Iterator<ReadPair> it = reads.iterator();
+			ReadPair pair = null;
+			while(it.hasNext())
+				print(pair);
+			
 			out1.close();
 			if (ctg1 != ctg2)
 				out2.close();
