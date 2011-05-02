@@ -30,6 +30,7 @@ public class FISHInputExporter {
 		try{
 			SAMFileParser sfp = new SAMFileParser(args[0]);
 			File outdir = new File(args[1]);
+			outdir.mkdirs();
 			Map<String,Contig> contigs = new HashMap<String,Contig>();
 			Iterator<Contig> ctgIt = sfp.getContigs();
 			while(ctgIt.hasNext()){
