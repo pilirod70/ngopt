@@ -1,4 +1,9 @@
 #!/bin/bash
+if [ $# -ne 1 ]; then
+    echo "Usage: `basename $0` <file>"
+    exit;
+fi
+
 perl -p -i -e "s/dsm18195/367189/g" $1 
 perl -p -i -e "s/dsm18796/413810/g" $1 
 perl -p -i -e "s/jcm11890/175632/g" $1 
