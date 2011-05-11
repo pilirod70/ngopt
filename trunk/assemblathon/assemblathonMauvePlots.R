@@ -47,6 +47,8 @@ plotCalls <- function(files, extension, plottitle, pdfname, totalname, column) {
 	plotcount <- 1
 	plotinit <- 0
 	s <- 1
+	ltys <- c(1,2,4,5,6)
+	ltys <- c(ltys,ltys,ltys,ltys,ltys,ltys)
 
 	# start plotting data series
 	for(i in 1:length(files)){
@@ -54,7 +56,7 @@ plotCalls <- function(files, extension, plottitle, pdfname, totalname, column) {
 			if(plotcount > 1){
 				plotChromobounds()
 				ss <- i-1
-				legend("bottomright", legend=pnames[s:ss], lty=seq(s,ss), col=seq(s,ss))
+				legend("bottomright", legend=pnames[s:ss], lty=ltys[seq(s,ss)], col=seq(s,ss))
 				s <- i
 			}
 			plotcount <- plotcount + 1
@@ -77,18 +79,18 @@ plotCalls <- function(files, extension, plottitle, pdfname, totalname, column) {
 		den$x <- c(den$x, den$x[length(den$x)], maxpoint)
 		den$y <- c(den$y, 0, 0)
 		if(plotinit==0){
-			plot(den, las=1, xaxt="n", lty=i, col=i, xlim=c(0,maxpoint*1.1), ylim=c(0,max(totals)), main="", xlab="Concatenated chromosome coordinates", ylab="")
+			plot(den, las=1, xaxt="n", lty=ltys[i], col=i, xlim=c(0,maxpoint*1.1), ylim=c(0,max(totals)), main="", xlab="Concatenated chromosome coordinates", ylab="")
 			axis(1, labels=(plotcount==plotrows+1))
 			plotinit <- 1
 			if(i==1){
 				title(plottitle)
 			}
 		}else{
-			lines(den, lty=i, col=i)
+			lines(den, lty=ltys[i], col=i)
 		}
 	}
 	plotChromobounds()
-	legend("bottomright", legend=pnames[s:i], lty=seq(s,i), col=seq(s,i))
+	legend("bottomright", legend=pnames[s:i], lty=ltys[seq(s,i)], col=seq(s,i))
 	dev.off()
 	
 	# now make a PDF barplot with total counts
@@ -126,11 +128,14 @@ plotGapSizes <- function(files, extension, plottitle, sequence, pdfname, totalna
 	plotcount <- 1
 	plotinit <- 0
 	s<-1
+	ltys <- c(1,2,4,5,6)
+	ltys <- c(ltys,ltys,ltys,ltys,ltys,ltys)
+
 	for(i in 1:length(files)){
 		if( i %% maxseries == 1 ){
 			if(plotcount > 1){
 				ss <- i-1
-				legend("topright", legend=pnames[s:ss], lty=seq(s,ss), col=seq(s,ss))
+				legend("topright", legend=pnames[s:ss], lty=ltys[seq(s,ss)], col=seq(s,ss))
 				s <- i
 			}
 			plotcount <- plotcount + 1
@@ -153,17 +158,26 @@ plotGapSizes <- function(files, extension, plottitle, sequence, pdfname, totalna
 		den$x <- c(den$x, den$x[length(den$x)], maxpoint)
 		den$y <- c(den$y, 0, 0)
 		if(plotinit==0){
-			plot(den, las=1, xaxt="n", lty=i, col=i, ylim=c(0, log2(max(totals))), xlim=c(0, maxpoint*0.9), main="", xlab="log2 segment sizes", ylab="")
-			axis(1, labels=(plotcount==plotrows+1))
+			plot(den, las=1, xaxt="n", lty=ltys[i], col=i, ylim=c(0, log2(max(totals))), xlim=c(0, maxpoint*0.9), main="", xlab="log2 segment sizes", ylab="")
+			if(plotcount==plotrows+1){
+				axis(1, at=log2(seq(from=2,to=16, by=1)), labels=FALSE )  
+				axis(1, at=log2(seq(from=20,to=60, by=4)), labels=FALSE )  
+				axis(1, at=log2(seq(from=80,to=240, by=16)), labels=FALSE )  
+				axis(1, at=log2(seq(from=320,to=960, by=64)), labels=FALSE )  
+				axis(1, at=log2(seq(from=1280,to=3840, by=256)), labels=FALSE )  
+				axis(1, at=c(0,2,4,6,8,10,12),labels=c(1,4,16,64,256,1024,4096))
+			}else{
+				axis(1, labels=(plotcount==plotrows+1))
+			}
 			plotinit <- 1
 			if(i==1){
 				title(plottitle)
 			}
 		}else{
-			lines(den, lty=i, col=i)
+			lines(den, lty=ltys[i], col=i)
 		}
 	}
-	legend("topright", legend=pnames[s:i], lty=seq(s,i), col=seq(s,i))
+	legend("topright", legend=pnames[s:i], lty=ltys[seq(s,i)], col=seq(s,i))
 	dev.off()
 	
 	# now make a PDF with total counts
@@ -180,7 +194,7 @@ plotGapSizes(commandArgs(trailing=T), "__gaps.txt", "Size distribution of extra 
 
 
 scoresum <- read.table("summaries.txt",header=T)
-pnames <- sub( ".fa.fas", "", scoresum$AssemblyName, perl=TRUE)
+pnames <- sub( ".fa.fas", "", scoresum$Name, perl=TRUE)
 
 
 pdf("mauve_scaffold_counts.pdf")
