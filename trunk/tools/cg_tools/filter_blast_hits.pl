@@ -4,7 +4,7 @@ use warnings;
 use File::Basename;
 use Getopt::Long;
 
-Getopt::Long::Configure(qw{no_auto_abbrev no_ignore_case_always});
+Getopt::Long::Configure(qw{no_auto_abbrev no_ignore_case_always pass_through});
 my $min_aln = 0; 
 my $min_pid = 0.0;
 my $min_bit = 0;
@@ -103,18 +103,18 @@ sub add_hit {
 #	print STDERR "size = ".scalar(@$hit)." at line $num_lines\n";
 	my $ctg1 = shift @$hit;
 	my $ctg2 = shift @$hit;
-	if ($ctg2 lt $ctg1) {
-		my $tmp = $ctg2;
-		$ctg2 = $ctg1;
-		$ctg1 = $ctg2;
+#	if ($ctg2 lt $ctg1) {
+#		my $tmp = $ctg2;
+#		$ctg2 = $ctg1;
+#		$ctg1 = $tmp;
 		# swap 4,5 with 6,7
-		$tmp = $hit->[4];
-		$hit->[4] = $hit->[6];
-		$hit->[6] = $tmp;
-		$tmp = $hit->[5];
-		$hit->[5] = $hit->[7];
-		$hit->[7] = $tmp;
-	}
+#		$tmp = $hit->[4];
+#		$hit->[4] = $hit->[6];
+#		$hit->[6] = $tmp;
+#		$tmp = $hit->[5];
+#		$hit->[5] = $hit->[7];
+#		$hit->[7] = $tmp;
+#	}
 	if (defined($hits{$ctg1})){
 		if (defined($hits{$ctg1}{$ctg2})){
 #			print STDERR "$ctg1 and $ctg2 have ".scalar(@{$hits{$ctg1}{$ctg2}})." matches so far\n";	
@@ -163,8 +163,8 @@ sub usage {
 				 "   -E, --eval=<float>      maximum E-value [100.0]\n".
 				 "   -g, --gap=<int>         maximum number of gap openings [100000000]\n".
 				 "   --noreflex              discard reflexive hits\n".
-				 "   -h, --help              display this message\n\n".
 				 "   -q, --quiet             do not print status and summary messages\n".
+				 "   -h, --help              display this message\n\n".
 				 "if <m8_output> is absent, input will be read from stdin\n\n";
 
 }
