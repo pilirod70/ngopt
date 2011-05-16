@@ -35,7 +35,7 @@ perl -p -i -e 's/jcm13891/Haloterrigena_salina_JCM_13891/g' $1
 perl -p -i -e 's/jcm14978/Halorubrum_kocurii_JCM_14978/g' $1
 perl -p -i -e 's/jcm10879/Halobiforma_nitratireducens_JCM_10879/g' $1
 perl -p -i -e 's/jcm13562/Haloterrigena_longa_JCM_13562/g' $1
-perl -p -i -e 's/dsm21966/Halorubrum_xinjiangese_DSM_21966/g' $1
+perl -p -i -e 's/dsm21966/Halorubrum_xinjiangense_DSM_21966/g' $1
 perl -p -i -e 's/jcm13557/Haloarcula_amylolytica/g' $1
 perl -p -i -e 's/dsm12282/Haloarcula_argentinensis/g' $1
 perl -p -i -e 's/dsm6131/Haloarcula_japonica/g' $1

@@ -78,7 +78,7 @@ perl -p -i -e "s/dsm11522/121872/g" $1
 perl -p -i -e "s/dsm5511/543526/g" $1 
 perl -p -i -e "s/jcm14624/332953/g" $1 
 perl -p -i -e "s/dsm18193/387341/g" $1 
-perl -p -i -e "s/dsm_12278/64602/g" $1 
+perl -p -i -e "s/dsm12278/64602/g" $1 
 perl -p -i -e "s/jcm10990/68911/g" $1 
 perl -p -i -e "s/jcm10989/123783/g" $1 
 perl -p -i -e "s/dsm3394/13769/g" $1 
