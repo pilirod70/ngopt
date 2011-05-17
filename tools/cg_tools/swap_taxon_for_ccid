@@ -1,96 +1,92 @@
-#!/bin/bash
-if [ $# -ne 1 ]; then
-	echo "Usage: `basename $0` <file>"
-	exit;
-fi
-perl -p -i -e "s/367189/dsm18195/g" $1
-perl -p -i -e "s/413810/dsm18796/g" $1
-perl -p -i -e "s/175632/jcm11890/g" $1
-perl -p -i -e "s/56545/jcm10024/g" $1
-perl -p -i -e "s/396317/jcm13557/g" $1
-perl -p -i -e "s/43776/dsm12282/g" $1
-perl -p -i -e "s/29282/dsm6131/g" $1
-perl -p -i -e "s/662475/atcc33799/g" $1
-perl -p -i -e "s/662476/atcc33800/g" $1
-perl -p -i -e "s/atccBAA[-,_]651/atccBAA-651/g" $1
-perl -p -i -e "s/atccBAA[-,_]652/atccBAA-652/g" $1
-perl -p -i -e "s/28442/jcm8877/g" $1
-perl -p -i -e "s/223182/dsm15987/g" $1
-perl -p -i -e "s/43928/dsm9297/g" $1
-perl -p -i -e "s/148448/jcm11627/g" $1
-perl -p -i -e "s/229731/jcm12983/g" $1
-perl -p -i -e "s/130048/jcm10879/g" $1
-perl -p -i -e "s/179637/dsm14522/g" $1
-perl -p -i -e "s/332168/jcm12892/g" $1
-perl -p -i -e "s/931277/dsm1307/g" $1
-perl -p -i -e "s/224402/jcm13587/g" $1
-perl -p -i -e "s/62319/dsm5350/g" $1
-perl -p -i -e "s/36738/dsm8989/g" $1
-perl -p -i -e "s/335952/jcm13552/g" $1
-perl -p -i -e "s/114529/jcm10717/g" $1
-perl -p -i -e "s/662478/atcc35960/g" $1
-perl -p -i -e "s/403191/atccBAA-1513/g" $1
-perl -p -i -e "s/35746/atcc33959/g" $1
-perl -p -i -e "s/302484/jcm13917/g" $1
-perl -p -i -e "s/2254/dsm14919/g" $1
-perl -p -i -e "s/523841/atcc33500/g" $1
-perl -p -i -e "s/662479/atccBAA-1512/g" $1
-perl -p -i -e "s/381852/dsm18310/g" $1
-perl -p -i -e "s/atccBAA[-,_]644/atccBAA-644/g" $1
-perl -p -i -e "s/atccBAA[-,_]645/atccBAA-645/g" $1
-perl -p -i -e "s/atccBAA[-,_]646/atccBAA-646/g" $1
-perl -p -i -e "s/662480/atccBAA-897/g" $1
-perl -p -i -e "s/309800/dsm3757/g" $1
-perl -p -i -e "s/469382/dsm11551/g" $1
-perl -p -i -e "s/387343/jcm14033/g" $1
-perl -p -i -e "s/376171/dsm17983/g" $1
-perl -p -i -e "s/368623/jcm13560/g" $1
-perl -p -i -e "s/261290/jcm12358/g" $1
-perl -p -i -e "s/368454/jcm13916/g" $1
-perl -p -i -e "s/416585/dsm19288/g" $1
-perl -p -i -e "s/64713/dsm10284/g" $1
-perl -p -i -e "s/29283/jcm9100/g" $1
-perl -p -i -e "s/29283/jcm10118/g" $1
-perl -p -i -e "s/425309/jcm14265/g" $1
-perl -p -i -e "s/atcc700873/atcc700873/g" $1
-perl -p -i -e "s/478441/jcm14978/g" $1
-perl -p -i -e "s/368624/dsm21995/g" $1
-perl -p -i -e "s/409316/jcm13561/g" $1
-perl -p -i -e "s/2248/dsm1137/g" $1
-perl -p -i -e "s/119434/dsm14210/g" $1
-perl -p -i -e "s/267368/jcm10247/g" $1
-perl -p -i -e "s/175631/jcm11888/g" $1
-perl -p -i -e "s/63740/dsm8800/g" $1
-perl -p -i -e "s/261291/dsm21966/g" $1
-perl -p -i -e "s/411361/jcm14848/g" $1
-perl -p -i -e "s/171164/jcm11222/g" $1
-perl -p -i -e "s/370323/jcm13563/g" $1
-perl -p -i -e "s/370324/jcm13562/g" $1
-perl -p -i -e "s/301967/jcm12889/g" $1
-perl -p -i -e "s/504937/jcm13891/g" $1
-perl -p -i -e "s/121872/dsm11522/g" $1
-perl -p -i -e "s/543526/dsm5511/g" $1
-perl -p -i -e "s/332953/jcm14624/g" $1
-perl -p -i -e "s/387341/dsm18193/g" $1
-perl -p -i -e "s/129789/dsm13077/g" $1
-perl -p -i -e "s/64602/dsm12278/g" $1
-perl -p -i -e "s/68911/jcm10990/g" $1
-perl -p -i -e "s/123783/jcm10989/g" $1
-perl -p -i -e "s/13769/dsm3394/g" $1
-perl -p -i -e "s/160846/dsm12281/g" $1
-perl -p -i -e "s/222984/jcm12890/g" $1
-perl -p -i -e "s/373386/jcm13890/g" $1
-perl -p -i -e "s/419186/jcm14663/g" $1
-perl -p -i -e "s/69527/dsm3751/g" $1
-perl -p -i -e "s/797303/dsm15624/g" $1
-perl -p -i -e "s/88724/jcm10478/g" $1
-perl -p -i -e "s/44930/dsm3393/g" $1
-perl -p -i -e "s/44470/dsm10524/g" $1
-perl -p -i -e "s/413812/dsm18795/g" $1
-perl -p -i -e "s/694430/dsm3396/g" $1
-perl -p -i -e "s/253108/jcm12253/g" $1
-perl -p -i -e "s/253107/jcm12255/g" $1
-perl -p -i -e "s/348826/jcm13488/g" $1
-perl -p -i -e "s/61858/jcm10635/g" $1
-perl -p -i -e "s/388259/jcm14089/g" $1
-perl -p -i -e "s/63128/jcm10636/g" $1
+#!/bin/sed -f
+s/367189/dsm18195/g
+s/413810/dsm18796/g
+s/175632/jcm11890/g
+s/56545/jcm10024/g
+s/396317/jcm13557/g
+s/43776/dsm12282/g
+s/29282/dsm6131/g
+s/662475/atcc33799/g
+s/662476/atcc33800/g
+s/atccBAA[-,_]651/atccBAA-651/g
+s/atccBAA[-,_]652/atccBAA-652/g
+s/28442/jcm8877/g
+s/223182/dsm15987/g
+s/43928/dsm9297/g
+s/148448/jcm11627/g
+s/229731/jcm12983/g
+s/130048/jcm10879/g
+s/179637/dsm14522/g
+s/332168/jcm12892/g
+s/931277/dsm1307/g
+s/224402/jcm13587/g
+s/62319/dsm5350/g
+s/36738/dsm8989/g
+s/335952/jcm13552/g
+s/114529/jcm10717/g
+s/662478/atcc35960/g
+s/403191/atccBAA-1513/g
+s/35746/atcc33959/g
+s/302484/jcm13917/g
+s/2254/dsm14919/g
+s/523841/atcc33500/g
+s/662479/atccBAA-1512/g
+s/381852/dsm18310/g
+s/atccBAA[-,_]644/atccBAA-644/g
+s/atccBAA[-,_]645/atccBAA-645/g
+s/atccBAA[-,_]646/atccBAA-646/g
+s/662480/atccBAA-897/g
+s/309800/dsm3757/g
+s/469382/dsm11551/g
+s/387343/jcm14033/g
+s/376171/dsm17983/g
+s/368623/jcm13560/g
+s/261290/jcm12358/g
+s/368454/jcm13916/g
+s/416585/dsm19288/g
+s/64713/dsm10284/g
+s/29283/jcm9100/g
+s/29283/jcm10118/g
+s/425309/jcm14265/g
+s/atcc700873/atcc700873/g
+s/478441/jcm14978/g
+s/368624/dsm21995/g
+s/409316/jcm13561/g
+s/2248/dsm1137/g
+s/119434/dsm14210/g
+s/267368/jcm10247/g
+s/175631/jcm11888/g
+s/63740/dsm8800/g
+s/261291/dsm21966/g
+s/411361/jcm14848/g
+s/171164/jcm11222/g
+s/370323/jcm13563/g
+s/370324/jcm13562/g
+s/301967/jcm12889/g
+s/504937/jcm13891/g
+s/121872/dsm11522/g
+s/543526/dsm5511/g
+s/332953/jcm14624/g
+s/387341/dsm18193/g
+s/129789/dsm13077/g
+s/64602/dsm12278/g
+s/68911/jcm10990/g
+s/123783/jcm10989/g
+s/13769/dsm3394/g
+s/160846/dsm12281/g
+s/222984/jcm12890/g
+s/373386/jcm13890/g
+s/419186/jcm14663/g
+s/69527/dsm3751/g
+s/797303/dsm15624/g
+s/88724/jcm10478/g
+s/44930/dsm3393/g
+s/44470/dsm10524/g
+s/413812/dsm18795/g
+s/694430/dsm3396/g
+s/253108/jcm12253/g
+s/253107/jcm12255/g
+s/348826/jcm13488/g
+s/61858/jcm10635/g
+s/388259/jcm14089/g
+s/63128/jcm10636/g
