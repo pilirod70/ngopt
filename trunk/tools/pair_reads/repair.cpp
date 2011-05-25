@@ -119,7 +119,7 @@ void pair_reads(istream& in, bool fastq){
 		if (hdr.at(hdr.length()-1) == '1') {
 			r.pair = 1;
 			pair1[key] = r;
-		} else if (hdr.at(hdr.length()-1) == '2') {
+		} else if (hdr.at(hdr.length()-1) == '2' || hdr.at(hdr.length()-1) == '3') {
 			r.pair = 2;
 			pair2[key] = r;
 		} else {
@@ -129,7 +129,7 @@ void pair_reads(istream& in, bool fastq){
 }
 
 void print_paired(string prefix, string base, string suffix, bool print_fasta, bool revcomp){
-
+	cerr << "printing paired sequences to "<<(prefix+base+"_p1"+suffix).c_str()<<" and " << (prefix+base+"_p2"+suffix).c_str() << endl;
 	ofstream p1out((prefix+base+"_p1"+suffix).c_str());
 	ofstream p2out((prefix+base+"_p2"+suffix).c_str());
 	ofstream upout;
@@ -326,7 +326,7 @@ void sample_paired(ifstream& in1, ifstream& in2, ofstream& p1out, ofstream& p2ou
 	}
 }
 
-void sampled_shuffled(istream& in, ofstream& out, bool fastq, bool print_fasta){
+void sample_shuffled(istream& in, ofstream& out, bool fastq, bool print_fasta){
 	double U = 0.0;	
 	while (in.good()){
 		if (p != 1.0) {
@@ -411,7 +411,7 @@ int main (int argc, const char** argv) {
 	string suffix = "";
 	string base = "";
 	unsigned int seed = time(NULL);
-	bool fastq;
+	//bool fastq;
 	bool revcomp = false;
 	bool output_fasta=false;
 	bool shuffle = false;
@@ -512,19 +512,27 @@ int main (int argc, const char** argv) {
 				ifstream in1(argv[start++]);
 				ifstream in2(argv[start++]);
 				sample_paired(in1,in2,p1out,p2out,fastq,output_fasta);
-			} else {
+			} else { // assume all files are shuffled
 				ofstream out ((prefix+base+"_shuf"+suffix).c_str());
-				
-
+				ifstream* in; 
+				while (start < argc) {
+					in = new ifstream(argv[start++]);
+					sample_shuffled(*in,out,fastq,output_fasta);
+					delete in;
+				}
 			}
 
-		} 
+		} else {
+			if (!quiet) cout << "Doing nothing\n";
+		}
 	} else  { // reads need to be re-paired using a hash
 		if (!quiet) cout << "Pairing reads from" ;
 		if (argc - start == 0) {
 			in = &cin;
 			fastq = in->peek() == '@';
 			if (!quiet) cout << " standard input.\n";
+				cerr << "found fastq? " << (fastq ? "yes" : "no") << endl;
+				cerr << "output fasta? " << (output_fasta ? "yes" : "no") << endl;
 			pair_reads(*in,fastq);
 		} else {
 			do {
