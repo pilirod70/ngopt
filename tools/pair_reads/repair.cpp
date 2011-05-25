@@ -129,7 +129,6 @@ void pair_reads(istream& in, bool fastq){
 }
 
 void print_paired(string prefix, string base, string suffix, bool print_fasta, bool revcomp){
-	cerr << "printing paired sequences to "<<(prefix+base+"_p1"+suffix).c_str()<<" and " << (prefix+base+"_p2"+suffix).c_str() << endl;
 	ofstream p1out((prefix+base+"_p1"+suffix).c_str());
 	ofstream p2out((prefix+base+"_p2"+suffix).c_str());
 	ofstream upout;
@@ -531,8 +530,6 @@ int main (int argc, const char** argv) {
 			in = &cin;
 			fastq = in->peek() == '@';
 			if (!quiet) cout << " standard input.\n";
-				cerr << "found fastq? " << (fastq ? "yes" : "no") << endl;
-				cerr << "output fasta? " << (output_fasta ? "yes" : "no") << endl;
 			pair_reads(*in,fastq);
 		} else {
 			do {
