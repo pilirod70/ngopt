@@ -56,7 +56,7 @@ sub idba_assemble {
 		if($line =~ /inferred external isize from \d+ pairs: (\d+) \+\/\- (\d+)/){
 			$ins_mean = $1;
 			my $ins_sd = $2;
-			$ins_error = $ins_error*4 / $ins_mean;
+			$ins_error = $ins_sd*4 / $ins_mean;
 			close SAMPE;
 			last;
 		}
