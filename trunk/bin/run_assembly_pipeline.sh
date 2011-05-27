@@ -1,12 +1,16 @@
 #!/bin/bash
 ##
-#$ -pe threaded 2
+##  Usage: run_assembly_pipeline.sh <output_directory> <organism_lib_file>
+##
+#$ -l mem_free=5G
+#$ -pe threaded 4
 #$ -V
 #$ -cwd
 #$ -S /bin/bash
 #$ -m e
 #$ -M andrew.j.tritt@gmail
 echo $JOB_ID `hostname`
+echo $JOB_NAME $@
 OUT=""
 if [ -d "/data/scratch" ]; then
 	OUT="/data/scratch/atritt"
@@ -19,11 +23,13 @@ if [ ! -d $OUT ]; then
 	mkdir -p $OUT
 fi
 
+if [ $# != 2 ]; then
+	echo "Usage: run_assembly_pipeline.sh <output_directory> <organism_lib_file>" 
+	exit
+fi
+
 OUTPUT_DIR=$1
-
 FQDIR="/share/eisen-d6/halophile_illumina_data/allfastq"
-
-DEST_DIR="/share/eisen-d6/halophile_illumina_data/sga-ec/complete"
 
 function get_insert {
 	echo `grep insert\ size $1 | sed s/^.*\:\ //g | sed s/\ \(.*$//g`
@@ -37,13 +43,15 @@ function get_sd {
 function get_sampe {
 	ctgs=$1
 	prefix=`basename $ctgs -contig.fa`
-	fq1=$2
-	fq2=$3
+	head -n 20000 $1 > fq1
+	tail -n 20000 $1 >> fq1
+	head -n 20000 $2 > fq2
+	tail -n 20000 $2 >> fq2
 	bwa index -a is -p $prefix >> get_sampe.out 2>> get_sampe.err 
-	bwa aln $prefix $fq1 > sai1 2>> get_sampe.err 
-	bwa aln $prefix $fq2 > sai2 2>> get_sampe.err 
-	bwa sampe sai1 sai2 $fq1 $fq2 > sam 2> stderr 2>> get_sampe.err 
-	rm sai1 sai2 $prefix* get_sampe.out 
+	bwa aln $prefix fq1 > sai1 2>> get_sampe.err 
+	bwa aln $prefix fq2 > sai2 2>> get_sampe.err 
+	bwa sampe sai1 sai2 fq1 fq2 > sam 2>> get_sampe.err 
+	rm sai1 sai2 fq1 fq2 $prefix* get_sampe.out sam 
 	echo get_sampe.err 
 }
 
@@ -57,7 +65,13 @@ function sgaec {
 }
 
 function maxrdlen {
-	echo `cat $@ | egrep -v '(^@)|^\+|^>' | awk ' { if ( length > x ) { x = length } }END{ print x }'`	
+	for i in $@; do
+		head -n 100000 $i >> tmp.maxrdlen
+		tail -n 100000 $i >> tmp.maxrdlen
+	done
+	ret=`cat tmp.maxrdlen | egrep -v '(^@)|^\+|^>' | awk ' { if ( length > x ) { x = length } }END{ print x }'`	
+	rm tmp.maxrdlen
+	echo $ret
 }
 
 # Usage: minlink pair1 pair2 contigs insert rdlen
@@ -66,11 +80,21 @@ function minlink {
 	genomeLen=`cat $3 | egrep -v '^>' | tr -d '\n' | wc -m`
 	insert=$4
 	rdlen=$5
-	echo $( $(($numRdBases * $insert)) / $((2 * $genomeLen * $rdlen)) )
+	Ek=$(($(($numRdBases * $insert)) / $((2 * $genomeLen * $rdlen))))
+	f=$(($(($((1 - 1/$Ek))*2))+8))
+	echo $f
+}
+
+function sortlib {
+	cut -f4 -d ' ' $1 > tmp.ins
+	paste -d ' ' tmp.ins $1 | sort -n | cut -f2,3,4,5,6,7,8 -d ' ' > tmp.lib
+	mv tmp.lib $1
+	rm tmp.ins
 }
 
 function run {
 	base=$1
+	shift 1
 	outdir=$OUT/$base
 	if [ -d $outdir ]; then
 		rm -rf $outdir
@@ -79,21 +103,18 @@ function run {
 	cd $outdir
 	echo "==== $base ===="
 	zcat $FQDIR/$base.*.fastq.gz > $base.fastq
-	sgaec $base.fastq $base
+	sgaec $base $base.fastq
 	MAXK=`maxrdlen $base.sgaec.fasta`
 	idba --read $base.sgaec.fasta --output $base.idba --mink 35 --maxk $MAXK 
 	contigs="$base.idba-contig.fa"
 	gzip $base.sgaec.fasta
-	i=2
-	while [ $i -le $# ]; do
-		lib=${!i}
-		i=$(($i+1))
+	for lib in $@; do
 		zcat $FQDIR/$base.${lib}_p1.fastq.gz > $base.${lib}_p1.fastq
 		zcat $FQDIR/$base.${lib}_p2.fastq.gz > $base.${lib}_p2.fastq
-		get_sampe $contigs $base.${lib}_p[1,2].fastq
-		ins=`get_insert get_sampe.err`
-		sd=`get_sd get_sampe.err`	
-		err=$(($sd*4/$ins))
+		sampe_sum=`get_sampe $contigs $base.${lib}_p[1,2].fastq`
+		ins=`get_insert sampe_sum`
+		sd=`get_sd sampe_sum`	
+		err=$(($(($sd * 3))/$ins))
 		rdlen=`maxrdlen $base.${lib}_p[1,2].fastq`
 		# Usage: minlink pair1 pair2 contigs insert rdlen
 		MINLINK=`minlink $base.${lib}_p[1,2].fastq $contigs $ins $rdlen`
@@ -103,8 +124,18 @@ function run {
 			zcat $FQDIR/$base.${lib}_up.fastq.gz >> $base.unpaired.fastq
 		fi
 	done
-	SSPACE -a 0.2 -o 10 -l library.txt -s $contigs -u $base.unpaired.fastq -b $base.sspace	
+	# sort the library file so we scaffold with smaller insert libraries first
+	sortlib library.txt
+	SSPACE -a 0.2 -o 3 -l library.txt -s $contigs -u $base.unpaired.fastq -b $base.sspace	
 	mv $outdir $OUTPUT_DIR
-	rm -Rf $outdir
+	#rm -Rf $outdir
 }
+
+
+cat $2 | while read line; do 
+	run $line
+done 
+
+#run dsm3393 01-31-2011.ln5 04-27-2011.ln7 PCRfree.04-27-2011.ln7
+
 
