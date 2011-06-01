@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
 use strict;
 
-die "Usage: assemble_sga_idba_sspace.pl <read 1 fastq> <read 2 fastq> <unpaired fastq> <output base>\n" if(@ARGV<4);
-idba_assemble($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3]);
+die "Usage: andrews_assembly_line.pl <library file> <output base>\n" if(@ARGV!=2);
+idba_assemble($ARGV[0], $ARGV[1]);
 #sga_assemble($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3]);
 
 sub sga_assemble {
@@ -22,35 +22,37 @@ sub sga_assemble {
 
 sub idba_assemble {
 	my $libfile = shift;
+	my $outbase = shift;
 	open(LIB,"<",$libfile);
 	my $lib_count = 0;
 	my %hash = ();
 	my %libs = ();
-	my @lib_files = ();
 	my $maxrdlen = 0;
+	my $files = "";
 	while(<LIB>){
 		if ($_ =~ m/\[LIB\]/){
 			if ($lib_count > 0) {
 				for my $key (sort keys %hash){
-					push(@lib_files,$hash{$key});
+					push(@{$libs{"lib$lib_count"}},$hash{$key});
 				}
-				$libs{"lib$lib_count"} = @lib_files;
-				@lib_files = ();
 			} 
 			$lib_count++;
 		} elsif ($_ =~ m/(p[1,2])=([\w\/\-\.]+)/) { 
-			$hash{$2} - $1;
+			$hash{$1} = $2;
+			$files .= "$2 ";
 			my $len = get_rdlen($2);
 			$maxrdlen = $len if ($len > $maxrdlen);
 		} elsif ($_ =~ m/up=([\w\/\-\.]+)/) { 
 			$hash{"up"} = $1;
+			$files .= "$1 ";
 			my $len = get_rdlen($1);
 			$maxrdlen = $len if ($len > $maxrdlen);
 		}
 	} 
-	my $outbase = shift;
-	# get the read length
-	`sga-static preprocess -q 10 -f 20 -m 30 --phred64 $r1fq $r2fq $rupfq > $outbase.pp.fastq`;
+	for my $key (sort keys %hash){
+		push(@{$libs{"lib$lib_count"}},$hash{$key});
+	}
+	`sga-static preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq`;
 	`sga-static index -d 4000000 -t 4  $outbase.pp.fastq > index.out`;
 	`sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out`;
 	open(FQ,"<$outbase.pp.ec.fa");
@@ -59,29 +61,37 @@ sub idba_assemble {
 		my $seq = <FQ>;
 		my $qhdr = <FQ>;
 		my $qseq = <FQ>;
+		$hdr =~ s/^@/>/g;
 		print FA $hdr.$seq;
 	}
 	close FA;
-	`rm $outbase.pp.*`;
 	`idba -r $outbase.clean.fa -o $outbase --mink 33 --maxk $maxrdlen > idba.out`;
 	`gzip -f $outbase.clean.fa`;
+	`rm $outbase.pp.*`;
 
+	# build library file
 	my @library_file = ();
+	my $lib_files;
+	`rm $outbase.unpaired.fastq` if (-f "$outbase.unpaired.fastq");
 	for my $lib (keys %libs) {
-		my @lib_files = %libs{$lib};
-		if (scalar(@lib_files) >= 2) {
-			my $fq1 = shift @lib_files;
-			my $fq2 = shift @lib_files;
+		print STDERR "$lib\t".join(" ",@{$libs{$lib}})."\n";
+		$lib_files = \@{$libs{$lib}};
+		# if we have at least two files in this library, assume the first two are paired
+		if (scalar(@$lib_files) >= 2) {
+			my $fq1 = shift @$lib_files;
+			my $fq2 = shift @$lib_files;
 			my ($ins_mean, $ins_err) = get_insert($fq1,$fq2,$outbase);
 			push (@library_file, "$lib $fq1 $fq2 $ins_mean $ins_err 0\n");
 		}
-		if (scalar(@lib_files) == 1){
-			my $up = shift @lib_files;
-			`cat $up >> $outbase.unpaired.fastq`
+		# if we have one file left, treat it as unpaired. 
+		if (scalar(@$lib_files) == 1){
+			my $up = shift @$lib_files;
+			`cat $up >> $outbase.unpaired.fastq`;
 		}
 	}
 	open( LIBRARY, ">library.txt" );
-	for my $line (sort {(split(' ',$a))[3] <=>  (split(' ',$b))[3]} @lib_file) {
+	# sort library.txt to so that we scaffold with smaller insert libraries first
+	for my $line (sort {(split(' ',$a))[3] <=>  (split(' ',$b))[3]} @library_file) {
 		print LIBRARY $line;	
 	}
 	close LIBRARY;
@@ -89,8 +99,8 @@ sub idba_assemble {
 	if (-f "$outbase.unpaired.fastq") {
 		$sspace_cmd .= " -u $outbase.unpaired.fastq";
 	}
-	print STDERR "$sspace_cmd\n";
-	`$sspace_cmd`;
+	print STDERR "$sspace_cmd > sspace.out\n";
+	`$sspace_cmd > sspace.out`;
 }
 
 
@@ -110,17 +120,22 @@ sub get_insert($$$) {
 	my $ins_mean = 0;
 	my $ins_error = 0;
 	# bwa will print the estimated insert size, let's capture it then kill the job
-	open(SAMPE, "bwa sampe -P -f $outbase-pe.sam $outbase-contig.fa $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub |");
+	open(SAMPE, "bwa sampe -P -f $outbase-pe.sam $outbase-contig.fa $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub 2>&1 |");
 	while( my $line = <SAMPE> ){
-		if($line =~ /inferred external isize from \d+ pairs: (\d+) \+\/\- (\d+)/){
+		if($line =~ m/^\[infer_isize\] inferred external isize from \d+ pairs: ([\d\.]+) \+\/\- ([\d\.]+)$/){
 			$ins_mean = $1;
 			my $ins_sd = $2;
 			$ins_error = $ins_sd*4 / $ins_mean;
 			close SAMPE;
 			last;
+		} else {
+			print SCRAP $line;
 		}
 	}
 	`rm $r1fq.sub* $r2fq.sub*`;
+	$ins_mean = sprintf("%.0f",$ins_mean);
+	$ins_error = sprintf("%.3f",$ins_error);
+	$ins_error =~ s/0+$//g;
 	return ($ins_mean, $ins_error);
 }
 
