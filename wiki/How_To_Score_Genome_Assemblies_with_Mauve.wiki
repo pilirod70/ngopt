@@ -1,0 +1,28 @@
+#summary A brief tutorial describing how to score genome assemblies using the Mauve system
+
+= Introduction =
+
+Most assembly algorithms provide a large variety of parameters that can be adjusted to control the assembly process.  It may be necessary to tune these parameters to fit details of the sequencing strategy and genomes being assembled.  This document will illustrate how one can compare assemblies done by different algorithms or different parameter settings to select an ideal assembly strategy.  We assume that a high quality reference genome is available, and that sequence reads for that reference genome are available, and also that the reference genome is similar enough to the genomes being targeted for assembly that parameters which work well on the reference will also work well on the other genomes.
+
+
+= Software requirements =
+
+Please obtain a copy of Mauve from here:
+http://gel.ahabs.wisc.edu/mauve/snapshots/
+
+Then obtain a copy of the Mauve assembly metrics scripts from here:
+http://ngopt.googlecode.com/svn/trunk/assemblathon
+
+Alternatively these can be checked out using subversion:
+svn checkout http://ngopt.googlecode.com/svn/trunk/assemblathon assemblathon-mauve
+
+
+= Data requirements = 
+
+  * A reference genome, either in FastA or GenBank format (preferred).  For the tutorial we will use Haloferax_volcanii_DS2.gbk
+
+  * Some genome assemblies.  These can also be in FastA or GenBank formats.  For the tutorial we will use assembly1.fasta, assembly2.fasta, and assembly3.fasta
+
+
+= Computing Mauve Assembly Metrics =
+
