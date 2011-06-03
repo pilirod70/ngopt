@@ -14,7 +14,10 @@ Then obtain a copy of the Mauve assembly metrics scripts from here:
 http://ngopt.googlecode.com/svn/trunk/assemblathon
 
 Alternatively these can be checked out using subversion:
+
+{{{
 svn checkout http://ngopt.googlecode.com/svn/trunk/assemblathon assemblathon-mauve
+}}}
 
 
 = Data requirements = 
@@ -26,3 +29,25 @@ svn checkout http://ngopt.googlecode.com/svn/trunk/assemblathon assemblathon-mau
 
 = Computing Mauve Assembly Metrics =
 
+The following instructions assume you have downloaded and unpacked the Mauve software into a directory called mauve_snapshot_directory and have also downloaded the test data files Haloferax_volcanii_DS2.gbk, assembly1.fasta, assembly2.fasta, and assembly3.fasta into that directory.  If these files exist in different locations it will be necessary to adjust the paths accordingly in the following commands.
+
+  # Use Mauve to score each assembly
+{{{
+cd mauve_snapshot_directory
+
+java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly1.fasta -reorder assembly1_reorder -outputDir assembly1_scores
+
+java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly2.fasta -reorder assembly2_reorder -outputDir assembly2_scores
+
+java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly3.fasta -reorder assembly3_reorder -outputDir assembly3_scores
+}}} 
+
+  # Generate summary plots comparing the assemblies
+{{{
+# merge the assembly summaries to a single summary.txt
+head -n 1 assembly1_scores/summary.txt > summary.txt
+tail -n 1 assembly*_scores/summary.txt >> summary.txt
+
+# make plots
+assemblathonMauvePlots.R assembly*_scores/alignment
+}}}
