@@ -41,7 +41,6 @@ java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_vol
 
 java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly3.fasta -reorder assembly3_reorder -outputDir assembly3_scores
 }}} 
-
   # Generate summary plots comparing the assemblies
 {{{
 # merge the assembly summaries to a single summary.txt
@@ -51,3 +50,4 @@ tail -n 1 assembly*_scores/summary.txt >> summary.txt
 # make plots
 assemblathonMauvePlots.R assembly*_scores/alignment
 }}}
+  # Visualize PDFs of accuracy plots.  A large number of PDFs will be generated in the current directory.  These plots can be used to decide on the assembly strategy that best meets your project's objectives.  For example, you may prefer the assembly with the highest fraction of coding regions reconstructed, or the assembly with the fewest structural errors, or the assembly that captures the true genomic content most precisely.
