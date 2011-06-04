@@ -1,13 +1,11 @@
 #!/bin/bash
 ##
 #$ -l mem_free=5G
-#$ -pe threaded 4
+#$ -pe threaded 3
 #$ -V
 #$ -cwd
 #$ -S /bin/bash
-#$ -m e
-#$ -M andrew.j.tritt@gmail
-# I see that andrew tritt wants to get email every time someone runs this script :)
+
 # Authors: Andrew Tritt and Aaron Darling
 # (c) 2011, Licensed under the GPL
 base=$1
@@ -23,7 +21,7 @@ conf="/share/eisen-d6/halophile_illumina_data/assembly_line/lib_files/$base.libs
 DEST="/share/eisen-d2/koadman/haloasm/"
 
 # nothing below this line should need to be changed
-stdoe="$PWD/$JOB_NAME.{e,o,pe,po}$JOB_ID"
+stdoe="$PWD/$JOB_NAME.*$JOB_ID"
 pipeline="andrews_assembly_line.pl"
 LOCKFILE="$DEST/liunjlkjadftydsfbg908"
 
@@ -37,9 +35,9 @@ elif [ -d "/state/partition1/" ]; then
 else
 	OUT="/share/eisen-d6/$USER"
 fi
-if [ ! -d $OUT ]; then
-	mkdir -p $OUT
-fi
+
+mkdir -p $DEST/$base
+mkdir -p $OUT
 mkdir $OUT/$base.$JOB_ID
 cd $OUT/$base.$JOB_ID
 # check to make sure no other process is trying to read a fastq
@@ -55,10 +53,10 @@ cp $conf .
 # unlock it for others
 rm $LOCKFILE
 
-$pipeline $conf $base > pipeline.out 2> pipeline.err
+$pipeline $conf $base > $DEST/$base/stdout.$JOB_ID 2> $DEST/$base/stderr.$JOB_ID
 
 rm -rf *.fastq
 
-mv $OUT/$base.$JOB_ID $DEST/$base
+mv $OUT/$base.$JOB_ID/* $DEST/$base/
 mv $stdoe $DEST/$base/
 
