@@ -47,6 +47,8 @@ sub idba_assemble {
 			$files .= "$1 ";
 			my $len = get_rdlen($1);
 			$maxrdlen = $len if ($len > $maxrdlen);
+		} elsif ($_ =~ m/ins=([\w\/\-\.]+)/) { 
+			$hash{"ins"} = $1;
 		}
 	} 
 	for my $key (sort keys %hash){
@@ -65,22 +67,29 @@ sub idba_assemble {
 		print FA $hdr.$seq;
 	}
 	close FA;
-	`idba -r $outbase.clean.fa -o $outbase --mink 33 --maxk $maxrdlen > idba.out`;
+	my $idba_cmd = "idba -r $outbase.clean.fa -o $outbase --mink 33 --maxk $maxrdlen";
+	print STDERR $idba_cmd."\n";
+	`$idba_cmd > idba.out`;
 	`gzip -f $outbase.clean.fa`;
-	`rm $outbase.pp.*`;
+	`rm $outbase.pp.* $outbase.kmer $outbase.graph`;
 
 	# build library file
 	my @library_file = ();
 	my $lib_files;
 	`rm $outbase.unpaired.fastq` if (-f "$outbase.unpaired.fastq");
 	for my $lib (keys %libs) {
-		print STDERR "$lib\t".join(" ",@{$libs{$lib}})."\n";
+	#	print STDERR "$lib\t".join(" ",@{$libs{$lib}})."\n";
 		$lib_files = \@{$libs{$lib}};
 		# if we have at least two files in this library, assume the first two are paired
 		if (scalar(@$lib_files) >= 2) {
+			my $ins = shift @$lib_files;
 			my $fq1 = shift @$lib_files;
 			my $fq2 = shift @$lib_files;
-			my ($ins_mean, $ins_err) = get_insert($fq1,$fq2,$outbase);
+			my ($ins_mean, $ins_err) = get_insert($fq1,$fq2,$outbase,$lib);
+			if ($ins_mean == -1) {
+				$ins_mean = $ins;
+				$ins_err = 0.7;
+			}
 			push (@library_file, "$lib $fq1 $fq2 $ins_mean $ins_err 0\n");
 		}
 		# if we have one file left, treat it as unpaired. 
@@ -95,47 +104,64 @@ sub idba_assemble {
 		print LIBRARY $line;	
 	}
 	close LIBRARY;
-	my $sspace_cmd = "SSPACE_v1-1.pl -k 10 -a 0.2 -o 10 -l library.txt -s $outbase-contig.fa -b $outbase.sspace";
+	my $sspace_cmd = "SSPACE_v1-1.pl -x 1 -k 10 -a 0.2 -o 10 -l library.txt -s $outbase-contig.fa -b $outbase.sspace";
 	if (-f "$outbase.unpaired.fastq") {
+		print STDERR "Running SSPACE with unpaired reads\n";
 		$sspace_cmd .= " -u $outbase.unpaired.fastq";
 	}
-	print STDERR "$sspace_cmd > sspace.out\n";
+	print STDERR "$sspace_cmd\n";
 	`$sspace_cmd > sspace.out`;
+	`rm -rf bowtieoutput/ reads/`
 }
 
 
-sub get_insert($$$) {
+sub get_insert($$$$) {
 	my $r1fq = shift;
 	my $r2fq = shift;
 	my $outbase = shift;
+	my $lib = shift;
 	# estimate the library insert size with bwa
 	# just use a subsample of 40k reads
 	`bwa index -a is $outbase-contig.fa`;
-	`head -n 20000 $r1fq > $r1fq.sub`;
-	`tail -n 20000 $r1fq >> $r1fq.sub`;
-	`head -n 20000 $r2fq > $r2fq.sub`;
-	`tail -n 20000 $r2fq >> $r2fq.sub`;
+	`head -n 40000 $r1fq > $r1fq.sub`;
+	`tail -n 40000 $r1fq >> $r1fq.sub`;
+	`head -n 40000 $r2fq > $r2fq.sub`;
+	`tail -n 40000 $r2fq >> $r2fq.sub`;
 	`bwa aln $outbase-contig.fa $r1fq.sub > $r1fq.sub.sai`;
 	`bwa aln $outbase-contig.fa $r2fq.sub > $r2fq.sub.sai`;
+	# bwa will print the estimated insert size, let's capture it then kill the job
+	open(SAMPE, "bwa sampe -P -f $outbase-pe.sam $outbase-contig.fa $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub 2>&1 | tee $outbase.$lib.sampe.out |");
 	my $ins_mean = 0;
 	my $ins_error = 0;
-	# bwa will print the estimated insert size, let's capture it then kill the job
-	open(SAMPE, "bwa sampe -P -f $outbase-pe.sam $outbase-contig.fa $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub 2>&1 |");
+	my $min;
+	my $max;
+	my $ins_sd;
+	my $ins_n;
 	while( my $line = <SAMPE> ){
-		if($line =~ m/^\[infer_isize\] inferred external isize from \d+ pairs: ([\d\.]+) \+\/\- ([\d\.]+)$/){
-			$ins_mean = $1;
-			my $ins_sd = $2;
-			$ins_error = $ins_sd*4 / $ins_mean;
+		if($line =~ m/^\[infer_isize\] inferred external isize from (\d+) pairs: ([\d\.]+) \+\/\- ([\d\.]+)$/){
+			$ins_n = $1;
+			$ins_mean = $2;
+			$ins_sd = $3;
 			close SAMPE;
 			last;
-		} else {
-			print SCRAP $line;
+		} elsif ($line =~ m/^\[infer_isize\] low and high boundaries: (\d+) and (\d+) for estimating avg and std$/){
+			$min = $1;
+			$max = $2;
 		}
 	}
+#	$min = ($ins_mean - $min)
+#	$max = ($max - $ins_mean);
+#	$ins_error = (($min,$max)[$min < $max])/$ins_mean;
 	`rm $r1fq.sub* $r2fq.sub*`;
-	$ins_mean = sprintf("%.0f",$ins_mean);
-	$ins_error = sprintf("%.3f",$ins_error);
-	$ins_error =~ s/0+$//g;
+	if ($ins_n > 20000) {		
+		$ins_error = $ins_sd*6 / $ins_mean;
+		$ins_mean = sprintf("%.0f",$ins_mean);
+		$ins_error = sprintf("%.3f",$ins_error);
+		$ins_error =~ s/0+$//g;
+	} else {
+		$ins_mean = -1;
+		$ins_error = 0;
+	}
 	return ($ins_mean, $ins_error);
 }
 
