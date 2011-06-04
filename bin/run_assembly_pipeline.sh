@@ -1,7 +1,5 @@
 #!/bin/bash
 ##
-##  Usage: run_assembly_pipeline.sh <output_directory> <organism_lib_file>
-##
 #$ -l mem_free=5G
 #$ -pe threaded 4
 #$ -V
@@ -9,133 +7,58 @@
 #$ -S /bin/bash
 #$ -m e
 #$ -M andrew.j.tritt@gmail
-echo $JOB_ID `hostname`
-echo $JOB_NAME $@
+# I see that andrew tritt wants to get email every time someone runs this script :)
+# Authors: Andrew Tritt and Aaron Darling
+# (c) 2011, Licensed under the GPL
+base=$1
+
+#
+# shared storage paths that may need to be changed
+# 
+# repository of fastq files
+fq="/share/eisen-d6/halophile_illumina_data/allfastq/$base"
+# location of library description files
+conf="/share/eisen-d6/halophile_illumina_data/assembly_line/lib_files/$base.libs"
+# destination path for assemblies
+DEST="/share/eisen-d2/koadman/haloasm/"
+
+# nothing below this line should need to be changed
+stdoe="$PWD/$JOB_NAME.{e,o,pe,po}$JOB_ID"
+pipeline="andrews_assembly_line.pl"
+LOCKFILE="$DEST/liunjlkjadftydsfbg908"
+
+echo $JOB_ID `hostname` $JOB_NAME $@
+# create a temporary storage dir on the compute node
 OUT=""
 if [ -d "/data/scratch" ]; then
-	OUT="/data/scratch/atritt"
+	OUT="/data/scratch/$USER"
 elif [ -d "/state/partition1/" ]; then
-	OUT="/state/partition1/atritt"
+	OUT="/state/partition1/$USER"
 else
-	OUT="/share/eisen-d4/atritt"
+	OUT="/share/eisen-d6/$USER"
 fi
 if [ ! -d $OUT ]; then
 	mkdir -p $OUT
 fi
+mkdir $OUT/$base.$JOB_ID
+cd $OUT/$base.$JOB_ID
+# check to make sure no other process is trying to read a fastq
+# lock 
+while [ ! `mktemp -q $LOCKFILE` ]; do
+	sleep 10s	
+done
+echo "Fetching data"
+for gz in $fq*.gz; do
+	zcat $gz > `basename $gz .gz`
+done
+cp $conf .
+# unlock it for others
+rm $LOCKFILE
 
-if [ $# != 2 ]; then
-	echo "Usage: run_assembly_pipeline.sh <output_directory> <organism_lib_file>" 
-	exit
-fi
+$pipeline $conf $base > pipeline.out 2> pipeline.err
 
-OUTPUT_DIR=$1
-FQDIR="/share/eisen-d6/halophile_illumina_data/allfastq"
+rm -rf *.fastq
 
-function get_insert {
-	echo `grep insert\ size $1 | sed s/^.*\:\ //g | sed s/\ \(.*$//g`
-}
-
-function get_sd {
-	echo `grep insert\ size $1 | sed s/^.*\:\ [0-9][0-9]*\ \(//g | sed s/\ sigma\)//g`
-}
-
-# I expect the path to contigs to end with -contig.fa (IDBA naming convention)
-function get_sampe {
-	ctgs=$1
-	prefix=`basename $ctgs -contig.fa`
-	head -n 20000 $1 > fq1
-	tail -n 20000 $1 >> fq1
-	head -n 20000 $2 > fq2
-	tail -n 20000 $2 >> fq2
-	bwa index -a is -p $prefix >> get_sampe.out 2>> get_sampe.err 
-	bwa aln $prefix fq1 > sai1 2>> get_sampe.err 
-	bwa aln $prefix fq2 > sai2 2>> get_sampe.err 
-	bwa sampe sai1 sai2 fq1 fq2 > sam 2>> get_sampe.err 
-	rm sai1 sai2 fq1 fq2 $prefix* get_sampe.out sam 
-	echo get_sampe.err 
-}
-
-function sgaec {
-	outbase=$1
-	shift 1
-	sga-static preprocess -q 10 -f 20 -m 30 --phred64 $@ > $outbase.pp.fastq
-	sga-static index -d 4000000 -t 4  $outbase.pp.fastq
-	sga-static correct -k 31 -i 10 -t 4 -o $outbase.sgaec.fasta $outbase.pp.fastq
-	rm $outbase.pp.*
-}
-
-function maxrdlen {
-	for i in $@; do
-		head -n 100000 $i >> tmp.maxrdlen
-		tail -n 100000 $i >> tmp.maxrdlen
-	done
-	ret=`cat tmp.maxrdlen | egrep -v '(^@)|^\+|^>' | awk ' { if ( length > x ) { x = length } }END{ print x }'`	
-	rm tmp.maxrdlen
-	echo $ret
-}
-
-# Usage: minlink pair1 pair2 contigs insert rdlen
-function minlink {
-	numRdBases=`cat $1 $2 | egrep -v '^@|^\+|^>' | tr -d '\n' | wc -m`
-	genomeLen=`cat $3 | egrep -v '^>' | tr -d '\n' | wc -m`
-	insert=$4
-	rdlen=$5
-	Ek=$(($(($numRdBases * $insert)) / $((2 * $genomeLen * $rdlen))))
-	f=$(($(($((1 - 1/$Ek))*2))+8))
-	echo $f
-}
-
-function sortlib {
-	cut -f4 -d ' ' $1 > tmp.ins
-	paste -d ' ' tmp.ins $1 | sort -n | cut -f2,3,4,5,6,7,8 -d ' ' > tmp.lib
-	mv tmp.lib $1
-	rm tmp.ins
-}
-
-function run {
-	base=$1
-	shift 1
-	outdir=$OUT/$base
-	if [ -d $outdir ]; then
-		rm -rf $outdir
-	fi 
-	mkdir $outdir
-	cd $outdir
-	echo "==== $base ===="
-	zcat $FQDIR/$base.*.fastq.gz > $base.fastq
-	sgaec $base $base.fastq
-	MAXK=`maxrdlen $base.sgaec.fasta`
-	idba --read $base.sgaec.fasta --output $base.idba --mink 35 --maxk $MAXK 
-	contigs="$base.idba-contig.fa"
-	gzip $base.sgaec.fasta
-	for lib in $@; do
-		zcat $FQDIR/$base.${lib}_p1.fastq.gz > $base.${lib}_p1.fastq
-		zcat $FQDIR/$base.${lib}_p2.fastq.gz > $base.${lib}_p2.fastq
-		sampe_sum=`get_sampe $contigs $base.${lib}_p[1,2].fastq`
-		ins=`get_insert sampe_sum`
-		sd=`get_sd sampe_sum`	
-		err=$(($(($sd * 3))/$ins))
-		rdlen=`maxrdlen $base.${lib}_p[1,2].fastq`
-		# Usage: minlink pair1 pair2 contigs insert rdlen
-		MINLINK=`minlink $base.${lib}_p[1,2].fastq $contigs $ins $rdlen`
-		# libname pair1 pair1 insert uncertainty rc?  
-		echo "$lib $base.${lib}_p1.fastq $base.${lib}_p2.fastq $ins $err 0 $MINLINK" >> library.txt	
-		if [ -f $FQDIR/$base.${lib}_up.fastq.gz ]; then
-			zcat $FQDIR/$base.${lib}_up.fastq.gz >> $base.unpaired.fastq
-		fi
-	done
-	# sort the library file so we scaffold with smaller insert libraries first
-	sortlib library.txt
-	SSPACE -a 0.2 -o 3 -l library.txt -s $contigs -u $base.unpaired.fastq -b $base.sspace	
-	mv $outdir $OUTPUT_DIR
-	#rm -Rf $outdir
-}
-
-
-cat $2 | while read line; do 
-	run $line
-done 
-
-#run dsm3393 01-31-2011.ln5 04-27-2011.ln7 PCRfree.04-27-2011.ln7
-
+mv $OUT/$base.$JOB_ID $DEST/$base
+mv $stdoe $DEST/$base/
 
