@@ -54,9 +54,17 @@ sub idba_assemble {
 	for my $key (sort keys %hash){
 		push(@{$libs{"lib$lib_count"}},$hash{$key});
 	}
-	`sga-static preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq`;
-	`sga-static index -d 4000000 -t 4  $outbase.pp.fastq > index.out`;
-	`sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out`;
+	system("sga-static preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq");
+	die "Error preprocessing reads with SGA" if( $? != 0 );
+	my $sga_ind = "";
+	my $sga_ind_kb = 4000000;
+	do{
+		$sga_ind = `sga-static index -d $sga_ind_kb -t 4  $outbase.pp.fastq > index.out 2>&1`;
+		$sga_ind_kb = int($sga_ind_kb/2);
+	}while($sga_ind =~ /bad_alloc/);
+	die "Error indexingng reads with SGA" if( $? != 0 );
+	system("sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out");
+	die "Error correcting reads with SGA" if( $? != 0 );
 	open(FQ,"<$outbase.pp.ec.fa");
 	open(FA,">$outbase.clean.fa");
 	while(my $hdr = <FQ>) {
@@ -76,6 +84,7 @@ sub idba_assemble {
 	# build library file
 	my @library_file = ();
 	my $lib_files;
+	my $min_insert_size = -1;
 	`rm $outbase.unpaired.fastq` if (-f "$outbase.unpaired.fastq");
 	for my $lib (keys %libs) {
 	#	print STDERR "$lib\t".join(" ",@{$libs{$lib}})."\n";
@@ -90,6 +99,7 @@ sub idba_assemble {
 				$ins_mean = $ins;
 				$ins_err = 0.7;
 			}
+			$min_insert_size = $ins_mean if($min_insert_size == -1 || $min_insert_size > $ins_mean);
 			push (@library_file, "$lib $fq1 $fq2 $ins_mean $ins_err 0\n");
 		}
 		# if we have one file left, treat it as unpaired. 
@@ -104,7 +114,10 @@ sub idba_assemble {
 		print LIBRARY $line;	
 	}
 	close LIBRARY;
-	my $sspace_cmd = "SSPACE_v1-1.pl -x 1 -k 10 -a 0.2 -o 10 -l library.txt -s $outbase-contig.fa -b $outbase.sspace";
+	my $genome_size = get_genome_size("$outbase-contig.fa");
+	my $sspace_m = int(log2($genome_size)+3.99);
+	my $sspace_n = int(log2($min_insert_size)*1.25+.99);
+	my $sspace_cmd = "SSPACE_v1-1.pl -m $sspace_m -n $sspace_n -x 1 -k 6 -a 0.2 -o 1 -l library.txt -s $outbase-contig.fa -b $outbase.sspace";
 	if (-f "$outbase.unpaired.fastq") {
 		print STDERR "Running SSPACE with unpaired reads\n";
 		$sspace_cmd .= " -u $outbase.unpaired.fastq";
@@ -114,6 +127,22 @@ sub idba_assemble {
 	`rm -rf bowtieoutput/ reads/`
 }
 
+sub log2 {
+	my $n = shift;
+	return (log($n)/ log(2));
+}
+
+sub get_genome_size {
+	my $fasta = shift;
+	open( FASTA, $fasta );
+	my $len = 0;
+	while( my $line = <FASTA> ){
+		next if $line =~ /^>/;
+		chomp $line;
+		$len += length($line);
+	}
+	return $len;
+}
 
 sub get_insert($$$$) {
 	my $r1fq = shift;
