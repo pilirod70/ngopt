@@ -19,8 +19,8 @@ fq2="/share/eisen-d2/koadman/haloasm/allfastq/$base"
 # location of library description files
 conf="/share/eisen-d2/koadman/haloasm/lib_files/$base.libs"
 # destination path for assemblies
-DEST="/share/eisen-d2/koadman/haloasm_aggressive/"
-
+#DEST="/share/eisen-d2/koadman/haloasm_aggressive/"
+DEST=$2
 # nothing below this line should need to be changed
 stdoe="$PWD/$JOB_NAME.*$JOB_ID"
 pipeline="aaa_assembly_line.pl"
@@ -37,7 +37,9 @@ else
 	OUT="/share/eisen-d6/$USER"
 fi
 
-mkdir -p $DEST/$base
+if [ ! -d $DEST/$base ]; then
+	mkdir -p $DEST/$base
+fi
 mkdir -p $OUT
 mkdir $OUT/$base.$JOB_ID
 cd $OUT/$base.$JOB_ID
@@ -47,12 +49,20 @@ while [ ! `mktemp -q $LOCKFILE` ]; do
 	sleep 10s	
 done
 echo "Fetching data"
-for gz in $fq*.gz; do
-	zcat $gz > `basename $gz .gz`
-done
-for gz in $fq2*.gz; do
-	zcat $gz > `basename $gz .gz`
-done
+n=`ls $fq* 2> /dev/null | wc -l`
+if [ "$n" -ne "0" ]; then
+	for gz in $fq*.gz; do
+		zcat $gz > `basename $gz .gz`
+	done
+fi
+
+n=`ls $fq2* 2> /dev/null | wc -l`
+if [ "$n" -ne "0" ]; then
+	for gz in $fq2*.gz; do
+		echo "basename $gz .gz  ==" `basename $gz .gz`
+		zcat $gz > `basename $gz .gz`
+	done
+fi
 cp $conf .
 # unlock it for others
 rm $LOCKFILE
