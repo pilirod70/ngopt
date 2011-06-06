@@ -2,8 +2,14 @@
 use strict;
 
 die "Usage: andrews_assembly_line.pl <library file> <output base>\n" if(@ARGV!=2);
-idba_assemble($ARGV[0], $ARGV[1]);
-#sga_assemble($ARGV[0], $ARGV[1], $ARGV[2], $ARGV[3]);
+my $libfile = $ARGV[0];
+my $outbase = $ARGV[1];
+
+my %libs = ();
+sga_clean($libfile, $outbase, \%libs);
+my $maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
+idba_assemble($outbase, $maxrdlen);
+scaffold_sspace($libfile, $outbase, \%libs);
 
 sub sga_assemble {
 	my $r1fq = shift;
@@ -20,13 +26,13 @@ sub sga_assemble {
 	`sga-static assemble -x 10 -b 5 -r 20 $outbase.pp.ec.qcpass.rmdup.asqg.gz`;
 }
 
-sub idba_assemble {
+sub sga_clean {
 	my $libfile = shift;
 	my $outbase = shift;
+	my $libs = shift;
 	open(LIB,"<",$libfile);
 	my $lib_count = 0;
 	my %hash = ();
-	my %libs = ();
 	my $maxrdlen = 0;
 	my $files = "";
 	while(<LIB>){
@@ -61,10 +67,18 @@ sub idba_assemble {
 	do{
 		$sga_ind = `sga-static index -d $sga_ind_kb -t 4  $outbase.pp.fastq > index.out 2>&1`;
 		$sga_ind_kb = int($sga_ind_kb/2);
-	}while($sga_ind =~ /bad_alloc/);
-	die "Error indexingng reads with SGA" if( $? != 0 );
+	}while($sga_ind =~ /bad_alloc/ || $? != 0);
+	system("rm -f core*");
+	die "Error indexing reads with SGA" if( $? != 0 );
 	system("sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out");
 	die "Error correcting reads with SGA" if( $? != 0 );
+}
+
+
+sub fastq_to_fasta {
+	my $fastq = shift;
+	my $fasta = shift;
+	my $maxrdlen = 0;
 	open(FQ,"<$outbase.pp.ec.fa");
 	open(FA,">$outbase.clean.fa");
 	while(my $hdr = <FQ>) {
@@ -73,15 +87,29 @@ sub idba_assemble {
 		my $qseq = <FQ>;
 		$hdr =~ s/^@/>/g;
 		print FA $hdr.$seq;
+		$maxrdlen = length($seq) if length($seq) > $maxrdlen;
 	}
 	close FA;
-	my $idba_cmd = "idba -r $outbase.clean.fa -o $outbase --mink 33 --maxk $maxrdlen";
+	return $maxrdlen - 2;	# -1 removes newline char
+}
+
+# expects a file called $outbase.clean.fa in the current working directory
+sub idba_assemble {
+	my $outbase = shift;
+	my $maxrdlen = shift;
+	my $idba_cmd = "idba -r $outbase.clean.fa -o $outbase --mink 29 --maxk $maxrdlen";
 	print STDERR $idba_cmd."\n";
 	`$idba_cmd > idba.out`;
 	`gzip -f $outbase.clean.fa`;
 	`rm $outbase.pp.* $outbase.kmer $outbase.graph`;
+}
 
+
+sub scaffold_sspace {
+	my $libfile = shift;
+	my $outbase = shift;
 	# build library file
+	my $libs = shift;
 	my @library_file = ();
 	my $lib_files;
 	my $min_insert_size = -1;
@@ -100,7 +128,9 @@ sub idba_assemble {
 				$ins_err = 0.7;
 			}
 			$min_insert_size = $ins_mean if($min_insert_size == -1 || $min_insert_size > $ins_mean);
-			push (@library_file, "$lib $fq1 $fq2 $ins_mean $ins_err 0\n");
+			my $outtie = 0;
+			$outtie = 1 if $ins_mean > 1500;	# assume that anything > 1500 used mate-pairing
+			push (@library_file, "$lib $fq1 $fq2 $ins_mean $ins_err $outtie\n");
 		}
 		# if we have one file left, treat it as unpaired. 
 		if (scalar(@$lib_files) == 1){
@@ -108,22 +138,75 @@ sub idba_assemble {
 			`cat $up >> $outbase.unpaired.fastq`;
 		}
 	}
-	open( LIBRARY, ">library.txt" );
+	my $genome_size = get_genome_size("$outbase-contig.fa");
+	print STDERR "Total contig length $genome_size\n";
+	my $libraryI=1;
+	open( LIBRARY, ">library_$libraryI.txt" );
+	my $prev_ins = -1;
+	my $prev_reads = "";
 	# sort library.txt to so that we scaffold with smaller insert libraries first
 	for my $line (sort {(split(' ',$a))[3] <=>  (split(' ',$b))[3]} @library_file) {
+		# if we've hit a substantially different insert size, do a separate
+		# round of scaffolding
+		my $cur_ins = (split(' ',$line))[3];
+		if($prev_ins > 0 && ($prev_ins * 2) < $cur_ins){
+			close LIBRARY;
+			my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
+			print STDERR "Insert $prev_ins, expected links $exp_link\n";
+			run_sspace($genome_size, $prev_ins, $exp_link, $libraryI);
+			$libraryI++;
+			open( LIBRARY, ">library_$libraryI.txt" );
+		}
+		$prev_reads = (split(' ',$line))[1];
+		$prev_ins = $cur_ins;
 		print LIBRARY $line;	
 	}
 	close LIBRARY;
-	my $genome_size = get_genome_size("$outbase-contig.fa");
+	my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
+	print STDERR "Insert $prev_ins, expected links $exp_link\n";
+	run_sspace($genome_size, $prev_ins, $exp_link, $libraryI);
+	`mv $outbase.lib$libraryI.sspace.final.scaffolds.fasta $outbase.sspace.final.scaffolds.fasta`;
+}
+
+# calculate the expected number of read pairs to span a point in the assembly
+sub calc_explinks {
+	my $genome_size = shift;
+	my $ins_len = shift;
+	my $read_file = shift;
+	my $read_count = 0;
+	my $maxrdlen = -1;
+	open( READFILE, $read_file );
+	while( my $line = <READFILE> ){
+		$read_count++;
+		$maxrdlen = length($line) if $read_count % 4 == 2 && $maxrdlen < length($line);
+	}
+	$read_count /= 4;
+	my $cov = $maxrdlen * $read_count / $genome_size;
+	print STDERR "Lib $read_file coverage $cov\n";
+	my $exp_link = $cov * $ins_len / $maxrdlen;
+	return $exp_link;
+}
+
+sub run_sspace {
+	my $genome_size = shift;
+	my $insert_size = shift;
+	my $exp_links = shift;
+	my $libraryI = shift;
 	my $sspace_m = int(log2($genome_size)+3.99);
-	my $sspace_n = int(log2($min_insert_size)*1.25+.99);
-	my $sspace_cmd = "SSPACE_v1-1.pl -m $sspace_m -n $sspace_n -x 1 -k 6 -a 0.2 -o 1 -l library.txt -s $outbase-contig.fa -b $outbase.sspace";
+	my $sspace_n = int(log2($insert_size)*1.25+.99);
+	my $sspace_k = int(log($exp_links)/log(1.4)-9.5);
+	# require at least 2 links to preclude chimeras
+	$sspace_k = $sspace_k < 2 ? 2 : $sspace_k;	
+#	$sspace_k = 5;	# gives best results on mediterranei
+	my $input_fa = "$outbase-contig.fa";
+	$input_fa = "$outbase.lib".($libraryI-1).".sspace.final.scaffolds.fasta" if $libraryI>1;
+	my $sspace_cmd = "SSPACE_v1-1.pl -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 -l library_$libraryI.txt -s $input_fa -b $outbase.lib$libraryI.sspace";
 	if (-f "$outbase.unpaired.fastq") {
 		print STDERR "Running SSPACE with unpaired reads\n";
 		$sspace_cmd .= " -u $outbase.unpaired.fastq";
 	}
 	print STDERR "$sspace_cmd\n";
-	`$sspace_cmd > sspace.out`;
+	`$sspace_cmd > sspace_lib$libraryI.out`;
 	`rm -rf bowtieoutput/ reads/`
 }
 
