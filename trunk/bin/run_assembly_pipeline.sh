@@ -15,14 +15,15 @@ base=$1
 # 
 # repository of fastq files
 fq="/share/eisen-d6/halophile_illumina_data/allfastq/$base"
+fq2="/share/eisen-d2/koadman/haloasm/allfastq/$base"
 # location of library description files
-conf="/share/eisen-d6/halophile_illumina_data/assembly_line/lib_files/$base.libs"
+conf="/share/eisen-d2/koadman/haloasm/lib_files/$base.libs"
 # destination path for assemblies
-DEST="/share/eisen-d2/koadman/haloasm/"
+DEST="/share/eisen-d2/koadman/haloasm_aggressive/"
 
 # nothing below this line should need to be changed
 stdoe="$PWD/$JOB_NAME.*$JOB_ID"
-pipeline="andrews_assembly_line.pl"
+pipeline="aaa_assembly_line.pl"
 LOCKFILE="$DEST/liunjlkjadftydsfbg908"
 
 echo $JOB_ID `hostname` $JOB_NAME $@
@@ -47,6 +48,9 @@ while [ ! `mktemp -q $LOCKFILE` ]; do
 done
 echo "Fetching data"
 for gz in $fq*.gz; do
+	zcat $gz > `basename $gz .gz`
+done
+for gz in $fq2*.gz; do
 	zcat $gz > `basename $gz .gz`
 done
 cp $conf .
