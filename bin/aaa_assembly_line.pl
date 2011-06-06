@@ -61,7 +61,7 @@ sub sga_clean {
 		push(@{$libs{"lib$lib_count"}},$hash{$key});
 	}
 	system("sga-static preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq");
-	die "Error preprocessing reads with SGA" if( $? != 0 );
+	die "Error preprocessing reads with SGA\n" if( $? != 0 );
 	my $sga_ind = "";
 	my $sga_ind_kb = 4000000;
 	do{
@@ -69,9 +69,9 @@ sub sga_clean {
 		$sga_ind_kb = int($sga_ind_kb/2);
 	}while($sga_ind =~ /bad_alloc/ || $? != 0);
 	system("rm -f core*");
-	die "Error indexing reads with SGA" if( $? != 0 );
+	die "Error indexing reads with SGA\n" if( $? != 0 );
 	system("sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out");
-	die "Error correcting reads with SGA" if( $? != 0 );
+	die "Error correcting reads with SGA\n" if( $? != 0 );
 }
 
 
@@ -100,6 +100,7 @@ sub idba_assemble {
 	my $idba_cmd = "idba -r $outbase.clean.fa -o $outbase --mink 29 --maxk $maxrdlen";
 	print STDERR $idba_cmd."\n";
 	`$idba_cmd > idba.out`;
+	die "Error building contigs with IDBA\n" if ($? != 0);
 	`gzip -f $outbase.clean.fa`;
 	`rm $outbase.pp.* $outbase.kmer $outbase.graph`;
 }
