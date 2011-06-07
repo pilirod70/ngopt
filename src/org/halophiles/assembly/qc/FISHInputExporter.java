@@ -7,7 +7,6 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
@@ -45,7 +44,7 @@ public class FISHInputExporter {
 				reads.put(tmp.hdr, tmp);
 			}
 			double[] ins = estimateInsertSize(reads);
-			filterDiagReads(reads,ins,3);
+			//filterDiagReads(reads,ins,3);
 			export(contigs,reads,outdir);
 			
 		} catch(Exception e){
@@ -119,13 +118,11 @@ public class FISHInputExporter {
 					else return 0;
 				}	
 			});
-			for (Double d: ar){
+			
+			for (Double d: ar)
 				ctgMapOut.println("c"+contigs.get(ctg).getId()+"p"+Math.abs(d.intValue())+"\t"+(d < 0 ? -1 : 1));
-//				ctgMapOut.println("c"+contigs.get(ctg).getId()+"p"+Math.abs(d.intValue())+"\t"+1);
-			}
+			
 			ctgMapOut.close();
-			//String dir = ctgMapFile.getParentFile().getName();
-			//ctrlOut.println(contigs.get(ctg).getId()+"\t"/*+dir+"/"*/+ctgMapFile.getName());
 			maps.put(contigs.get(ctg).getId(),ctgMapFile.getParentFile().getName()+"/"+ctgMapFile.getName());
 		}
 		
@@ -135,9 +132,7 @@ public class FISHInputExporter {
 			ctrlOut.println(tmpInt+"\t"+maps.get(tmpInt));
 		}
 		
-//		int rdlen = sfp.getReadLength();
 		it = reads.keySet().iterator();
-		HashSet<ReadPair> conflicts = new HashSet<ReadPair>();
 		PrintStreamPair matchOut = null;
 		ctrlOut.println("-matches");
 		String ctgStr;
@@ -156,7 +151,6 @@ public class FISHInputExporter {
 				matchOut = matchesOut.get(ctgStr);
 			else {
 				matchOut = new PrintStreamPair(tmp.ctg1,tmp.ctg2,mapMatchDir);
-				//matchOut.printControl(ctrlOut);
 				matchOut.addMatchFile(matchFiles);
 				matchesOut.put(ctgStr, matchOut);
 			}
@@ -196,20 +190,24 @@ public class FISHInputExporter {
 	
 	public static boolean isDiag(ReadPair r, double[] ins, int nSd){
 		double dist = Math.abs(r.pos1 - r.pos2);
-		return (dist < ins[0]+nSd*ins[1] && dist > ins[0]+nSd*ins[1]);
+		return (dist < ins[0]+nSd*ins[1] && dist > ins[0]-nSd*ins[1]);
 	}
 	
 	
 	public static void filterDiagReads(Map<String,ReadPair> reads, double[] ins, int nSd){
 		Iterator<String> it = reads.keySet().iterator();
+		Vector<String> rm = new Vector<String>();
 		String key = null;
 		ReadPair r = null;
 		while(it.hasNext()){
 			key = it.next();
 			r = reads.get(key);
 			if (isDiag(r, ins, nSd))
-				reads.remove(key);
+				rm.add(key);
 		}
+		it = rm.iterator();
+		while(it.hasNext())
+			reads.remove(it.next());
 	}
 	
 	
@@ -249,15 +247,15 @@ public class FISHInputExporter {
 		private void print(ReadPair pair){
 			if ((ctg1 == pair.ctg1 && ctg2 == pair.ctg2)) {
 				
-				out1.println("c"+ctg1.getId()+"p"+pair.pos1+"\tc"+ctg2.getId()+"p"+pair.pos2+"\t"+(r.nextInt(100)+201));
+				out1.println("c"+ctg1.getId()+"p"+pair.pos1+"\tc"+ctg2.getId()+"p"+pair.pos2+"\t250");
 				if (ctg1 != ctg2)
-					out2.println("c"+ctg2.getId()+"p"+pair.pos2+"\tc"+ctg1.getId()+"p"+pair.pos1+"\t"+(r.nextInt(100)+201));
+					out2.println("c"+ctg2.getId()+"p"+pair.pos2+"\tc"+ctg1.getId()+"p"+pair.pos1+"\t250");
 				else if (ctg1.getId()=='1'){
 					System.out.print("");
 				}
 			} else if((ctg1 == pair.ctg2 && ctg2 == pair.ctg1)){
-				out1.println("c"+ctg1.getId()+"p"+pair.pos2+"\tc"+ctg2.getId()+"p"+pair.pos1+"\t"+(r.nextInt(100)+201));
-				out2.println("c"+ctg2.getId()+"p"+pair.pos1+"\tc"+ctg1.getId()+"p"+pair.pos2+"\t"+(r.nextInt(100)+201));
+				out1.println("c"+ctg1.getId()+"p"+pair.pos2+"\tc"+ctg2.getId()+"p"+pair.pos1+"\t250");
+				out2.println("c"+ctg2.getId()+"p"+pair.pos1+"\tc"+ctg1.getId()+"p"+pair.pos2+"\t250");
 			} else {
 				throw new IllegalArgumentException("pair "+pair.hdr+" does not connect contigs "+ctg1.name+" and "+ctg2.name);
 			}
@@ -273,7 +271,7 @@ public class FISHInputExporter {
 			Iterator<ReadPair> it = reads.iterator();
 			ReadPair pair = null;
 			while(it.hasNext())
-				print(pair);
+				print(it.next());
 			
 			out1.close();
 			if (ctg1 != ctg2)
