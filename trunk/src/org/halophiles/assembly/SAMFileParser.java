@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 public class SAMFileParser {
@@ -40,9 +41,12 @@ public class SAMFileParser {
 			String[] line = br.readLine().split("\t");
 			int left = Integer.parseInt(line[3]);
 			boolean rev = isReverse(line[1]);
-			int len = cigarLength(line[5]);
-			rdlen += len;
-			den++;
+			int len = 0;
+			if (Pattern.matches("[0-9]{2,}M",line[5])){
+				len = cigarLength(line[5]);
+				rdlen += len;
+				den++;
+			}
 			ctgStr = line[2].split("\\|")[0];
 			if (len <= 0) continue;			
 			if (reads.containsKey(line[0]))

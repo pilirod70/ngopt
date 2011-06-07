@@ -18,5 +18,7 @@
 	<classpathentry kind="lib" path="ext/libsvm.jar"/>
 	<classpathentry kind="lib" path="ext/weka.jar"/>
 	<classpathentry kind="lib" path="ext/jsc.jar"/>
+	<classpathentry kind="lib" path="ext/biojava.jar"/>
+	<classpathentry kind="lib" path="ext/bytecode.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
