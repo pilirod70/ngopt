@@ -26,7 +26,8 @@ public class Find16SRegions {
 			public int compare(Location bh1, Location bh2) {
 				if (bh1.query.equals(bh2.query)){
 					if (bh1.contig.equals(bh2.contig)){
-						if (bh1.left < bh2.right && bh1.right > bh2.left){
+						if ((bh1.left < bh2.right && bh1.right > bh2.left) || 
+						   Math.abs(bh1.right-bh2.left) < 100 || Math.abs(bh1.left-bh2.right) < 100){
 							bh1.merge(bh2);
 							bh2.merge(bh1);
 							return 0;
