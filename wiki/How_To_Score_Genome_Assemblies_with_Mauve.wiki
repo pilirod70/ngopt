@@ -51,3 +51,40 @@ tail -n 1 assembly*_scores/summary.txt >> summary.txt
 assemblathonMauvePlots.R assembly*_scores/alignment
 }}}
   # Visualize PDFs of accuracy plots.  A large number of PDFs will be generated in the current directory.  These plots can be used to decide on the assembly strategy that best meets your project's objectives.  For example, you may prefer the assembly with the highest fraction of coding regions reconstructed, or the assembly with the fewest structural errors, or the assembly that captures the true genomic content most precisely.
+
+
+
+= A complete example on the Linux command line =
+
+
+{{{
+#
+# Get the software
+#
+wget http://gel.ahabs.wisc.edu/mauve/snapshots/2011/2011-05-29/linux-x64/mauve_linux_snapshot_2011-05-29.tar.gz
+tar xvzf mauve_linux_snapshot_2011-05-29.tar.gz
+cd mauve_snapshot_2011-05-29/
+wget http://ngopt.googlecode.com/svn/trunk/assemblathon/assemblathonMauvePlots.R
+wget http://ngopt.googlecode.com/svn/trunk/assemblathon/assemblathonMauvePlots.pl
+chmod 755 assemblathonMauvePlots.*
+
+#
+# Get the test data
+#
+wget http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/Haloferax_volcanii_DS2.gbk
+wget http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly1.fasta
+wget http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly2.fasta
+wget http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly3.fasta
+
+#
+# run the scoring
+#
+java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly1.fasta -reorder assembly1_scores -outputDir assembly1_scores
+
+java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly2.fasta -reorder assembly2_scores -outputDir assembly2_scores
+
+java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly3.fasta -reorder assembly3_scores -outputDir assembly3_scores
+
+./assemblathonMauvePlots.pl ./
+
+}}}
