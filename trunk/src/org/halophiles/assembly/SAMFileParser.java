@@ -47,7 +47,7 @@ public class SAMFileParser {
 				rdlen += len;
 				den++;
 			}
-			ctgStr = line[2].split("\\|")[0];
+			ctgStr = line[2];//.split("\\|")[0];
 			if (len <= 0) continue;			
 			if (reads.containsKey(line[0]))
 				tmp = reads.get(line[0]);
@@ -66,7 +66,7 @@ public class SAMFileParser {
 	}
 
 	
-	public SAMFileParser(String samPath, String gclPath) throws IOException{
+	/*public SAMFileParser(String samPath, String gclPath) throws IOException{
 		this(samPath);
 		File gclFile = new File(gclPath);
 		BufferedReader br = null;
@@ -84,7 +84,7 @@ public class SAMFileParser {
 				contigs.put(tmp.name, tmp);
 			}
 		}
-	}
+	}*/
 
 	public Iterator<Contig> getContigs(){
 		return contigs.values().iterator();

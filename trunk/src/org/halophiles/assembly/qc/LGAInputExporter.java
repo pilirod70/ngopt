@@ -29,7 +29,7 @@ public class LGAInputExporter {
 			SAMFileParser sfp = null;
 			if (args.length == 3){
 				gclFilePath = args[2];
-				sfp = new SAMFileParser(samFilePath,gclFilePath);
+				sfp = new SAMFileParser(samFilePath);
 			}
 			Map<String,Contig> contigs = new HashMap<String,Contig>();
 			Iterator<Contig> ctgIt = sfp.getContigs();

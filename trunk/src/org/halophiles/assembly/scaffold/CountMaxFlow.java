@@ -53,7 +53,7 @@ public class CountMaxFlow {
 	
 	public static void main(String[] args){
 		if (/*args.length % 3 != 0 ||*/args.length == 0){
-			System.err.println("Usage: java CountMaxFlow <outdir> <gcl_contig_file> <sam1> <ins1> <err1> .... <samN> <insN> <errN>");
+			System.err.println("Usage: java CountMaxFlow <outdir> <sam1> <ins1> <err1> .... <samN> <insN> <errN>");
 			System.exit(-1);
 		}
 		
@@ -84,7 +84,7 @@ public class CountMaxFlow {
 			e.printStackTrace();
 			System.exit(-1);
 		}
-		for (int i = 2; i < args.length;i+=3){
+		for (int i = 1; i < args.length;i+=3){
 			File maxFlowFile = new File(outdir,"max_flow.txt");
 			File edgeWeightsFile = new File(outdir,"edge_weights.txt");
 			File cnctTypeFile = new File(outdir,"connection_counts.txt");
@@ -108,7 +108,7 @@ public class CountMaxFlow {
 				PrintStream cftTDOut = new PrintStream(conflictTDFile);
 
 				br = null;
-				SAMFileParser sfp = new SAMFileParser(args[i], args[1]);
+				SAMFileParser sfp = new SAMFileParser(args[i]);
 				int ins = Integer.parseInt(args[i+1]);
 				double err = Double.parseDouble(args[i+2]);
 				
@@ -229,7 +229,7 @@ public class CountMaxFlow {
 						if (!dg.containsVertex(ctgRef[cI]))	dg.addVertex(ctgRef[cI]);
 						if (!dg.containsVertex(ctgRef[cJ])) dg.addVertex(ctgRef[cJ]);
 						double L = Math.min(Math.min(ins*(1.0+err), ctgRef[cI].len), Math.min(ins*(1.0+err), ctgRef[cJ].len));
-						double Cov = (ctgRef[cI].cov+ctgRef[cJ].cov)/2;
+						double Cov = (ctgRef[cI].getCov()+ctgRef[cJ].getCov())/2;
 						double normed = nlink*rdlen/(Cov*L);
 						ewOut.println(normed+"\t"+nlink);
 						DefaultWeightedEdge adj = dg.addEdge(ctgRef[cI], ctgRef[cJ]);
@@ -337,7 +337,7 @@ public class CountMaxFlow {
 			Map<String,String> map = new HashMap<String,String>();
 			map.put("label", arg0.name.substring(arg0.name.indexOf('|')+1));
 			map.put("length", Integer.toString(arg0.len));
-			map.put("cov", Double.toString(arg0.cov));
+			map.put("cov", Double.toString(arg0.getCov()));
 			return map;
 		}
 		
