@@ -14,16 +14,12 @@ http://gel.ahabs.wisc.edu/mauve/snapshots/
 
 === Mauve Assembly Metrics === 
 Then obtain a copy of the Mauve assembly metrics scripts from here:
-http://ngopt.googlecode.com/svn/trunk/assemblathon
+http://ngopt.googlecode.com/svn/trunk/tools/mauve_assembly_metrics
 
 Alternatively these can be checked out using subversion:
 
 {{{
-svn checkout http://ngopt.googlecode.com/svn/trunk/assemblathon assemblathon-mauve
-}}}
-And they will need to be made executable prior to use:
-{{{
-chmod 755 assemblathon-mauve/*
+svn checkout http://ngopt.googlecode.com/svn/trunk/tools/mauve_assembly_metrics mauve_assembly_metrics
 }}}
 
 === R === 
@@ -67,7 +63,7 @@ java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_vol
 }}} 
   # Generate summary plots comparing the assemblies
 {{{
-assemblathonMauvePlots.pl ./
+mauveAssemblyMetrics.pl ./
 }}}
   # Visualize PDFs of accuracy plots.  A large number of PDFs will be generated in the current directory.  These plots can be used to decide on the assembly strategy that best meets your project's objectives.  For example, you may prefer the assembly with the highest fraction of coding regions reconstructed, or the assembly with the fewest structural errors, or the assembly that captures the true genomic content most precisely.
 
@@ -83,9 +79,9 @@ assemblathonMauvePlots.pl ./
 wget http://gel.ahabs.wisc.edu/mauve/snapshots/2011/2011-05-29/linux-x64/mauve_linux_snapshot_2011-05-29.tar.gz
 tar xvzf mauve_linux_snapshot_2011-05-29.tar.gz
 cd mauve_snapshot_2011-05-29/
-wget http://ngopt.googlecode.com/svn/trunk/assemblathon/assemblathonMauvePlots.R
-wget http://ngopt.googlecode.com/svn/trunk/assemblathon/assemblathonMauvePlots.pl
-chmod 755 assemblathonMauvePlots.*
+wget http://ngopt.googlecode.com/svn/trunk/tools/mauve_assembly_metrics/mauveAssemblyMetrics.R
+wget http://ngopt.googlecode.com/svn/trunk/assemblathon/mauveAssemblyMetrics.pl
+chmod 755 mauveAssemblyMetrics.*
 
 #
 # Get the test data
@@ -106,8 +102,9 @@ java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_vol
 
 #
 # Generate plots of metrics
+# ./ indicates the parent directory containing the assembly scoring directories -- the current working directory in our example
 #
-./assemblathonMauvePlots.pl ./
+./mauveAssemblyMetrics.pl ./
 
 }}}
 
