@@ -39,11 +39,15 @@ sudo apt-get install r-recommended
 
 Most computers already have Java installed.  Windows users mayneed to download and install it from http://java.sun.com
 
+=== A Graphical User Interface ===
+Even though Mauve Assembly Metrics can be run from the command-line, the software requires access to a graphical user interface.  If running the software remotely on a server, one can use the `ssh -X servername` option to connect the local display to the remote server.  In the event that X forwarding is not possible we recommend using VNC [http://www.realvnc.com/products/free/4.1/index.html download here]. It will be necessary to set the DISPLAY environment variable to the screen created by `vncserver`, e.g. `export DISPLAY=:1` if VNC created X display ID 1.
+
+
 = Data requirements = 
 
-  * A reference genome, either in FastA or GenBank format (preferred).  For the tutorial we will use Haloferax_volcanii_DS2.gbk
+  * A reference genome, either in FastA or GenBank format (preferred).  For the tutorial we will use [http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/Haloferax_volcanii_DS2.gbk Haloferax_volcanii_DS2.gbk]
 
-  * Some genome assemblies.  These can also be in FastA or GenBank formats.  For the tutorial we will use assembly1.fasta, assembly2.fasta, and assembly3.fasta
+  * Some genome assemblies.  These can also be in FastA or GenBank formats.  For the tutorial we will use [http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly1.fasta assembly1.fasta], [http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly2.fasta assembly2.fasta], and [http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly3.fasta assembly3.fasta]
 
 
 = Computing Mauve Assembly Metrics =
@@ -54,11 +58,11 @@ The following instructions assume you have downloaded and unpacked the Mauve sof
 {{{
 cd mauve_snapshot_directory
 
-java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly1.fasta -reorder assembly1_reorder -outputDir assembly1_scores
+java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly1.fasta -reorder -outputDir assembly1_scores
 
-java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly2.fasta -reorder assembly2_reorder -outputDir assembly2_scores
+java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly2.fasta -reorder -outputDir assembly2_scores
 
-java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly3.fasta -reorder assembly3_reorder -outputDir assembly3_scores
+java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly3.fasta -reorder -outputDir assembly3_scores
 }}} 
   # Generate summary plots comparing the assemblies
 {{{
