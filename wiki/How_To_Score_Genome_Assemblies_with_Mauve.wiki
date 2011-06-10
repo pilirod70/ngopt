@@ -105,3 +105,5 @@ java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_vol
 ./assemblathonMauvePlots.pl ./
 
 }}}
+
+At this stage a set of PDF files named mauve_* will exist in the current directory.  These files can be inspected to evaluate assembly strategies.
