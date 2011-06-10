@@ -4,6 +4,7 @@
 
 Most assembly algorithms provide a large variety of parameters that can be adjusted to control the assembly process.  It may be necessary to tune these parameters to fit details of the sequencing strategy and genomes being assembled.  This document will illustrate how one can compare assemblies done by different algorithms or different parameter settings to select an ideal assembly strategy.  We assume that a high quality reference genome is available, and that sequence reads for that reference genome are available, and also that the reference genome is similar enough to the genomes being targeted for assembly that parameters which work well on the reference will also work well on the other genomes.
 
+The following guide applies to computing assembly metrics on the command line for a large number of genome assemblies.  Although we do not describe it here, it is also possible to activate the assembly scoring from within the Mauve GUI when a pairwise alignment of assembly to reference genome has been loaded.
 
 = Software requirements =
 
