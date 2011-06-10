@@ -80,7 +80,7 @@ wget http://gel.ahabs.wisc.edu/mauve/snapshots/2011/2011-05-29/linux-x64/mauve_l
 tar xvzf mauve_linux_snapshot_2011-05-29.tar.gz
 cd mauve_snapshot_2011-05-29/
 wget http://ngopt.googlecode.com/svn/trunk/tools/mauve_assembly_metrics/mauveAssemblyMetrics.R
-wget http://ngopt.googlecode.com/svn/trunk/assemblathon/mauveAssemblyMetrics.pl
+wget http://ngopt.googlecode.com/svn/trunk/mauve_assembly_metrics/mauveAssemblyMetrics.pl
 chmod 755 mauveAssemblyMetrics.*
 
 #
