@@ -8,11 +8,12 @@ public class Contig implements Comparable<Contig> {
 	private int id;
 	public String name;
 	public int len;
-	public double cov;
+	private double cov = 0;
 	private int start;
 	private Map<Contig,Integer> counts;
 	public int numSelfConnect;
 	private Map<String,ReadPair> reads;
+	private double mappedBasesCount;
 	public Contig(String name, int len){
 		String[] spl = name.split("\\|");
 		this.name = spl[0];
@@ -33,13 +34,14 @@ public class Contig implements Comparable<Contig> {
 		counts = new HashMap<Contig,Integer>();
 		reads = new HashMap<String,ReadPair>();
 		++CTG_COUNT;
+		mappedBasesCount = 0.0;
 	}
-	public Contig(String name, int len, double cov){
-		this(name,len);	
-		this.cov = cov;
+	
+	public double getCov(){
+		return mappedBasesCount/len;
 	}
-	public void setCov(double cov){
-		this.cov = cov;
+	public boolean hasCov(){
+		return cov != 0;
 	}
 	public boolean equals(Contig c){ 
 		return this.name.equals(c.name);
@@ -72,8 +74,13 @@ public class Contig implements Comparable<Contig> {
 		return this.name.compareTo(arg0.name);
 	}
 	public void addReadPair(ReadPair pair){
-		
+		if (reads.containsKey(pair.hdr)){
+			mappedBasesCount += SAMFileParser.cigarLength(pair.sam2[5]);
+		} else {
+			mappedBasesCount += SAMFileParser.cigarLength(pair.sam1[5]);
+		}
 		reads.put(pair.hdr, pair);
+		
 	}
 	public int getNumLinkedContigs(){
 		return counts.size();
