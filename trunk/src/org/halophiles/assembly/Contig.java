@@ -5,11 +5,13 @@ import java.util.*;
 public class Contig implements Comparable<Contig> {
 	private static int CTG_COUNT=0;
 	private static int CONCAT_START = 1;
+	private ContigTerminal start;
+	private ContigTerminal end;
 	private int id;
 	public String name;
 	public int len;
 	private double cov = 0;
-	private int start;
+	private int concat_start;
 	private Map<Contig,Integer> counts;
 	public int numSelfConnect;
 	private Map<String,ReadPair> reads;
@@ -29,7 +31,7 @@ public class Contig implements Comparable<Contig> {
 		this.len = len;
 		this.cov = -1;
 		numSelfConnect = 0;
-		start=CONCAT_START;
+		concat_start=CONCAT_START;
 		CONCAT_START+=len;
 		counts = new HashMap<Contig,Integer>();
 		reads = new HashMap<String,ReadPair>();
@@ -68,7 +70,7 @@ public class Contig implements Comparable<Contig> {
 		numSelfConnect++;
 	}
 	public int getConcatCoord(int pos){
-		return start+pos-1;
+		return concat_start+pos-1;
 	}
 	public int compareTo(Contig arg0) {
 		return this.name.compareTo(arg0.name);
@@ -90,5 +92,13 @@ public class Contig implements Comparable<Contig> {
 	}
 	public int getId(){
 		return id;
+	}
+	
+	public ContigTerminal getStartTerminus(){
+		return start;
+	}
+	
+	public ContigTerminal getEndTerminus(){
+		return end;
 	}
 }
