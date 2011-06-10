@@ -20,6 +20,10 @@ Alternatively these can be checked out using subversion:
 {{{
 svn checkout http://ngopt.googlecode.com/svn/trunk/assemblathon assemblathon-mauve
 }}}
+And they will need to be made executable prior to use:
+{{{
+chmod 755 assemblathon-mauve/*
+}}}
 
 === R === 
 
