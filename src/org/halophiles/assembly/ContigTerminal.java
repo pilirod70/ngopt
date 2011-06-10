@@ -6,10 +6,8 @@ import java.util.Map;
 import java.util.Vector;
 
 public class ContigTerminal {
-
-	private static String START = "_s";
-	
-	private static String END = "_e";
+	public static final String START = "_s";
+	public static final String END = "_e";
 	
 	private String terminus;
 	
@@ -42,6 +40,7 @@ public class ContigTerminal {
 	}
 	
 	public int getDistance(ContigTerminal ct){
+		if (!counts.containsKey(ct)) return -1;
 		Vector<Integer> tmp = counts.get(ct);
 		int ret = 0;
 		Iterator<Integer> it = tmp.iterator();
@@ -51,7 +50,10 @@ public class ContigTerminal {
 	}
 	
 	public int nlinks(ContigTerminal ct){
-		return counts.get(ct).size();
+		if (counts.containsKey(ct))
+			return counts.get(ct).size();
+		else 
+			return 0;
 	}
 	
 	public int numConnections(){
@@ -60,5 +62,13 @@ public class ContigTerminal {
 	
 	public String getName(){
 		return contig.name+terminus;
+	}
+	
+	public String toString(){
+		return getName();
+	}
+	
+	public boolean isStart(){
+		return terminus.equals(START);
 	}
 }

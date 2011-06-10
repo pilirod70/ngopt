@@ -254,6 +254,12 @@ public class CountMaxFlow {
 						ContigTerminal[] ctg2 = {ctgRef[cJ].getStartTerminus(),ctgRef[cJ].getEndTerminus()};
 						for (ContigTerminal c1: ctg1) {
 							for (ContigTerminal c2: ctg2) {
+								if (c1.getDistance(c2) == -1 && c2.getDistance(c1) == -1) {
+									continue;
+								} else if (c1.getDistance(c2) == -1 || c2.getDistance(c1) == -1){
+									System.err.println("unequal distances between symmetric edges between two nodes.");
+									System.exit(-1);
+								}
 								DefaultWeightedEdge adj = dg.addEdge(c1, c2);
 								dg.setEdgeWeight(adj, c1.getDistance(c2));
 								adj = dg.addEdge(c2, c1);
@@ -272,23 +278,24 @@ public class CountMaxFlow {
 				ConnectivityInspector<ContigTerminal, DefaultWeightedEdge> ci = new ConnectivityInspector<ContigTerminal, DefaultWeightedEdge>(dg);
 				Iterator<Set<ContigTerminal>> ccIt = ci.connectedSets().iterator();
 				int ccCount = 0;
+				ContigTerminal[] termRef = null;
 				while(ccIt.hasNext()){
 					Set<ContigTerminal> cc = ccIt.next();
 					ccCount++;
-					ctgRef = new Contig[cc.size()];
-					cc.toArray(ctgRef);
-					for (int cI = 0; cI < ctgRef.length; cI++){
-						if (!dg.containsVertex(ctgRef[cI].getStartTerminus())) continue;
-						if (ctgRef[cI].getStartTerminus().numConnections()==0) continue;
+					termRef = new ContigTerminal[cc.size()];
+					cc.toArray(termRef);
+					for (int cI = 0; cI < termRef.length; cI++){
+						if (!dg.containsVertex(termRef[cI])) continue;
+						if (!termRef[cI].isStart()) continue;
 						
 						for (int cJ = cI+1; cJ < ctgRef.length; cJ++){
-							if (!dg.containsVertex(ctgRef[cJ].getEndTerminus())) continue;
-							if (ctgRef[cJ].getEndTerminus().numConnections()==0) continue;
+							if (!dg.containsVertex(termRef[cJ])) continue;
+							if (termRef[cJ].isStart()) continue;
 							
-							ekmf.calculateMaximumFlow(ctgRef[cI].getStartTerminus(), ctgRef[cJ].getEndTerminus());
+							ekmf.calculateMaximumFlow(termRef[cI], termRef[cJ]);
 							double maxFlow = ekmf.getMaximumFlowValue();
 							if (maxFlow > 0.0)
-								mfOut.println(ccCount+"\t"+ctgRef[cI]+"\t"+ctgRef[cJ]+"\t"+maxFlow);
+								mfOut.println(ccCount+"\t"+termRef[cI]+"\t"+termRef[cJ]+"\t"+maxFlow);
 						}
 					}
 				}
