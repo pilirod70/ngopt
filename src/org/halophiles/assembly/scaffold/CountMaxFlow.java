@@ -23,6 +23,7 @@ import jsc.datastructures.PairedData;
 import jsc.regression.PearsonCorrelation;
 
 import org.halophiles.assembly.Contig;
+import org.halophiles.assembly.ContigTerminal;
 import org.halophiles.assembly.ReadPair;
 import org.halophiles.assembly.SAMFileParser;
 import org.jgrapht.EdgeFactory;
@@ -44,6 +45,10 @@ import org.jgrapht.graph.DirectedWeightedMultigraph;
 
 
 public class CountMaxFlow {
+	private static final int START_TERM = 1;
+	private static final int END_TERM = 3;
+	private static final int NO_TERM = -1;
+	
 	private static int MIN_LINK = 1;
 	private static int NSAMCOL = 11;
 	private static HashMap<String,Contig> contigs;
@@ -58,8 +63,8 @@ public class CountMaxFlow {
 		}
 		
 		VertexFactory<Contig> vf = new ClassBasedVertexFactory<Contig>(Contig.class);
-		EdgeFactory<Contig,DefaultWeightedEdge> ef = new ClassBasedEdgeFactory<Contig, DefaultWeightedEdge>(DefaultWeightedEdge.class);
-		DirectedWeightedMultigraph<Contig,DefaultWeightedEdge> dg = new DirectedWeightedMultigraph<Contig, DefaultWeightedEdge>(ef);
+		EdgeFactory<ContigTerminal,DefaultWeightedEdge> ef = new ClassBasedEdgeFactory<ContigTerminal, DefaultWeightedEdge>(DefaultWeightedEdge.class);
+		DirectedWeightedMultigraph<ContigTerminal,DefaultWeightedEdge> dg = new DirectedWeightedMultigraph<ContigTerminal, DefaultWeightedEdge>(ef);
 		
 		
 		contigs = new HashMap<String, Contig>();
@@ -85,6 +90,7 @@ public class CountMaxFlow {
 			System.exit(-1);
 		}
 		for (int i = 1; i < args.length;i+=3){
+			// create all the output files we need.
 			File maxFlowFile = new File(outdir,"max_flow.txt");
 			File edgeWeightsFile = new File(outdir,"edge_weights.txt");
 			File cnctTypeFile = new File(outdir,"connection_counts.txt");
@@ -108,50 +114,25 @@ public class CountMaxFlow {
 				PrintStream cftTDOut = new PrintStream(conflictTDFile);
 
 				br = null;
+				// read in SAM file
 				SAMFileParser sfp = new SAMFileParser(args[i]);
 				int ins = Integer.parseInt(args[i+1]);
 				double err = Double.parseDouble(args[i+2]);
 				
+				// build up a map for contigs
 				Iterator<Contig> ctgIt = sfp.getContigs();
 				while(ctgIt.hasNext()){
 					Contig tmpCtg = ctgIt.next();
 					if (!contigs.containsKey(tmpCtg.name))
 						contigs.put(tmpCtg.name, tmpCtg);
 				}
-				
+				// ...and again for reads
 				Iterator<ReadPair> rpIt = sfp.getReadPairs();
-				Vector<Double> tmpPts = null;
 				while(rpIt.hasNext()){
 					ReadPair tmpRp = rpIt.next();
 					if (!reads.containsKey(tmpRp.hdr))
 						reads.put(tmpRp.hdr, tmpRp);
 				}
-				
-		/*		Iterator<String> it = mapPoints.keySet().iterator();
-				while(it.hasNext()){
-					String ctg = it.next();
-					Vector<Double> tmp = mapPoints.get(ctg);
-					Double[] ar = new Double[tmp.size()];
-					tmp.toArray(ar);
-					File ctgMapFile = new File(fishDir,"map."+contigs.get(ctg).getId()+".txt");
-					PrintStream ctgMapOut = new PrintStream(ctgMapFile);
-					
-					Arrays.sort(ar, new Comparator<Double>(){
-						public int compare(Double arg0, Double arg1) {
-							if (Math.abs(arg0) < Math.abs(arg1)) return -1;
-							 else if (Math.abs(arg0) > Math.abs(arg1)) return 1;
-							 else return 0;
-						}	
-					});
-					for (Double d: ar){
-						if (d.doubleValue()==904)
-							System.out.print("");
-						ctgMapOut.println("c"+contigs.get(ctg).getId()+"p"+Math.abs(d.intValue())+"\t"+(d < 0 ? -1 : 1));
-					}
-					ctgMapOut.close();
-					String dir = ctgMapFile.getParentFile().getName();
-					ctrlOut.println(contigs.get(ctg).getId()+"\t"+dir+"/"+ctgMapFile.getName());
-				}*/
 				
 				int rdlen = sfp.getReadLength();
 				Iterator<String> it = reads.keySet().iterator();
@@ -170,10 +151,34 @@ public class CountMaxFlow {
 									      +"\t"+getInsertSize(tmp, rdlen));
 						}
 					} else { 
-						if (isTerminal(tmp.pos1, tmp.pos1+rdlen-1, ins, err, tmp.ctg1) && 
-							isTerminal(tmp.pos2, tmp.pos2+rdlen-1, ins, err, tmp.ctg2)){
+						int term1 = isTerminal(tmp.pos1, tmp.pos1+rdlen-1, ins, err, tmp.ctg1);
+						int term2 = isTerminal(tmp.pos2, tmp.pos2+rdlen-1, ins, err, tmp.ctg2);
+						if (term1 != 0 && term2 != 0){
 							tmp.ctg1.addLink(tmp.ctg2);
 					 		tmp.ctg2.addLink(tmp.ctg1);
+					 		ContigTerminal from = null;
+					 		ContigTerminal to = null;
+					 		int dist = 0;
+					 		if (term1 == START_TERM) {
+					 			from = tmp.ctg1.getStartTerminus(); 
+					 			dist += tmp.pos1+rdlen-1;
+					 		} else if (term1 == END_TERM) {
+					 			from = tmp.ctg1.getEndTerminus(); 
+					 			dist += tmp.ctg1.len - tmp.pos1 + 1;
+					 		} 
+					 		if (term2 == START_TERM) {
+					 			to = tmp.ctg2.getStartTerminus(); 
+					 			dist += tmp.pos2+rdlen-1;
+					 		} else if (term2 == END_TERM ) { 
+					 			to = tmp.ctg2.getEndTerminus();
+					 			dist += tmp.ctg2.len - tmp.pos2 + 1;					 		
+					 		}
+					 			
+					 		if (from != null && to != null){
+					 			from.addLink(to,dist);
+					 			to.addLink(from,dist);
+					 		}
+					 		
 						} else {
 							conflicts.add(tmp);
 						}
@@ -218,6 +223,19 @@ public class CountMaxFlow {
 				
 				Contig[] ctgRef = new Contig[contigs.values().size()];
 				contigs.values().toArray(ctgRef);
+				
+				
+				for (int cI = 0; cI < ctgRef.length; cI++){
+					ContigTerminal start = ctgRef[cI].getStartTerminus();
+					ContigTerminal end = ctgRef[cI].getEndTerminus();
+					dg.addVertex(start);
+					dg.addVertex(end);
+					DefaultWeightedEdge adj = dg.addEdge(start, end);
+					dg.setEdgeWeight(adj, ctgRef[cI].len);
+					adj = dg.addEdge(end, start);
+					dg.setEdgeWeight(adj, ctgRef[cI].len);
+					
+				}
 				for (int cI = 0; cI < ctgRef.length; cI++){
 					ctOut.println(ctgRef[cI].name+"\t"+ctgRef[cI].getNumLinkedContigs()+"\t"+ctgRef[cI].numSelfConnect);
 					for (int cJ = cI+1; cJ < ctgRef.length; cJ++){
@@ -226,41 +244,55 @@ public class CountMaxFlow {
 							continue; 
 						else 
 							System.out.print("");
-						if (!dg.containsVertex(ctgRef[cI]))	dg.addVertex(ctgRef[cI]);
-						if (!dg.containsVertex(ctgRef[cJ])) dg.addVertex(ctgRef[cJ]);
-						double L = Math.min(Math.min(ins*(1.0+err), ctgRef[cI].len), Math.min(ins*(1.0+err), ctgRef[cJ].len));
-						double Cov = (ctgRef[cI].getCov()+ctgRef[cJ].getCov())/2;
-						double normed = nlink*rdlen/(Cov*L);
-						ewOut.println(normed+"\t"+nlink);
-						DefaultWeightedEdge adj = dg.addEdge(ctgRef[cI], ctgRef[cJ]);
-						dg.setEdgeWeight(adj, normed);
-						adj = dg.addEdge(ctgRef[cJ],ctgRef[cI]);
-						dg.setEdgeWeight(adj, normed);
+			//			if (!dg.containsVertex(ctgRef[cI]))	dg.addVertex(ctgRef[cI]);
+			//			if (!dg.containsVertex(ctgRef[cJ])) dg.addVertex(ctgRef[cJ]);
+			//			double L = Math.min(Math.min(ins*(1.0+err), ctgRef[cI].len), Math.min(ins*(1.0+err), ctgRef[cJ].len));
+			//			double Cov = (ctgRef[cI].getCov()+ctgRef[cJ].getCov())/2;
+			//			double normed = nlink*rdlen/(Cov*L);
+			//			ewOut.println(normed+"\t"+nlink);
+						ContigTerminal[] ctg1 = {ctgRef[cI].getStartTerminus(),ctgRef[cI].getEndTerminus()};
+						ContigTerminal[] ctg2 = {ctgRef[cJ].getStartTerminus(),ctgRef[cJ].getEndTerminus()};
+						for (ContigTerminal c1: ctg1) {
+							for (ContigTerminal c2: ctg2) {
+								DefaultWeightedEdge adj = dg.addEdge(c1, c2);
+								dg.setEdgeWeight(adj, c1.getDistance(c2));
+								adj = dg.addEdge(c2, c1);
+								dg.setEdgeWeight(adj, c2.getDistance(c1));
+							}
+						}
+//						DefaultWeightedEdge adj = dg.addEdge(ctgRef[cI], ctgRef[cJ]);
+//						dg.setEdgeWeight(adj, normed);
+//						adj = dg.addEdge(ctgRef[cJ],ctgRef[cI]);
+//						dg.setEdgeWeight(adj, normed);
 					}
 				}
 				ewOut.close();
 				ctOut.close();
-				EdmondsKarpMaximumFlow<Contig, DefaultWeightedEdge> ekmf = new EdmondsKarpMaximumFlow<Contig, DefaultWeightedEdge>(dg);
-				ConnectivityInspector<Contig, DefaultWeightedEdge> ci = new ConnectivityInspector<Contig, DefaultWeightedEdge>(dg);
-				Iterator<Set<Contig>> ccIt = ci.connectedSets().iterator();
+				EdmondsKarpMaximumFlow<ContigTerminal, DefaultWeightedEdge> ekmf = new EdmondsKarpMaximumFlow<ContigTerminal, DefaultWeightedEdge>(dg);
+				ConnectivityInspector<ContigTerminal, DefaultWeightedEdge> ci = new ConnectivityInspector<ContigTerminal, DefaultWeightedEdge>(dg);
+				Iterator<Set<ContigTerminal>> ccIt = ci.connectedSets().iterator();
 				int ccCount = 0;
 				while(ccIt.hasNext()){
-					Set<Contig> cc = ccIt.next();
+					Set<ContigTerminal> cc = ccIt.next();
 					ccCount++;
 					ctgRef = new Contig[cc.size()];
 					cc.toArray(ctgRef);
 					for (int cI = 0; cI < ctgRef.length; cI++){
-						if (!dg.containsVertex(ctgRef[cI])) continue;
+						if (!dg.containsVertex(ctgRef[cI].getStartTerminus())) continue;
+						if (ctgRef[cI].getStartTerminus().numConnections()==0) continue;
+						
 						for (int cJ = cI+1; cJ < ctgRef.length; cJ++){
-							if (!dg.containsVertex(ctgRef[cJ])) continue;
-							ekmf.calculateMaximumFlow(ctgRef[cI], ctgRef[cJ]);
+							if (!dg.containsVertex(ctgRef[cJ].getEndTerminus())) continue;
+							if (ctgRef[cJ].getEndTerminus().numConnections()==0) continue;
+							
+							ekmf.calculateMaximumFlow(ctgRef[cI].getStartTerminus(), ctgRef[cJ].getEndTerminus());
 							double maxFlow = ekmf.getMaximumFlowValue();
 							if (maxFlow > 0.0)
 								mfOut.println(ccCount+"\t"+ctgRef[cI]+"\t"+ctgRef[cJ]+"\t"+maxFlow);
 						}
 					}
 				}
-				AsUndirectedGraph<Contig,DefaultWeightedEdge> udg = new AsUndirectedGraph<Contig,DefaultWeightedEdge>(dg);
+				AsUndirectedGraph<ContigTerminal,DefaultWeightedEdge> udg = new AsUndirectedGraph<ContigTerminal,DefaultWeightedEdge>(dg);
 				
 				Iterator<DefaultWeightedEdge> edgeIt = udg.edgeSet().iterator();
 				Set<DefaultWeightedEdge> disc = new HashSet<DefaultWeightedEdge>(); 
@@ -268,8 +300,8 @@ public class CountMaxFlow {
 					DefaultWeightedEdge e = edgeIt.next();
 					if (disc.contains(e)) 
 						continue;
-					Contig src = udg.getEdgeSource(e);
-					Contig tgt = udg.getEdgeTarget(e);
+					ContigTerminal src = udg.getEdgeSource(e);
+					ContigTerminal tgt = udg.getEdgeTarget(e);
 					if (udg.containsEdge(tgt, src)) 
 						disc.add(udg.getEdge(tgt, src));
 				}
@@ -278,12 +310,12 @@ public class CountMaxFlow {
 					udg.removeEdge(edgeIt.next());
 				
 				System.err.println(udg.edgeSet().size()+" edges");
-				VertexNameProvider<Contig> inp = new IntegerNameProvider<Contig>();
-				VertexNameProvider<Contig> snp = new StringNameProvider<Contig>();
+				VertexNameProvider<ContigTerminal> inp = new IntegerNameProvider<ContigTerminal>();
+				VertexNameProvider<ContigTerminal> snp = new StringNameProvider<ContigTerminal>();
 				EdgeNameProvider<DefaultWeightedEdge> enp = new DWENameProvider(udg);
 				ComponentAttributeProvider<DefaultWeightedEdge> eap = new DWEAttributeProvider(udg);
-				ComponentAttributeProvider<Contig> vap = new ContigAttributeProvider();
-				DOTExporter<Contig,DefaultWeightedEdge> dotexp = new DOTExporter<Contig,DefaultWeightedEdge>(inp,snp,enp,vap,eap);
+				ComponentAttributeProvider<ContigTerminal> vap = new ContigAttributeProvider();
+				DOTExporter<ContigTerminal,DefaultWeightedEdge> dotexp = new DOTExporter<ContigTerminal,DefaultWeightedEdge>(inp,snp,enp,vap,eap);
 				dotexp.export(new PrintWriter(dotOut), udg);
 				dotOut.close();
 				mfOut.close();
@@ -300,8 +332,8 @@ public class CountMaxFlow {
 		
 		private static NumberFormat nf; 
 		//private DirectedWeightedMultigraph<Contig,DefaultWeightedEdge> g;
-		private Graph<Contig,DefaultWeightedEdge> g;
-		public DWENameProvider(Graph<Contig,DefaultWeightedEdge> dg){
+		private Graph<ContigTerminal,DefaultWeightedEdge> g;
+		public DWENameProvider(Graph<ContigTerminal,DefaultWeightedEdge> dg){
 			this.g = dg;
 			if (nf == null){
 				nf =  NumberFormat.getInstance();
@@ -316,8 +348,8 @@ public class CountMaxFlow {
 	}
 	
 	public static class DWEAttributeProvider implements ComponentAttributeProvider<DefaultWeightedEdge>{
-		private Graph<Contig,DefaultWeightedEdge> g;
-		public DWEAttributeProvider(Graph<Contig, DefaultWeightedEdge> g){
+		private Graph<ContigTerminal,DefaultWeightedEdge> g;
+		public DWEAttributeProvider(Graph<ContigTerminal, DefaultWeightedEdge> g){
 			this.g = g;
 		}
 		@Override
@@ -325,37 +357,37 @@ public class CountMaxFlow {
 			Map<String,String> map = new HashMap<String,String>();
 			map.put("label", g.getEdgeSource(arg0).toString()+":"+g.getEdgeTarget(arg0).toString());
 			map.put("weight", Double.toString(g.getEdgeWeight(arg0)));
-			map.put("nlinks", Integer.toString(g.getEdgeSource(arg0).getNumLinks(g.getEdgeTarget(arg0))));
+			map.put("nlinks", Integer.toString(g.getEdgeSource(arg0).nlinks(g.getEdgeTarget(arg0))));
 			return map;
 		}
 	}
 	
-	public static class ContigAttributeProvider implements ComponentAttributeProvider<Contig>{
+	public static class ContigAttributeProvider implements ComponentAttributeProvider<ContigTerminal>{
 
 		@Override
-		public Map<String, String> getComponentAttributes(Contig arg0) {
+		public Map<String, String> getComponentAttributes(ContigTerminal arg0) {
 			Map<String,String> map = new HashMap<String,String>();
-			map.put("label", arg0.name.substring(arg0.name.indexOf('|')+1));
-			map.put("length", Integer.toString(arg0.len));
-			map.put("cov", Double.toString(arg0.getCov()));
+			map.put("label", arg0.getName());
+			//map.put("length", Integer.toString(arg0.len));
+			//map.put("cov", Double.toString(arg0.getCov()));
 			return map;
 		}
 		
 	}
 	
-	private static boolean isTerminal(int left, int right, int ins, double err, Contig ctg){
-		if (ctg.len < (ins)*(1.0+err)) return true;
+	private static int isTerminal(int left, int right, int ins, double err, Contig ctg){
+		if (ctg.len < (ins)*(1.0+err)) return START_TERM;
 		if (left < (ins)*(1.0+err)) {
-			return true;
+			return START_TERM;
 		} else if (ctg.len - (ins)*(1.0+err) < right){
-			return true;
+			return END_TERM;
 		}
-		return false;
+		return NO_TERM;
 	}
 	
 	private static boolean spansTerminal(ReadPair pm, int ins, double err, int rdlen){
-		if (!isTerminal(pm.pos1, pm.pos1+rdlen-1, ins, err, pm.ctg1) || 
-			!isTerminal(pm.pos2, pm.pos2+rdlen-1, ins, err, pm.ctg2))
+		if (isTerminal(pm.pos1, pm.pos1+rdlen-1, ins, err, pm.ctg1) == 0 || 
+			isTerminal(pm.pos2, pm.pos2+rdlen-1, ins, err, pm.ctg2) == 0)
 			return false;
 		int outLen;
 		int inLen;
