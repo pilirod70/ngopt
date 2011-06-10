@@ -56,12 +56,12 @@ public class SAMFileParser {
 				reads.put(line[0], tmp);
 			}
 			Contig tmpCtg = contigs.get(ctgStr);
-			tmpCtg.addReadPair(tmp);
 			int val = tmp.addRead(left, rev, tmpCtg, line);
 			if (val == 2){
 				
 			} else if (val == -1)
 				System.err.println("ambiguous mapping for read " + line[0]);
+			tmpCtg.addReadPair(tmp);
 		}
 	}
 

@@ -17,8 +17,9 @@ public class Contig implements Comparable<Contig> {
 	private Map<String,ReadPair> reads;
 	private double mappedBasesCount;
 	public Contig(String name, int len){
-		String[] spl = name.split("\\|");
-		this.name = spl[0];
+	//	String[] spl = name.split("\\|");
+	//	this.name = spl[0];
+		this.name = name;
 		if (this.name.startsWith("node")){
 			// if contigs came from IDBA : increment by 1 so we don't start at 0. We don't want FISH to shit itself.
 			id = Integer.parseInt(this.name.substring(this.name.indexOf("node")+4, this.name.indexOf('_'))) + 1; 			
@@ -37,6 +38,8 @@ public class Contig implements Comparable<Contig> {
 		reads = new HashMap<String,ReadPair>();
 		++CTG_COUNT;
 		mappedBasesCount = 0.0;
+		start = new ContigTerminal(this, ContigTerminal.START);
+		end = new ContigTerminal(this,ContigTerminal.END);
 	}
 	
 	public double getCov(){
@@ -76,13 +79,18 @@ public class Contig implements Comparable<Contig> {
 		return this.name.compareTo(arg0.name);
 	}
 	public void addReadPair(ReadPair pair){
+		if (pair == null){
+			System.out.println();
+		} else if (pair.sam1 == null){
+			System.out.println();
+		}
 		if (reads.containsKey(pair.hdr)){
 			mappedBasesCount += SAMFileParser.cigarLength(pair.sam2[5]);
 		} else {
-			mappedBasesCount += SAMFileParser.cigarLength(pair.sam1[5]);
+			mappedBasesCount += 
+					SAMFileParser.cigarLength(pair.sam1[5]);
 		}
 		reads.put(pair.hdr, pair);
-		
 	}
 	public int getNumLinkedContigs(){
 		return counts.size();
