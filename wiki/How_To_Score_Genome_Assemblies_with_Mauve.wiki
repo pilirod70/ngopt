@@ -70,7 +70,7 @@ mauveAssemblyMetrics.pl ./
   # *Examine the table of assembly characteristics* In addition to the visual output, a tab-delimited table containing assembly metrics for each assembly is reported in the file `summaries.txt`.  This file could be used in conjunction with an automated method to select assembly parameters, for example.
 
 = A complete example on the Linux command line =
-
+The following commands can be copied and pasted into a linux terminal.
 
 {{{
 #
