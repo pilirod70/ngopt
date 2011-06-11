@@ -51,7 +51,7 @@ Even though Mauve Assembly Metrics can be run from the command-line, the softwar
 
 The following instructions assume you have downloaded and unpacked the Mauve software into a directory called mauve_snapshot_directory and have also downloaded the test data files [http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/Haloferax_volcanii_DS2.gbk Haloferax_volcanii_DS2.gbk], [http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly1.fasta assembly1.fasta], [http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly2.fasta assembly2.fasta], and [http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly3.fasta assembly3.fasta] into that directory.  If these files exist in different locations it will be necessary to adjust the paths accordingly in the following commands.
 
-  # Use Mauve to score each assembly
+  # *Use Mauve to score each assembly*
 {{{
 cd mauve_snapshot_directory
 
@@ -62,11 +62,11 @@ java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_vol
 java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly3.fasta -reorder -outputDir assembly3_scores
 }}} 
    Two caveats exist at this stage.  First, the program must be run from within the Mauve directory in order to find dependency jar libraries.  If the libraries in the "ext" folder are added to the classpath then the program may run from within a different directory.  Second, access to a GUI is required.  See the comments above for getting GUI support on headless and remote servers.
-  # Generate summary plots comparing the assemblies
+  # *Generate summary plots comparing the assemblies*
 {{{
 mauveAssemblyMetrics.pl ./
 }}}
-  # Visualize PDFs of accuracy plots.  A large number of PDFs will be generated in the current directory.  These plots can be used to decide on the assembly strategy that best meets your project's objectives.  For example, you may prefer the assembly with the highest fraction of coding regions reconstructed, or the assembly with the fewest structural errors, or the assembly that captures the true genomic content most precisely.
+  # *Visualize PDFs of accuracy plots.*  A large number of PDFs will be generated in the current directory.  These plots can be used to decide on the assembly strategy that best meets your project's objectives.  For example, you may prefer the assembly with the highest fraction of coding regions reconstructed, or the assembly with the fewest structural errors, or the assembly that captures the true genomic content most precisely.
 
 
 
