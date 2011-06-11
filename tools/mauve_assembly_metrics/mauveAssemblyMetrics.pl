@@ -11,10 +11,17 @@ use File::Basename;
 use File::Spec;
 
 if(@ARGV != 1){
-	print "Usage: <directory containing scored assemblies>\n";
+	print "Usage: mauveAssemblyMetrics.pl <directory containing scored assemblies>\n";
 	exit(-1);
 }
 
+# first check that the given directory has data
+my $files = get_summary_files();
+if(length($files)<2){
+	print STDERR "Error: no assembly scoring files found in \"$ARGV[0]\"\n";
+	exit(-2);
+}
+# then create the plots
 get_chromosomes();
 get_summary();
 make_plots();
