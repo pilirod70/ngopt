@@ -9,7 +9,7 @@ The following guide applies to computing assembly metrics on the command line fo
 = Software requirements =
 
 === Mauve ===
-Please obtain a copy of Mauve from here:
+Please obtain a copy of Mauve dated June 10th 2011 or later from here:
 http://gel.ahabs.wisc.edu/mauve/snapshots/
 
 === Mauve Assembly Metrics === 
@@ -76,9 +76,9 @@ mauveAssemblyMetrics.pl ./
 #
 # Get the software
 #
-wget http://gel.ahabs.wisc.edu/mauve/snapshots/2011/2011-05-29/linux-x64/mauve_linux_snapshot_2011-05-29.tar.gz
-tar xvzf mauve_linux_snapshot_2011-05-29.tar.gz
-cd mauve_snapshot_2011-05-29/
+wget http://gel.ahabs.wisc.edu/mauve/snapshots/2011/2011-06-10/linux-x64/mauve_linux_snapshot_2011-06-10.tar.gz
+tar xvzf mauve_linux_snapshot_2011-06-10.tar.gz
+cd mauve_snapshot_2011-06-10/
 wget http://ngopt.googlecode.com/svn/trunk/tools/mauve_assembly_metrics/mauveAssemblyMetrics.R
 wget http://ngopt.googlecode.com/svn/trunk/mauve_assembly_metrics/mauveAssemblyMetrics.pl
 chmod 755 mauveAssemblyMetrics.*
