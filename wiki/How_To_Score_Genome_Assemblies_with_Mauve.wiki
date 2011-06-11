@@ -68,7 +68,7 @@ mauveAssemblyMetrics.pl ./
 }}}
   # *Visualize PDFs of accuracy plots.*  A large number of PDFs will be generated in the current directory.  These plots can be used to decide on the assembly strategy that best meets your project's objectives.  For example, you may prefer the assembly with the highest fraction of coding regions reconstructed, or the assembly with the fewest structural errors, or the assembly that captures the true genomic content most precisely.
 
-
+  # *Examine the table of assembly characteristics* In addition to the visual output, a tab-delimited table containing assembly metrics for each assembly is reported in the file `summaries.txt`.  This file could be used in conjunction with an automated method to select assembly parameters, for example.
 
 = A complete example on the Linux command line =
 
