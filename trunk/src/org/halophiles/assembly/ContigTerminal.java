@@ -13,24 +13,24 @@ public class ContigTerminal {
 	
 	private Contig contig;
 	
-	private Map<ContigTerminal,Vector<Integer>> counts;
+	private Map<ContigTerminal,Vector<Integer>> links;
 		
 	private int totalConnections;
 	
 	public ContigTerminal(Contig c, String term){
 		contig = c;
-		counts = new HashMap<ContigTerminal, Vector<Integer>>();
+		links = new HashMap<ContigTerminal, Vector<Integer>>();
 		terminus = term;
 		totalConnections = 0;
 	}
 	
 	public void addLink(ContigTerminal ct, int dist){
-		if (counts.containsKey(ct)) {
-			counts.get(ct).add(dist);
+		if (links.containsKey(ct)) {
+			links.get(ct).add(dist);
 		} else {
 			Vector<Integer> tmp = new Vector<Integer>();
 			tmp.add(dist);
-			counts.put(ct, tmp);
+			links.put(ct, tmp);
 		}
 		totalConnections++;
 	}
@@ -40,8 +40,8 @@ public class ContigTerminal {
 	}
 	
 	public int getDistance(ContigTerminal ct){
-		if (!counts.containsKey(ct)) return -1;
-		Vector<Integer> tmp = counts.get(ct);
+		if (!links.containsKey(ct)) return -1;
+		Vector<Integer> tmp = links.get(ct);
 		int ret = 0;
 		Iterator<Integer> it = tmp.iterator();
 		while (it.hasNext())
@@ -50,8 +50,8 @@ public class ContigTerminal {
 	}
 	
 	public int nlinks(ContigTerminal ct){
-		if (counts.containsKey(ct))
-			return counts.get(ct).size();
+		if (links.containsKey(ct))
+			return links.get(ct).size();
 		else 
 			return 0;
 	}

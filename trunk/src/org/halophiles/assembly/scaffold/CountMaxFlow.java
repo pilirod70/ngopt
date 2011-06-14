@@ -34,6 +34,8 @@ import org.jgrapht.alg.EdmondsKarpMaximumFlow;
 import org.jgrapht.ext.ComponentAttributeProvider;
 import org.jgrapht.ext.DOTExporter;
 import org.jgrapht.ext.EdgeNameProvider;
+import org.jgrapht.ext.GmlExporter;
+import org.jgrapht.ext.IntegerEdgeNameProvider;
 import org.jgrapht.ext.IntegerNameProvider;
 import org.jgrapht.ext.StringNameProvider;
 import org.jgrapht.ext.VertexNameProvider;
@@ -95,6 +97,7 @@ public class CountMaxFlow {
 			File edgeWeightsFile = new File(outdir,"edge_weights.txt");
 			File cnctTypeFile = new File(outdir,"connection_counts.txt");
 			File dotFile = new File(outdir,"normalized_graph.dot");
+			File gmlFile = new File(outdir,"normalized_graph.gml");
 			File insDistFile = new File(outdir,"insert_distribution.txt");
 			File conflictSAMFile = new File(outdir,"conflicting_pairs.sam");
 			File conflictTDFile = new File(outdir,"conflicting_pairs.txt");
@@ -109,6 +112,7 @@ public class CountMaxFlow {
 				PrintStream ewOut = new PrintStream(edgeWeightsFile);
 				PrintStream ctOut = new PrintStream(cnctTypeFile);
 				PrintStream dotOut = new PrintStream(dotFile);
+				PrintStream gmlOut = new PrintStream(gmlFile);
 				PrintStream idOut = new PrintStream(insDistFile);
 				PrintStream cftSAMOut = new PrintStream(conflictSAMFile);
 				PrintStream cftTDOut = new PrintStream(conflictTDFile);
@@ -319,12 +323,17 @@ public class CountMaxFlow {
 				System.err.println(udg.edgeSet().size()+" edges");
 				VertexNameProvider<ContigTerminal> inp = new IntegerNameProvider<ContigTerminal>();
 				VertexNameProvider<ContigTerminal> snp = new StringNameProvider<ContigTerminal>();
+				VertexNameProvider<ContigTerminal> tnp = new CTNameProvider();
 				EdgeNameProvider<DefaultWeightedEdge> enp = new DWENameProvider(udg);
+				EdgeNameProvider<DefaultWeightedEdge> eidnp = new IntegerEdgeNameProvider<DefaultWeightedEdge>();				
 				ComponentAttributeProvider<DefaultWeightedEdge> eap = new DWEAttributeProvider(udg);
 				ComponentAttributeProvider<ContigTerminal> vap = new ContigAttributeProvider();
 				DOTExporter<ContigTerminal,DefaultWeightedEdge> dotexp = new DOTExporter<ContigTerminal,DefaultWeightedEdge>(inp,snp,enp,vap,eap);
 				dotexp.export(new PrintWriter(dotOut), udg);
 				dotOut.close();
+				GmlExporter<ContigTerminal,DefaultWeightedEdge> gmlexp = new GmlExporter<ContigTerminal, DefaultWeightedEdge>(inp, snp, enp, enp);
+				gmlexp.export(new PrintWriter(gmlOut), udg);
+				gmlOut.close();
 				mfOut.close();
 			} catch (Exception e){
 				e.printStackTrace();
@@ -352,6 +361,13 @@ public class CountMaxFlow {
 			return nf.format(g.getEdgeWeight(arg0));
 			//return Double.toString(g.getEdgeWeight(arg0));
 		}
+	}
+	
+	public static class CTNameProvider implements VertexNameProvider<ContigTerminal>{
+		public String getVertexName(ContigTerminal vertex) {
+			return vertex.getName();
+		}
+		
 	}
 	
 	public static class DWEAttributeProvider implements ComponentAttributeProvider<DefaultWeightedEdge>{

@@ -91,11 +91,10 @@ public class Find16SRegions {
 		public Location(String[] hit){
 			this.query = hit[0].substring(0,hit[0].indexOf("|"));
 			this.contig = hit[0].substring(hit[0].indexOf("|")+1);
-			int qstart = Integer.parseInt(hit[6]);
-			int qend = Integer.parseInt(hit[7]);
-			this.left = Math.min(qstart, qend);
-			this.right = Math.max(qstart, qend);
-			rev = qstart > qend;
+			this.left = Integer.parseInt(hit[6]);
+			this.right = Integer.parseInt(hit[7]);
+			
+			rev = Integer.parseInt(hit[8]) > Integer.parseInt(hit[9]);
 		}
 		
 		public void merge(Location loc) {
