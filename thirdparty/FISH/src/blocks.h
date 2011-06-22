@@ -69,6 +69,8 @@ if(PRINT_BLOCK)
     int tempdist=0;
     ofstream p2b;
     p2b.open(Block_File.c_str(),ios::out);
+/*  Lets make the output easier to parse.
+ *  Get rid of this stuff first.
     p2b<<get_time_stamp()<<"";
     p2b<<"FISH v1.0\n";
     p2b<<"FISH is copyright (c)2003, University of North Carolina at Chapel Hill\n";
@@ -79,15 +81,17 @@ if(PRINT_BLOCK)
     p2b<<"\ttotal_features = "<<Total_Features<<"\n\ttotal_cells = "<<Total_Cells<<"\n";
     p2b<<"\th = "<<prob<<"\n\td_T = "<<Thresh_Dist<<"\n\tMin_Block_Size = "<<Min_Block_Size;
     p2b<<"\n\tblock_prob = "<<BLOCK_PROB<<"\n\ttotal_blocks = "<<block_list.size()<<"\n\n\n";
-
+*/
+	// make the output tab-delimited
+    p2b<<"contig1\tcontig2\tblock\tpoint\tdist\tmarkers\torientation"<<endl;
     for(i=0;i<block_list.size();i++)
     {
 
       dataj=block_list[i].block.begin();
-      p2b<<"-block "<<i<<endl;
-      p2b<<setw(10)<<"points"<<setw(10)<<"contig1"<<setw(10)<<"contig2"<<endl;
-      p2b<<setw(9)<<block_list[i].block.size()<<setw(9)<<MATCHES[*dataj].contig1<<setw(9)<<MATCHES[*dataj].contig2<<"\n\n";
-      p2b<<"\tpoint\tdist\tmarkers\torientation"<<endl;
+    //  p2b<<"-block "<<i<<endl;
+    //  p2b<<setw(10)<<"points"<<setw(10)<<"contig1"<<setw(10)<<"contig2"<<endl;
+    //  p2b<<setw(9)<<block_list[i].block.size()<<setw(9)<<MATCHES[*dataj].contig1<<setw(9)<<MATCHES[*dataj].contig2<<"\n\n";
+    //  p2b<<"block\tpoint\tdist\tmarkers\torientation"<<endl;
 
       tempy=MATCHES[*dataj].feat.y;
       tempx=MATCHES[*dataj].feat.x;
@@ -96,35 +100,44 @@ if(PRINT_BLOCK)
 	{
 	  tempdist=(MATCHES[*dataj].feat.y-tempy)+abs(MATCHES[*dataj].feat.x-tempx);
 
-	  p2b<<"\t"<<*dataj<<"\t"<<tempdist<<"\t{";
+	  p2b<<MATCHES[*dataj].contig1<<"\t"<<MATCHES[*dataj].contig2<<"\t"<<i<<"\t"<<*dataj<<"\t"<<tempdist<<"\t";
 
-	  for(j=0;j<f2g[MATCHES[*dataj].feat.y].gene_list.size();j++)
-	  p2b<<f2g[MATCHES[*dataj].feat.y].gene_list[j]<<" ";
+	  for(j=0;j<f2g[MATCHES[*dataj].feat.y].gene_list.size();j++){
+	  p2b<<f2g[MATCHES[*dataj].feat.y].gene_list[j];
+		if (j < f2g[MATCHES[*dataj].feat.y].gene_list.size() - 1)
+			p2b <<",";
+	  }
+	  p2b<<"\t";
+	 // p2b<<"}{";
 
-	  p2b<<"}{";
+	  for(j=0;j<f2g[MATCHES[*dataj].feat.x].gene_list.size();j++){
+	  p2b<<f2g[MATCHES[*dataj].feat.x].gene_list[j];
+		if (j < f2g[MATCHES[*dataj].feat.x].gene_list.size() - 1)
+			p2b << ",";
+	  }
 
-	  for(j=0;j<f2g[MATCHES[*dataj].feat.x].gene_list.size();j++)
-	  p2b<<f2g[MATCHES[*dataj].feat.x].gene_list[j]<<" ";
+	  p2b<<"\t"<<MATCHES[*dataj].feat.direction<<"\n";
+//	  p2b<<"}\t"<<MATCHES[*dataj].feat.direction<<"\n";
 
-	  p2b<<"}\t"<<MATCHES[*dataj].feat.direction<<"\n";
 	  tempx=MATCHES[*dataj].feat.x;
 	  tempy=MATCHES[*dataj].feat.y;
 
 	}
 
 
-      p2b<<"\n\n";
+      //p2b<<"\n\n";
 
     }
 
-
+/*
     p2b<<"-by contig\n";
     p2b<<setw(10)<<"contig1"<<setw(10)<<"contig2"<<setw(10)<<"blocks\n";
     for(i=0;i<sub_grid.size();i++)
     p2b<<setw(9)<<sub_grid[i].contig1<<setw(9)<<sub_grid[i].contig2<<setw(9)<<sub_grid[i].blocks<<endl;
-
-    p2b<<"\n-by size\n";
-    p2b<<setw(10)<<"points"<<setw(10)<<"obs"<<setw(10)<<"exp"<<setw(25)<<"p\n";
+*/
+//  p2b<<"\n-by size\n";
+    p2b<<"-by size\n";
+    p2b<<"points"<<setw(10)<<"obs"<<setw(10)<<"exp"<<setw(25)<<"p\n";
     for(l=0;l<FREQ.size();l++)
     {
       if(FREQ[l]>0)
@@ -132,7 +145,8 @@ if(PRINT_BLOCK)
 	  p_u=pow(n*prob,l)*prob;
           pvalue=1-exp(-1*Total_Cells*p_u);
 	  expected_blocks=Total_Cells*p_u;
-          p2b<<setw(9)<<l+1<<setw(9)<<FREQ[l]<<setw(15)<<scientific<<setprecision(2)<<expected_blocks<<setw(25)<<scientific<<pvalue<<"\n";
+//        p2b<<setw(9)<<l+1<<setw(9)<<FREQ[l]<<setw(15)<<scientific<<setprecision(2)<<expected_blocks<<setw(25)<<scientific<<pvalue<<"\n";
+          p2b<<l+1<<"\t"<<FREQ[l]<<"\t"<<scientific<<setprecision(2)<<expected_blocks<<"\t"<<scientific<<pvalue<<"\n";
 	}
     }
 
