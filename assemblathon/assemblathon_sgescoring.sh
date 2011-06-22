@@ -9,7 +9,8 @@
 # Script to score an assembly in SGE using Mauve
 # Depends on existence of a VNC or real X server
 #
-MAUVEDIR="/home/koadman/software/mauve_2.4.0_beta/"
+
+MAUVEDIR="/home/atritt/src/mauve_snapshot_2011-04-18/"
 MAUVE="/home/koadman/software/jre1.6.0_20/bin/java -Xmx2000m -cp Mauve.jar "
 WORKDIR="/state/partition1/$USER/assemblathon/$JOB_ID"
 export TMP="$WORKDIR/tmp"
@@ -18,7 +19,7 @@ export TMPDIR="$WORKDIR/tmp"
 mkdir -p $WORKDIR
 mkdir -p $TMPDIR
 # the following will send useless display requests to an unattended Vnc
-export DISPLAY="merlot.genomecenter.ucdavis.edu:1"
+export DISPLAY="merlot.genomecenter.ucdavis.edu:9"
 # the following is necessary on merlot to pick up a missing X-windows lib libXtst.so
 export LD_LIBRARY_PATH=/home/koadman/lib64:/home/koadman/lib
 cd $MAUVEDIR

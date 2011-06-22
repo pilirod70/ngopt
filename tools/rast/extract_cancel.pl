@@ -1,4 +1,8 @@
 #!/usr/bin/perl -w
+if (scalar(@ARGV) != 2) {
+	print "Usage: $0 <cc_id_to_del_file> <cc_id_job_id_file>\n";
+	exit;
+}
 
 my $del_file = shift;
 my $id_file = shift;
