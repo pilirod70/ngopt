@@ -39,7 +39,7 @@ string Block_File_S;
 bool MAX_SCORE=true;
 int TOP_HITS=5;
 int Max_Distance=10;
-int Min_Score=200;
+int Min_Score=13;
 double Threshold=0.05;
 int Min_Block_Size=3;
 float BLOCK_PROB=.001;

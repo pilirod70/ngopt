@@ -23,7 +23,6 @@ void process_arguments(int argc, char* argv[])
 	      check(i,argv,argc);
 	      Block_File=argv[++i];
 	      PRINT_BLOCK=true;
-
 	    }
 	    
 	    else if(temp=="-B")
@@ -45,7 +44,7 @@ void process_arguments(int argc, char* argv[])
 	  else if(temp=="-off")
 	    Max_Distance=0;
 	    
-         else if(temp=="-q")
+      else if(temp=="-q")
 	    QUIET_MODE=true;
 	    
 	 else if(temp=="-t")
@@ -167,7 +166,7 @@ void usage(void)
 {
   cerr<<"usage:  fish [-f Control_File |control.txt]\n";
   cerr<<"\t[-b Block_File] [-g Grid_File] [-C Contig_File]\n";
-  cerr<<"\t[-D Max_Distance |10] [-S Min_Score |200] [-T Threshold |.05]\n";
+  cerr<<"\t[-D Max_Distance |10] [-S Min_Score |13] [-T Threshold |.05]\n";
   cerr<<"\t[-m Min_Block_Size |3] [-off Turn off Detandemize] [-h help]\n";
   cerr<<"\t[-H Top_Hits |5] [-A Average_Score Selection | Max_Score]\n";
   cerr<<"\t[-p BLOCK_PROB |.001] [-B Block_File_Simple][-q QUIET_MODE]\n";
