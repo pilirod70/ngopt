@@ -1,12 +1,13 @@
 #!/usr/bin/perl -w
 
 use File::Basename;
-die "Usage: ".basename($0)." <name_file> <fasta_dir> <fasta_file_prefix> <outdir> <keep_file>\n" if (scalar(@ARGV) != 5);
+die "Usage: ".basename($0)." <name_file> <fasta_dir> <fasta_file_suffix> <outdir> <keep_file>\n".
+		"<name_file> should contain two columns:  CC_ID   HUMAN_SENSIBLE_NAME\n" if (scalar(@ARGV) != 5);
 my $TPL = "--user atritt  --passwd halophile ".
           "--genetic_code 11 --gene_caller rast --determine_family --domain Archaea";  
 my $names_file = shift;
 my $dir = shift;
-my $pfx = shift;
+my $sfx = shift;
 my $outdir = shift;
 my $spec_file = shift;
 
@@ -23,11 +24,10 @@ while(<NAMES>){
 	chomp;
 	$keep{$_} = 1;
 }
-
 print "#!/bin/bash\n";
-my @files = glob "$dir/*$pfx";
+my @files = glob "$dir/*$sfx";
 for my $file (@files){
-	my $base = basename($file,$pfx);
+	my $base = basename($file,$sfx);
 	next if (!defined($keep{$base}));
 	my $name = $base; 
 	if (!defined($names{$base})) {

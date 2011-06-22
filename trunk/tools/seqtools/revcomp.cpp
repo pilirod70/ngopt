@@ -5,9 +5,12 @@
 
 using namespace std;
 
-struct fa_entry {
+bool fastq;
+
+struct seq_entry {
 	char* name;
 	list<char> seq;
+	list<char> qual;
 };
 
 char comp(char b) {
@@ -49,63 +52,99 @@ char comp(char b) {
 	}
 }
 
-void print_seq(struct fa_entry& fa, int width) {
-	cout << '>' << fa.name << endl;
+void print_seq(struct seq_entry& fa, int width) {
+	if (width == -1)
+		return;
+	if (fastq)
+		cout << '@' << fa.name << endl;
+	else
+		cout << '>' << fa.name << endl;
 	list<char>::iterator it = fa.seq.begin(); 
 	int len = 0;
 	while (it != fa.seq.end()){
 		cout << *it;
 		len++;
-		it++;
 		if (len % width == 0) {
 			cout << '\n';
 		}
+		it++;
 	}
-		
-	if (len % width != 0) {
+	if (len % width != 0) 
 		cout << '\n';
+	if (fastq){
+		cout << '+' << fa.name << endl;
+		it = fa.qual.begin();
+		len = 0;
+		while (it != fa.qual.end()){
+			cout << *it;
+			len++;
+			if (len % width == 0) {
+				cout << '\n';
+			}
+			it++;
+		}
+		if (len % width != 0) 
+			cout << '\n';
 	}
 }
 
 
 int main(int argc, char** argv) {
 	
-	if (argc != 2) {
-		cout << "Usage: revcomp <in.fasta>\n" << "Output printed to standard out\n";
-		return -1;
-	}
+//	if (argc2) {
+//		cout << "Usage: revcomp <in->fasta>\n" << "Output printed to standard out\n";
+//		return -1;
+//	}
 
-	ifstream in(argv[1]);
+	istream* in;
+	if (argc == 2){
+		in = new ifstream(argv[1],ios::in);
+	} else {
+		in = &cin;
+	}
 
 
 	bool first = true;		
-	struct fa_entry* tmp = new fa_entry;
-	char c = (int) in.get();
-	if (c != '>') {
-		cerr << "File not in fasta format\n";
+	struct seq_entry* tmp = new seq_entry;
+	char c = (int) in->get();
+	if (c != '>' && c != '@') {
+		cerr << "File not in fasta format: " << c << "\n";
 		return -1;
 	}
+	if (c == '@')
+		fastq = true;
  	char buf[256];	
-	in.getline(buf,256,'\n');	
-	tmp->name=buf;
+	in->getline(buf,256,'\n');	
+	tmp->name = new char[strlen(buf)];
+	strncpy(tmp->name,buf,strlen(buf));
 	int width = 0;
 	int stretch = 0;
-	while (in.peek() != -1){
-		c = (char) in.get();
-		if (c == '>'){
+	bool in_qual = false;
+	while (in->peek() != -1){
+		c = (char) in->get();
+		if (c == '>' || c == '@'){
 			print_seq(*tmp,width);		
 			delete tmp;
-			tmp = new fa_entry;
-			in.getline(buf,256,'\n');	
-			tmp->name=buf;
+			tmp = new seq_entry;
+			in->getline(buf,256,'\n');	
+			tmp->name = new char[strlen(buf)];
+			strncpy(tmp->name,buf,strlen(buf));
 			stretch = 0;
+			in_qual = false;
+		} else if (c == '+') {
+			in->getline(buf,256,'\n');	
+			in_qual = true;	
 		} else if (c == '\n') {
 			if (stretch > width)
 				width = stretch;
 			stretch = 0;
 		}  else {
-			stretch++;
-			tmp->seq.push_front(comp(c));
+			if (in_qual) {
+				tmp->qual.push_front(c);
+			} else { 
+				stretch++;
+				tmp->seq.push_front(comp(c));
+			}
 		}
 	}
 	print_seq(*tmp,width);		

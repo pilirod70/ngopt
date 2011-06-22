@@ -8,6 +8,11 @@
 
 # Authors: Andrew Tritt and Aaron Darling
 # (c) 2011, Licensed under the GPL
+if [ $# -ne 2 ]; then
+	echo "Usage: run_assembly_pipeline.sh <base> <final_output_directory>"
+	exit
+fi
+
 base=$1
 
 #
