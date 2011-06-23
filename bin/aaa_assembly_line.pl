@@ -169,6 +169,24 @@ sub scaffold_sspace {
 	`mv $outbase.lib$libraryI.sspace.final.scaffolds.fasta $outbase.sspace.final.scaffolds.fasta`;
 }
 
+
+
+sub fish_break_misasms {
+	my $ctgs = shift;
+	my $fq1 = shift;
+	my $fq2 = shift;
+	my $sai = "sai"
+	my $sam = "sam"
+	my $broken_ctgs = "$ctgs.broken"
+	`bwa index -a is $ctgs`
+	`cat $fq1 $fq2 | bwa aln $ctgs - > $sai`
+	`cat $fq1 $fq2 | bwa samse $ctgs $sai - > $sam`
+	`get_fish_input.sh $sam . > get_fish_input.out 2> get_fish_input.err`	
+	`fish -b blocks.txt > fish.out 2> fish.err`
+	`break_misassemblies.pl blocks.txt contig_labels.txt $ctgs > $broken_ctgs 2> break_misasm.err` 
+	return $broken_ctgs;
+}
+
 # calculate the expected number of read pairs to span a point in the assembly
 sub calc_explinks {
 	my $genome_size = shift;
