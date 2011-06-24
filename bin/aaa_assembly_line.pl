@@ -1,29 +1,37 @@
 #!/usr/bin/env perl
 use strict;
+use warnings;
+use File::Basename;
+use Cwd 'abs_path';
 
-die "Usage: andrews_assembly_line.pl <library file> <output base>\n" if(@ARGV!=2);
+die "Usage: ".basename($0)." <library file> <output base>\n" if(@ARGV!=2);
 my $libfile = $ARGV[0];
 my $outbase = $ARGV[1];
+
+my $DIR = dirname(abs_path($0));
 
 my %libs = ();
 sga_clean($libfile, $outbase, \%libs);
 my $maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
 idba_assemble($outbase, $maxrdlen);
-scaffold_sspace($libfile, $outbase, \%libs);
+my $scafs = scaffold_sspace($libfile, $outbase, \%libs, "$outbase-contigs.fa");
+$scafs = break_all_misasms($scafs,"$outbase.fish",\%libs);
+scaffold_sspace($libfile,"$outbase.rescaf",\%libs,$scafs);
+ 
 
 sub sga_assemble {
 	my $r1fq = shift;
 	my $r2fq = shift;
 	my $rupfq = shift;
 	my $outbase = shift;
-	`sga-static preprocess -p 1 -q 10 -f 20 -m 30 --phred64 $r1fq $r2fq > $outbase.pp.fastq`;
-	`sga-static index -d 4000000 -t 4  $outbase.pp.fastq`;
-	`sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq`;
-	`sga-static index -d 2000000 -t 4 $outbase.pp.ec.fa`;
-	`sga-static qc -x 2 -t 4 $outbase.pp.ec.fa`;
-	`sga-static rmdup -t 4 $outbase.pp.ec.qcpass.fa`;
-	`sga-static overlap -m 30 -t 4 $outbase.pp.ec.qcpass.rmdup.fa`;
-	`sga-static assemble -x 10 -b 5 -r 20 $outbase.pp.ec.qcpass.rmdup.asqg.gz`;
+	`$DIR/sga-static preprocess -p 1 -q 10 -f 20 -m 30 --phred64 $r1fq $r2fq > $outbase.pp.fastq`;
+	`$DIR/sga-static index -d 4000000 -t 4  $outbase.pp.fastq`;
+	`$DIR/sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq`;
+	`$DIR/sga-static index -d 2000000 -t 4 $outbase.pp.ec.fa`;
+	`$DIR/sga-static qc -x 2 -t 4 $outbase.pp.ec.fa`;
+	`$DIR/sga-static rmdup -t 4 $outbase.pp.ec.qcpass.fa`;
+	`$DIR/sga-static overlap -m 30 -t 4 $outbase.pp.ec.qcpass.rmdup.fa`;
+	`$DIR/sga-static assemble -x 10 -b 5 -r 20 $outbase.pp.ec.qcpass.rmdup.asqg.gz`;
 }
 
 sub sga_clean {
@@ -33,7 +41,7 @@ sub sga_clean {
 	open(LIB,"<",$libfile);
 	my $lib_count = 0;
 	my %hash = ();
-	my $maxrdlen = 0;
+#	my $maxrdlen = 0;
 	my $files = "";
 	while(<LIB>){
 		if ($_ =~ m/\[LIB\]/){
@@ -46,13 +54,13 @@ sub sga_clean {
 		} elsif ($_ =~ m/(p[1,2])=([\w\/\-\.]+)/) { 
 			$hash{$1} = $2;
 			$files .= "$2 ";
-			my $len = get_rdlen($2);
-			$maxrdlen = $len if ($len > $maxrdlen);
+		#	my $len = get_rdlen($2);
+		#	$maxrdlen = $len if ($len > $maxrdlen);
 		} elsif ($_ =~ m/up=([\w\/\-\.]+)/) { 
 			$hash{"up"} = $1;
 			$files .= "$1 ";
-			my $len = get_rdlen($1);
-			$maxrdlen = $len if ($len > $maxrdlen);
+		#	my $len = get_rdlen($1);
+		#	$maxrdlen = $len if ($len > $maxrdlen);
 		} elsif ($_ =~ m/ins=([\w\/\-\.]+)/) { 
 			$hash{"ins"} = $1;
 		}
@@ -60,17 +68,17 @@ sub sga_clean {
 	for my $key (sort keys %hash){
 		push(@{$libs{"lib$lib_count"}},$hash{$key});
 	}
-	system("sga-static preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq");
+	system("$DIR/sga-static preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq");
 	die "Error preprocessing reads with SGA\n" if( $? != 0 );
 	my $sga_ind = "";
 	my $sga_ind_kb = 4000000;
 	do{
-		$sga_ind = `sga-static index -d $sga_ind_kb -t 4  $outbase.pp.fastq > index.out 2>&1`;
+		$sga_ind = `$DIR/sga-static index -d $sga_ind_kb -t 4  $outbase.pp.fastq > index.out 2>&1`;
 		$sga_ind_kb = int($sga_ind_kb/2);
 	}while($sga_ind =~ /bad_alloc/ || $? != 0);
 	system("rm -f core*");
 	die "Error indexing reads with SGA\n" if( $? != 0 );
-	system("sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out");
+	system("$DIR/sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out");
 	die "Error correcting reads with SGA\n" if( $? != 0 );
 }
 
@@ -90,6 +98,7 @@ sub fastq_to_fasta {
 		$maxrdlen = length($seq) if length($seq) > $maxrdlen;
 	}
 	close FA;
+	# why are we removing 2 here?
 	return $maxrdlen - 2;	# -1 removes newline char
 }
 
@@ -111,19 +120,23 @@ sub scaffold_sspace {
 	my $outbase = shift;
 	# build library file
 	my $libs = shift;
+	my $curr_ctgs = shift;
 	my @library_file = ();
-	my $lib_files;
+	my @lib_files;
 	my $min_insert_size = -1;
+	# remove the unpaired file if present 
 	`rm $outbase.unpaired.fastq` if (-f "$outbase.unpaired.fastq");
 	for my $lib (keys %libs) {
 	#	print STDERR "$lib\t".join(" ",@{$libs{$lib}})."\n";
-		$lib_files = \@{$libs{$lib}};
+		# need to make a copy of this little array, so we can preserve the original for break_all_misasms
+		@lib_files = @{$libs{$lib}};
+		#$lib_files = \@{$libs{$lib}};
 		# if we have at least two files in this library, assume the first two are paired
-		if (scalar(@$lib_files) >= 2) {
-			my $ins = shift @$lib_files;
-			my $fq1 = shift @$lib_files;
-			my $fq2 = shift @$lib_files;
-			my ($ins_mean, $ins_err) = get_insert($fq1,$fq2,$outbase,$lib);
+		if (scalar(@lib_files) >= 2) {
+			my $ins = shift @lib_files;
+			my $fq1 = shift @lib_files;
+			my $fq2 = shift @lib_files;
+			my ($ins_mean, $ins_err) = get_insert($fq1,$fq2,$outbase,$lib,$curr_ctgs);
 			if ($ins_mean == -1) {
 				$ins_mean = $ins;
 				$ins_err = 0.7;
@@ -134,12 +147,12 @@ sub scaffold_sspace {
 			push (@library_file, "$lib $fq1 $fq2 $ins_mean $ins_err $outtie\n");
 		}
 		# if we have one file left, treat it as unpaired. 
-		if (scalar(@$lib_files) == 1){
-			my $up = shift @$lib_files;
+		if (scalar(@lib_files) == 1){
+			my $up = shift @lib_files;
 			`cat $up >> $outbase.unpaired.fastq`;
 		}
 	}
-	my $genome_size = get_genome_size("$outbase-contig.fa");
+	my $genome_size = get_genome_size($curr_ctgs);
 	print STDERR "Total contig length $genome_size\n";
 	my $libraryI=1;
 	open( LIBRARY, ">library_$libraryI.txt" );
@@ -154,7 +167,7 @@ sub scaffold_sspace {
 			close LIBRARY;
 			my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
 			print STDERR "Insert $prev_ins, expected links $exp_link\n";
-			run_sspace($genome_size, $prev_ins, $exp_link, $libraryI);
+			$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI, $curr_ctgs);
 			$libraryI++;
 			open( LIBRARY, ">library_$libraryI.txt" );
 		}
@@ -165,26 +178,49 @@ sub scaffold_sspace {
 	close LIBRARY;
 	my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
 	print STDERR "Insert $prev_ins, expected links $exp_link\n";
-	run_sspace($genome_size, $prev_ins, $exp_link, $libraryI);
+	my $fin_scafs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI,$curr_ctgs);
 	`mv $outbase.lib$libraryI.sspace.final.scaffolds.fasta $outbase.sspace.final.scaffolds.fasta`;
+	return $fin_scafs;
 }
 
-
+sub break_all_misasms {
+	my $ctgs = shift;
+	my $libs = shift;
+	my $outbase = shift;
+	my @lib_files;
+	my %tmp = %libs;
+	for my $lib (keys %libs){
+		$tmp{$lib} = @{$libs{$lib}} if (scalar(@{$libs{$lib}}) >= 2);
+	}
+	# sort libraries by insert so we break with larger inserts first.
+	for my $lib (sort {$tmp{$b}[0] <=> $tmp{$a}[0]} keys %tmp){
+		@lib_files = @{$libs{$lib}};
+		next unless (scalar(@lib_files) >= 2);
+		my $ins = shift @lib_files;
+		my $fq1 = shift @lib_files;
+		my $fq2 = shift @lib_files;
+		$ctgs = fish_break_misasms($ctgs,$fq1,$fq2,"$outbase.lib$lib");
+	}	
+	return $ctgs;
+}
 
 sub fish_break_misasms {
 	my $ctgs = shift;
 	my $fq1 = shift;
 	my $fq2 = shift;
-	my $sai = "sai"
-	my $sam = "sam"
-	my $broken_ctgs = "$ctgs.broken"
-	`bwa index -a is $ctgs`
-	`cat $fq1 $fq2 | bwa aln $ctgs - > $sai`
-	`cat $fq1 $fq2 | bwa samse $ctgs $sai - > $sam`
-	`get_fish_input.sh $sam . > get_fish_input.out 2> get_fish_input.err`	
-	`fish -b blocks.txt > fish.out 2> fish.err`
-	`break_misassemblies.pl blocks.txt contig_labels.txt $ctgs > $broken_ctgs 2> break_misasm.err` 
-	return $broken_ctgs;
+	my $outbase = shift;
+	my $sai = "$outbase.sai";
+	my $sam = "$outbase.sam";
+	`$DIR/bwa index -a is $ctgs > $outbase.index.out`;
+	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
+	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
+	`$DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out`;
+	`$DIR/fish -b $outbase.blocks.txt > $outbase.fish.out`;
+	die "Error getting blocks with FISH for $outbase\n" if ($? != 0);
+	`$DIR/break_misassemblies.pl $outbase.blocks.txt contig_labels.txt $ctgs > $outbase.broken.fasta 2> $outbase.break.out`;
+	die "Error getting breaking contigs after running FISH\n" if ($? != 0);
+	`rm $outbase.blocks.txt contig_labels.txt fish.* get_fish_input.* break_misasm.err $sam $sai`;
+	return "$outbase.broken.fasta";
 }
 
 # calculate the expected number of read pairs to span a point in the assembly
@@ -217,16 +253,18 @@ sub run_sspace {
 	# require at least 2 links to preclude chimeras
 	$sspace_k = $sspace_k < 2 ? 2 : $sspace_k;	
 #	$sspace_k = 5;	# gives best results on mediterranei
-	my $input_fa = "$outbase-contig.fa";
+	#my $input_fa = "$outbase-contig.fa";
+	my $input_fa = shift;
 	$input_fa = "$outbase.lib".($libraryI-1).".sspace.final.scaffolds.fasta" if $libraryI>1;
-	my $sspace_cmd = "SSPACE_v1-1.pl -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 -l library_$libraryI.txt -s $input_fa -b $outbase.lib$libraryI.sspace";
+	my $sspace_cmd = "$DIR/SSPACE_v1-1.pl -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 -l library_$libraryI.txt -s $input_fa -b $outbase.lib$libraryI.sspace";
 	if (-f "$outbase.unpaired.fastq") {
 		print STDERR "Running SSPACE with unpaired reads\n";
 		$sspace_cmd .= " -u $outbase.unpaired.fastq";
 	}
 	print STDERR "$sspace_cmd\n";
 	`$sspace_cmd > sspace_lib$libraryI.out`;
-	`rm -rf bowtieoutput/ reads/`
+	`rm -rf bowtieoutput/ reads/`;
+	return "$outbase.lib$libraryI.sspace.final.scaffolds.fasta";
 }
 
 sub log2 {
@@ -246,22 +284,23 @@ sub get_genome_size {
 	return $len;
 }
 
-sub get_insert($$$$) {
+sub get_insert($$$$$) {
 	my $r1fq = shift;
 	my $r2fq = shift;
 	my $outbase = shift;
 	my $lib = shift;
+	my $ctgs = shift;
 	# estimate the library insert size with bwa
 	# just use a subsample of 40k reads
-	`bwa index -a is $outbase-contig.fa`;
+	`$DIR/bwa index -a is $ctgs`;
 	`head -n 40000 $r1fq > $r1fq.sub`;
 	`tail -n 40000 $r1fq >> $r1fq.sub`;
 	`head -n 40000 $r2fq > $r2fq.sub`;
 	`tail -n 40000 $r2fq >> $r2fq.sub`;
-	`bwa aln $outbase-contig.fa $r1fq.sub > $r1fq.sub.sai`;
-	`bwa aln $outbase-contig.fa $r2fq.sub > $r2fq.sub.sai`;
+	`$DIR/bwa aln $ctgs $r1fq.sub > $r1fq.sub.sai`;
+	`$DIR/bwa aln $ctgs $r2fq.sub > $r2fq.sub.sai`;
 	# bwa will print the estimated insert size, let's capture it then kill the job
-	open(SAMPE, "bwa sampe -P -f $outbase-pe.sam $outbase-contig.fa $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub 2>&1 | tee $outbase.$lib.sampe.out |");
+	open(SAMPE, "$DIR/bwa sampe -P -f $outbase-pe.sam $ctgs $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub 2>&1 | tee $outbase.$lib.sampe.out |");
 	my $ins_mean = 0;
 	my $ins_error = 0;
 	my $min;
