@@ -1,0 +1,33 @@
+-maps
+1	data/map1.txt
+2	data/map2.txt
+3	data/map3.txt
+4	data/map4.txt
+5	data/map5.txt
+-matches
+1	1	data/match1v1.txt
+2	1	data/match2v1.txt
+3	1	data/match3v1.txt
+4	1	data/match4v1.txt
+5	1	data/match5v1.txt
+1	2	data/match1v2.txt
+2	2	data/match2v2.txt
+3	2	data/match3v2.txt
+4	2	data/match4v2.txt
+5	2	data/match5v2.txt
+1	3	data/match1v3.txt
+2	3	data/match2v3.txt
+3	3	data/match3v3.txt
+4	3	data/match4v3.txt
+5	3	data/match5v3.txt
+1	4	data/match1v4.txt
+2	4	data/match2v4.txt
+3	4	data/match3v4.txt
+4	4	data/match4v4.txt
+5	4	data/match5v4.txt
+1	5	data/match1v5.txt
+2	5	data/match2v5.txt
+3	5	data/match3v5.txt
+4	5	data/match4v5.txt
+5	5	data/match5v5.txt
+end

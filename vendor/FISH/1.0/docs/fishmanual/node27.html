@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with jLaTeX2HTML 2002 (1.62) JA patch-1.4
+patched version by:  Kenshi Muto, Debian Project.
+LaTeX2HTML 2002 (1.62),
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Control file </TITLE>
+<META NAME="description" CONTENT="Control file ">
+<META NAME="keywords" CONTENT="fishmanual">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="jLaTeX2HTML v2002 JA patch-1.4">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="fishmanual.css">
+
+<LINK REL="next" HREF="node28.html">
+<LINK REL="previous" HREF="node26.html">
+<LINK REL="up" HREF="node26.html">
+<LINK REL="next" HREF="node28.html">
+</HEAD>
+
+<BODY >
+<!--Navigation Panel-->
+<A NAME="tex2html452"
+  HREF="node28.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="file:/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html448"
+  HREF="node26.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="file:/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html442"
+  HREF="node26.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="file:/usr/share/latex2html/icons/prev.png"></A> 
+<A NAME="tex2html450"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents"
+ SRC="file:/usr/share/latex2html/icons/contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html453"
+  HREF="node28.html">Map files</A>
+<B> Up:</B> <A NAME="tex2html449"
+  HREF="node26.html">Input files</A>
+<B> Previous:</B> <A NAME="tex2html443"
+  HREF="node26.html">Input files</A>
+ &nbsp <B>  <A NAME="tex2html451"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H2><A NAME="SECTION00511000000000000000"></A><A NAME="controlfile"></A>
+<BR>
+Control file 
+</H2>
+A control file is used to specify the paths of the map and match files.
+The format of the control file can be seen in the sample provided.
+It is divided into two sections, one for map files and one for match files.
+
+<P>
+At a minimum, one map file and its associated match file are required.
+To compare two different contigs, map and match files are
+required for each.  In addition, one or two match files must be specified
+that list the matches between features in contig 1 <I>vs.</I> 2, and/or 2
+<I>vs.</I> 1.
+
+<P>
+A list of the map files is preceded by the optional token '-maps' followed by a 
+newline character, followed by a separate line for each contig that is to be 
+analyzed.  Each of those lines contains an integer, followed by whitespace, 
+followed by a valid filename path, followed by a newline character.  The integer
+is taken to be the name of a contig and the filename path tells FISH 
+where to find the map file for that contig.
+
+<P>
+A list of the match files is preceded with the optional token '-matches' 
+followed by a newline character, followed by a separate line for each pair of
+contigs to be analyzed.  Each of those lines contains an integer, followed by 
+whitespace, followed by an integer, followed by whitespace, followed by a valid 
+filename path.  The two integers specify the contigs for the match file.
+Note that there must be at least one comparison in which
+the integer of the first contig is less than the integer of the second contig.
+For example if 1 versus 2 does not exist, than 2 versus 1 is ignored. So if there is
+only one match file for a comparison between two contigs then that comparison must be
+written as 1 versus 2.
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html452"
+  HREF="node28.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="file:/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html448"
+  HREF="node26.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="file:/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html442"
+  HREF="node26.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="file:/usr/share/latex2html/icons/prev.png"></A> 
+<A NAME="tex2html450"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents"
+ SRC="file:/usr/share/latex2html/icons/contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html453"
+  HREF="node28.html">Map files</A>
+<B> Up:</B> <A NAME="tex2html449"
+  HREF="node26.html">Input files</A>
+<B> Previous:</B> <A NAME="tex2html443"
+  HREF="node26.html">Input files</A>
+ &nbsp <B>  <A NAME="tex2html451"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+<ADDRESS>
+root
+2003-06-27
+</ADDRESS>
+</BODY>
+</HTML>
