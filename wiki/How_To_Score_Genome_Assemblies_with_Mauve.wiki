@@ -61,7 +61,7 @@ java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_vol
 
 java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly3.fasta -reorder -outputDir assembly3_scores
 }}} 
-   Two caveats exist at this stage.  First, the program must be run from within the Mauve directory in order to find dependency jar libraries.  If the libraries in the "ext" folder are added to the classpath then the program may run from within a different directory.  Second, access to a GUI is required.  See the comments above for getting GUI support on headless and remote servers.
+   Two caveats exist at this stage.  First, the program must be run from within the Mauve directory in order to find dependency jar libraries.  If the libraries in the "ext" folder are added to $CLASSPATH and the directory containing the progressiveMauve binary is added to $PATH then the program may run from within a different directory.  See the Mac OS X example below for a demonstration of this. Second, access to a GUI is required.  See the comments above for getting GUI support on headless and remote servers.
   # *Generate summary plots comparing the assemblies*
 {{{
 mauveAssemblyMetrics.pl ./
