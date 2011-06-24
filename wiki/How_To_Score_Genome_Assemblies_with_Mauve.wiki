@@ -30,7 +30,11 @@ It can be installed on Debian and Ubuntu distributions simply by running:
 {{{
 sudo apt-get install r-recommended
 }}}
-
+To download and install R-2.13.0 on Mac OS X try:
+{{{
+curl -o R-2.13.0.pkg http://cran.r-project.org/bin/macosx/R-2.13.0.pkg
+sudo installer -pkg R-2.13.0.pkg -target /
+}}}
 
 === Java === 
 
