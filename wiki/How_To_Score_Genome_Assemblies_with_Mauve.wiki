@@ -1,4 +1,4 @@
-#summary A brief tutorial describing how to score genome assemblies using the Mauve system
+  #summary A brief tutorial describing how to score genome assemblies using the Mauve system
 
 = Introduction =
 
@@ -109,3 +109,46 @@ java -cp Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_vol
 }}}
 
 At this stage a set of PDF files named `mauve_*` will exist in the current directory.  These files can be inspected to evaluate assembly strategies.
+
+
+
+= A complete example on the Mac OS X 10.6 command line =
+The following commands can be copied and pasted into a Mac OS X 10.6 terminal window.
+Note that this requires Java version 6, which comes with OS X 10.6.  On older versions of OS X, Java 6 needs to be installed manually.
+
+{{{
+#
+# Get the software
+#
+curl -o Mauve-snapshot_2011-06-24.dmg http://gel.ahabs.wisc.edu/mauve/snapshots/2011/2011-06-24/MacOS/Mauve-snapshot_2011-06-24.dmg
+hdiutil attach Mauve-snapshot_2011-06-24.dmg
+export PATH=$PATH:/Volumes/Mauve\ snapshot_2011-06-24/Mauve.app/Contents/MacOS/
+export CLASSPATH="/Volumes/Mauve\ snapshot_2011-06-24/Mauve.app/Contents/Resources/Java/ext/*"
+curl -o mauveAssemblyMetrics.R http://ngopt.googlecode.com/svn/trunk/tools/mauve_assembly_metrics/mauveAssemblyMetrics.R
+curl -o  mauveAssemblyMetrics.pl http://ngopt.googlecode.com/svn/trunk/tools/mauve_assembly_metrics/mauveAssemblyMetrics.pl
+chmod 755 mauveAssemblyMetrics.*
+
+#
+# Get the test data
+#
+curl -o Haloferax_volcanii_DS2.gbk http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/Haloferax_volcanii_DS2.gbk
+curl -o assembly1.fasta  http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly1.fasta
+curl -o assembly2.fasta http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly2.fasta
+curl -o assembly3.fasta http://edhar.genomecenter.ucdavis.edu/~koadman/mauve_assembly_metrics/assembly3.fasta
+
+#
+# run the scoring
+#
+java -cp /Volumes/Mauve\ snapshot_2011-06-24/Mauve.app/Contents/Resources/Java/Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly1.fasta -reorder  -outputDir assembly1_scores
+
+java -cp /Volumes/Mauve\ snapshot_2011-06-24/Mauve.app/Contents/Resources/Java/Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly2.fasta -reorder  -outputDir assembly2_scores
+
+java -cp /Volumes/Mauve\ snapshot_2011-06-24/Mauve.app/Contents/Resources/Java/Mauve.jar org.gel.mauve.assembly.ScoreAssembly -reference Haloferax_volcanii_DS2.gbk -assembly assembly3.fasta -reorder  -outputDir assembly3_scores
+
+#
+# Generate plots of metrics
+# ./ indicates the parent directory containing the assembly scoring directories -- the current working directory in our example
+#
+./mauveAssemblyMetrics.pl ./
+
+}}}
