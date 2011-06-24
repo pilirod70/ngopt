@@ -1,4 +1,4 @@
-  #summary A brief tutorial describing how to score genome assemblies using the Mauve system
+#summary A brief tutorial describing how to score genome assemblies using the Mauve system
 
 = Introduction =
 
