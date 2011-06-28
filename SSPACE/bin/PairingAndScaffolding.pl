@@ -245,8 +245,8 @@ sub computeLayout{
       my $tnumf = "f" . $tnum;
       my $tnumr = "r" . $tnum;
       my $ratio = 0.00;
-      if(!defined $seen_start->{$tnum}){
-         $seen_start->{$tnum}++ if($tnumf ne $orig_tig);
+      if(!defined $seen_start->{$tnum} || $tnumf eq $orig_tig || $tnumr eq $orig_tig){
+         $seen_start->{$tnum}++;
          my $list = $pair->{$tig};
          my $matchhash;
          my ($match1,$link1,$gaps1,$match2,$link2,$gaps2,$cntloop, $countmatches)=("",0,0,"",0,0,0,0);
