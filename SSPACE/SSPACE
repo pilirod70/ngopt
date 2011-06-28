@@ -134,7 +134,7 @@
       die "ERROR: Invalid file in library $library: $fileA -- fatal\n" if(! -e $fileA);
       die "ERROR: Invalid file in library $library: $fileB -- fatal\n" if(! -e $fileB);
       die "ERROR: Insert size should be higher than or equal to 0. Your library $library has insert size of $insert_size. Exiting.\n" if(!($insert_size>0) || !($insert_size * 1 eq $insert_size));
-      die "ERROR: Insert stdev must be a number between 0.00 and 1.00. Your library $library has insert size of $insert_stdev. Exiting.\n" if($insert_stdev < 0 || $insert_stdev > 1 || !($insert_stdev * 1 eq $insert_stdev));
+      die "ERROR: Insert stdev must be a number > 0.00. Your library $library has insert size of $insert_stdev. Exiting.\n" if($insert_stdev < 0 || !($insert_stdev * 1 eq $insert_stdev));
       die "ERROR: Reverse must be either 0 or 1. Your library $library has reverse complement of $reverse ...Exiting.\n" if(!($reverse == 0 || $reverse == 1));
     }
   }
