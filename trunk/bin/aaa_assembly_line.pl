@@ -24,14 +24,14 @@ sub sga_assemble {
 	my $r2fq = shift;
 	my $rupfq = shift;
 	my $outbase = shift;
-	`$DIR/sga-static preprocess -p 1 -q 10 -f 20 -m 30 --phred64 $r1fq $r2fq > $outbase.pp.fastq`;
-	`$DIR/sga-static index -d 4000000 -t 4  $outbase.pp.fastq`;
-	`$DIR/sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq`;
-	`$DIR/sga-static index -d 2000000 -t 4 $outbase.pp.ec.fa`;
-	`$DIR/sga-static qc -x 2 -t 4 $outbase.pp.ec.fa`;
-	`$DIR/sga-static rmdup -t 4 $outbase.pp.ec.qcpass.fa`;
-	`$DIR/sga-static overlap -m 30 -t 4 $outbase.pp.ec.qcpass.rmdup.fa`;
-	`$DIR/sga-static assemble -x 10 -b 5 -r 20 $outbase.pp.ec.qcpass.rmdup.asqg.gz`;
+	`$DIR/sga preprocess -p 1 -q 10 -f 20 -m 30 --phred64 $r1fq $r2fq > $outbase.pp.fastq`;
+	`$DIR/sga index -d 4000000 -t 4  $outbase.pp.fastq`;
+	`$DIR/sga correct -k 31 -i 10 -t 4  $outbase.pp.fastq`;
+	`$DIR/sga index -d 2000000 -t 4 $outbase.pp.ec.fa`;
+	`$DIR/sga qc -x 2 -t 4 $outbase.pp.ec.fa`;
+	`$DIR/sga rmdup -t 4 $outbase.pp.ec.qcpass.fa`;
+	`$DIR/sga overlap -m 30 -t 4 $outbase.pp.ec.qcpass.rmdup.fa`;
+	`$DIR/sga assemble -x 10 -b 5 -r 20 $outbase.pp.ec.qcpass.rmdup.asqg.gz`;
 }
 
 sub sga_clean {
@@ -68,17 +68,17 @@ sub sga_clean {
 	for my $key (sort keys %hash){
 		push(@{$libs{"lib$lib_count"}},$hash{$key});
 	}
-	system("$DIR/sga-static preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq");
+	system("$DIR/sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq");
 	die "Error preprocessing reads with SGA\n" if( $? != 0 );
 	my $sga_ind = "";
 	my $sga_ind_kb = 4000000;
 	do{
-		$sga_ind = `$DIR/sga-static index -d $sga_ind_kb -t 4  $outbase.pp.fastq > index.out 2>&1`;
+		$sga_ind = `$DIR/sga index -d $sga_ind_kb -t 4  $outbase.pp.fastq > index.out 2>&1`;
 		$sga_ind_kb = int($sga_ind_kb/2);
 	}while($sga_ind =~ /bad_alloc/ || $? != 0);
 	system("rm -f core*");
 	die "Error indexing reads with SGA\n" if( $? != 0 );
-	system("$DIR/sga-static correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out");
+	system("$DIR/sga correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out");
 	die "Error correcting reads with SGA\n" if( $? != 0 );
 }
 
