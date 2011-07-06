@@ -2,25 +2,15 @@ package org.halophiles.assembly.scaffold;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.text.NumberFormat;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
-import java.util.zip.GZIPInputStream;
-
-import jsc.datastructures.PairedData;
-import jsc.regression.PearsonCorrelation;
 
 import org.halophiles.assembly.Contig;
 import org.halophiles.assembly.ContigTerminal;
@@ -122,13 +112,14 @@ public class CountMaxFlow {
 				SAMFileParser sfp = new SAMFileParser(args[i]);
 				int ins = Integer.parseInt(args[i+1]);
 				double err = Double.parseDouble(args[i+2]);
-				
+				System.err.println("ins: "+ins+"\nerr: "+err);
 				// build up a map for contigs
 				Iterator<Contig> ctgIt = sfp.getContigs();
 				while(ctgIt.hasNext()){
 					Contig tmpCtg = ctgIt.next();
 					if (!contigs.containsKey(tmpCtg.name))
 						contigs.put(tmpCtg.name, tmpCtg);
+					System.err.println(tmpCtg.name+"\t"+tmpCtg.len+"\t"+tmpCtg.getCov());
 				}
 				// ...and again for reads
 				Iterator<ReadPair> rpIt = sfp.getReadPairs();
@@ -265,9 +256,9 @@ public class CountMaxFlow {
 									System.exit(-1);
 								}
 								DefaultWeightedEdge adj = dg.addEdge(c1, c2);
-								dg.setEdgeWeight(adj, c1.getDistance(c2));
+								dg.setEdgeWeight(adj, c1.nlinks(c2));
 								adj = dg.addEdge(c2, c1);
-								dg.setEdgeWeight(adj, c2.getDistance(c1));
+								dg.setEdgeWeight(adj, c2.nlinks(c1));
 							}
 						}
 //						DefaultWeightedEdge adj = dg.addEdge(ctgRef[cI], ctgRef[cJ]);
@@ -399,8 +390,13 @@ public class CountMaxFlow {
 	}
 	
 	private static int isTerminal(int left, int right, int ins, double err, Contig ctg){
-		if (ctg.len < (ins)*(1.0+err)) return START_TERM;
-		if (left < (ins)*(1.0+err)) {
+		if (ctg.len < (ins)*(1.0+err)){
+			if (ctg.len - right < left - 1){
+				return END_TERM;
+			} else if (ctg.len - right > left - 1){				
+				return START_TERM;
+			}
+		} else if (left < (ins)*(1.0+err)) {
 			return START_TERM;
 		} else if (ctg.len - (ins)*(1.0+err) < right){
 			return END_TERM;
