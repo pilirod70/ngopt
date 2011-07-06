@@ -18,13 +18,15 @@ public class SAMFileParser {
 	
 	private int rdlen;
 	
+	private File samFile;
+	
 	public SAMFileParser(String samPath) throws IOException{
 		contigs = new HashMap<String, Contig>();
 		reads = new HashMap<String, ReadPair>();
 		BufferedReader br = null;
 		String ctgStr = null;
 
-		File samFile = new File(samPath);
+		samFile = new File(samPath);
 		if (samFile.getName().endsWith(".gz")||samFile.getName().endsWith(".Z")||samFile.getName().endsWith(".z"))
 			br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(samFile))));
 		else
@@ -85,6 +87,13 @@ public class SAMFileParser {
 			}
 		}
 	}*/
+	
+	public String getBasename(){
+		if (samFile.getName().endsWith(".sam"))
+			return samFile.getName().substring(0,samFile.getName().indexOf(".sam")); 
+		else 
+			return samFile.getName();
+	}
 
 	public Iterator<Contig> getContigs(){
 		return contigs.values().iterator();

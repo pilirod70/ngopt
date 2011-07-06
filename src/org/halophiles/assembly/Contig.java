@@ -1,6 +1,7 @@
 package org.halophiles.assembly;
 
-import java.util.*;
+import java.util.Map;
+import java.util.HashMap;
 
 public class Contig implements Comparable<Contig> {
 	private static int CTG_COUNT=0;
@@ -8,6 +9,7 @@ public class Contig implements Comparable<Contig> {
 	private ContigTerminal start;
 	private ContigTerminal end;
 	private int id;
+	private int rankId;
 	public String name;
 	public int len;
 	private double cov = 0;
@@ -29,6 +31,7 @@ public class Contig implements Comparable<Contig> {
 		} else {
 			id = CTG_COUNT+1;
 		}
+		this.rankId = id;
 		this.len = len;
 		this.cov = -1;
 		numSelfConnect = 0;
@@ -100,6 +103,12 @@ public class Contig implements Comparable<Contig> {
 	}
 	public int getId(){
 		return id;
+	}
+	public void setRank(int id){
+		this.rankId = id;
+	}
+	public int getRank(){
+		return this.rankId;
 	}
 	
 	public ContigTerminal getStartTerminus(){

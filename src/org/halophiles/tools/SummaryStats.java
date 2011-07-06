@@ -28,7 +28,7 @@ public class SummaryStats {
 		for (int i = 0; i < dat.length; i++) {
 			total += Math.pow(dat[i]-mean, 2);
 		}
-		return total / ((double)dat.length);
+		return total / ((double)(dat.length-1));
 	}
 	
 	public static double variance(double[] dat) {
