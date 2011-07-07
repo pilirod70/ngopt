@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
@@ -33,8 +34,24 @@ public class SAMFileParser {
 			br = new BufferedReader(new FileReader(samFile));
 		while(nextCharIs(br, '@')){ 
 			String[] hdr = br.readLine().split("\t");
-			Contig tmp = new Contig(hdr[1].substring(3),Integer.parseInt(hdr[2].substring(3)));
+			String name = null;
+			int len = -1;
+			for (String s: hdr){
+				if (s.startsWith("SN")){
+					name = s.substring(3);
+				} else if (s.startsWith("LN")){
+					len = Integer.parseInt(s.substring(3));
+				}
+			}
+			if (name == null) 
+				System.err.println("Found nameless contig in SAM header");
+			else if (len == -1) 
+				System.err.println("Found contig of unknown length in SAM header");
+			Contig tmp = new Contig(name,len);
 			contigs.put(tmp.name, tmp);
+		}
+		if (contigs.size() == 0){
+			System.err.println("0 contigs found in SAM header.");
 		}
 		int rdlen = 0;
 		int den = 0;
@@ -57,7 +74,13 @@ public class SAMFileParser {
 				tmp = new ReadPair(line[0]);
 				reads.put(line[0], tmp);
 			}
-			Contig tmpCtg = contigs.get(ctgStr);
+			Contig tmpCtg = null;
+			if (contigs.containsKey(ctgStr))
+				tmpCtg = contigs.get(ctgStr);
+			else {
+				tmpCtg = new Contig(ctgStr);
+				contigs.put(ctgStr, tmpCtg);
+			}
 			int val = tmp.addRead(left, rev, tmpCtg, line);
 			if (val == 2){
 				
@@ -66,27 +89,6 @@ public class SAMFileParser {
 			tmpCtg.addReadPair(tmp);
 		}
 	}
-
-	
-	/*public SAMFileParser(String samPath, String gclPath) throws IOException{
-		this(samPath);
-		File gclFile = new File(gclPath);
-		BufferedReader br = null;
-		
-		br = new BufferedReader(new FileReader(gclFile));
-		br.readLine();
-		Contig tmp = null;
-		while(br.ready()){
-			String[] line = br.readLine().split("\t");
-			String ctg = line[0].split("\\|")[0];
-			if (contigs.containsKey(ctg)){
-				contigs.get(ctg).setCov(Double.parseDouble(line[1]));
-			} else {
-				tmp = new Contig(ctg, Integer.parseInt(line[3]), Double.parseDouble(line[1]));
-				contigs.put(tmp.name, tmp);
-			}
-		}
-	}*/
 	
 	public String getBasename(){
 		if (samFile.getName().endsWith(".sam"))
@@ -144,9 +146,19 @@ public class SAMFileParser {
 	 * @return the length of the match indicated by the CIGAR string. Return -1 if no match
 	 */
 	public static int cigarLength(String cig){
-		if (cig.contains("M"))
-			return Integer.parseInt(cig.substring(0,cig.indexOf('M')));
-		else return -1;
+		StringTokenizer tok = new StringTokenizer(cig, "MIDNSHP", true);
+		int totalLen = 0;
+		int alignLen = 0;
+		while (tok.hasMoreTokens()){
+			int len = Integer.parseInt(tok.nextToken());
+			char op = tok.nextToken().charAt(0);
+			if (op == 'M'){
+				alignLen += len;
+			}
+			if (op != 'I')
+				totalLen += len;
+		}
+		return alignLen;
 	}
 	
 		

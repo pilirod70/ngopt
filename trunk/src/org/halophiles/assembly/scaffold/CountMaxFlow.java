@@ -117,6 +117,11 @@ public class CountMaxFlow {
 				Iterator<Contig> ctgIt = sfp.getContigs();
 				while(ctgIt.hasNext()){
 					Contig tmpCtg = ctgIt.next();
+					if (tmpCtg.len == -1){
+						System.err.println("Contig " + tmpCtg.name + " has unspecified length. Contig length should be specified in SAM header," +
+										   "\nas this information is necessary for computing contig coverage.");
+						System.exit(-1);
+					}
 					if (!contigs.containsKey(tmpCtg.name))
 						contigs.put(tmpCtg.name, tmpCtg);
 					System.err.println(tmpCtg.name+"\t"+tmpCtg.len+"\t"+tmpCtg.getCov());
