@@ -1,4 +1,4 @@
-#summary DEPRECATED A simple pipeline for assembling a single paired-end Illumina library using NGOpt tools.
+#summary A simple pipeline for assembling a single paired-end Illumina library using NGOpt tools.
 #labels Deprecated
 
 = ~~DEPRECATED~~ =
