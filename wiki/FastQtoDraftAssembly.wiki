@@ -1,5 +1,8 @@
 #summary A simple pipeline for assembling a single paired-end Illumina library using NGOpt tools.
 
+= ~~DEPRECATED~~ =
+This pipeline has been deprecated. A new pipeline is in the works. Check back soon for the new and improved pipeline. 
+
 = Introduction =
 
 This page will describe how create draft genome assemblies from paired-reads in Fastq format. 
