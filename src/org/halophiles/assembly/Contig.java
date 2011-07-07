@@ -21,31 +21,40 @@ public class Contig implements Comparable<Contig> {
 	public Contig(String name, int len){
 	//	String[] spl = name.split("\\|");
 	//	this.name = spl[0];
-		this.name = name;
-		if (this.name.startsWith("node")){
-			// if contigs came from IDBA : increment by 1 so we don't start at 0. We don't want FISH to shit itself.
-			id = Integer.parseInt(this.name.substring(this.name.indexOf("node")+4, this.name.indexOf('_'))) + 1; 			
-		} else if (this.name.startsWith("scaffold")){
-			// if contigs came from SSPACE
-			id = Integer.parseInt(this.name.substring(this.name.indexOf("scaffold")+8, this.name.indexOf('.')));			
-		} else {
-			id = CTG_COUNT+1;
-		}
-		this.rankId = id;
+		this(name);
 		this.len = len;
-		this.cov = -1;
-		numSelfConnect = 0;
 		concat_start=CONCAT_START;
 		CONCAT_START+=len;
-		counts = new HashMap<Contig,Integer>();
-		reads = new HashMap<String,ReadPair>();
-		++CTG_COUNT;
-		mappedBasesCount = 0.0;
-		start = new ContigTerminal(this, ContigTerminal.START);
-		end = new ContigTerminal(this,ContigTerminal.END);
 	}
 	
+	public Contig(String name){
+		//	String[] spl = name.split("\\|");
+		//	this.name = spl[0];
+			this.name = name;
+			if (this.name.startsWith("node")){
+				// if contigs came from IDBA : increment by 1 so we don't start at 0. We don't want FISH to shit itself.
+				id = Integer.parseInt(this.name.substring(this.name.indexOf("node")+4, this.name.indexOf('_'))) + 1; 			
+			} else if (this.name.startsWith("scaffold")){
+				// if contigs came from SSPACE
+				id = Integer.parseInt(this.name.substring(this.name.indexOf("scaffold")+8, this.name.indexOf('.')));			
+			} else {
+				id = CTG_COUNT+1;
+			}
+			this.len= -1;
+			this.concat_start = -1;
+			this.rankId = id;
+			this.cov = -1;
+			numSelfConnect = 0;
+			counts = new HashMap<Contig,Integer>();
+			reads = new HashMap<String,ReadPair>();
+			++CTG_COUNT;
+			mappedBasesCount = 0.0;
+			start = new ContigTerminal(this, ContigTerminal.START);
+			end = new ContigTerminal(this,ContigTerminal.END);
+		}
+	
 	public double getCov(){
+		if (len == -1) return -1;
 		return mappedBasesCount/len;
 	}
 	public boolean hasCov(){
@@ -91,7 +100,7 @@ public class Contig implements Comparable<Contig> {
 			mappedBasesCount += SAMFileParser.cigarLength(pair.sam2[5]);
 		} else {
 			mappedBasesCount += 
-					SAMFileParser.cigarLength(pair.sam1[5]);
+				SAMFileParser.cigarLength(pair.sam1[5]);
 		}
 		reads.put(pair.hdr, pair);
 	}

@@ -25,7 +25,7 @@ public class FISHInputExporter {
 	
 	public static void main(String[] args){
 		if (args.length != 2){
-			System.err.println("Usage: java FISHInputExporter <sam_file> <output_base>");
+			System.err.println("Usage: java -jar GetFishInput.jar <sam_file> <output_base>");
 			System.exit(-1);
 		}
 		try{
