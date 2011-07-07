@@ -433,7 +433,7 @@ if(GENE.size()==0 ||GENE.size()<=2)
 
 
 
-image_maps.~map();
+//image_maps.~map();
 
  INV_GENE.clear();
  INV_GENE=GENE;
