@@ -62,7 +62,10 @@ public class FISHInputExporter {
 			insOut.close();
 			if (ins[0] > 1000) // if we have a mated library, filter out any small insert shadow library
 				filterDiscordantPairs(reads);
-			filterDiagReads(reads,ins,3);
+			int nSd = 3;
+			filterDiagReads(reads,ins,nSd);
+			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
+			System.out.println("Discarded pairs with inserts between "+NF.format(ins[0]-nSd*ins[1])+" - "+NF.format(ins[0]+nSd*ins[1]));
 			insFile = new File(outdir,base+".ins_size_filt.txt");
 			insFile.createNewFile();
 			insOut = new PrintStream(insFile);
@@ -223,23 +226,13 @@ public class FISHInputExporter {
 		}
 		Double[] arD = vals.toArray(new Double[vals.size()]);
 		Arrays.sort(arD);
-		// discard the upper and lower quantiles to prevent any outliers from distorting our estimate
+		// discard the upper and lower quartiles to prevent any outliers from distorting our estimate
 		double[] dat = new double[arD.length/2];
 		int j = arD.length/4;
 		for (int i = 0; i < dat.length; i++)
 			dat[i] = arD[j++];
 		double mean = SummaryStats.mean(dat);
 		double stdev = Math.sqrt(SummaryStats.variance(dat,mean));
-		/*try {
-			File file = new File("/Users/andrew/Halophiles/assembly/contig_scaf/mapping/jcm8877/fish_dat/ins_size.txt");
-			file.createNewFile();
-			PrintStream out = new PrintStream(file);
-			for (double d: dat) out.println(d);
-			out.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}*/
-		
 		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
 		return ret;
 	}
@@ -251,8 +244,6 @@ public class FISHInputExporter {
 	
 	
 	public static void filterDiagReads(Map<String,ReadPair> reads, double[] ins, int nSd){
-		System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1])+"    num stdev: "+nSd);
-		System.out.println("Discarding pairs with inserts between "+NF.format(ins[0]-nSd*ins[1])+" - "+NF.format(ins[0]+nSd*ins[1]));
 		Iterator<String> it = reads.keySet().iterator();
 		Vector<String> rm = new Vector<String>();
 		String key = null;
@@ -363,15 +354,12 @@ public class FISHInputExporter {
 		
 		private void print(ReadPair pair){
 			// phred-scaled geometric-mean of posterior probabilites that mapping position is incorrect
+			// mod 255 in case the quality score couldn't be computed. 
 			int qual = ((Integer.parseInt(pair.sam1[4]) % 255)+ (Integer.parseInt(pair.sam2[4]) % 255))/2;
 			if ((ctg1 == pair.ctg1 && ctg2 == pair.ctg2)) {
-				
 				out1.println("c"+ctg1.getRank()+"p"+pair.pos1+"\tc"+ctg2.getRank()+"p"+pair.pos2+"\t"+qual);
 				if (ctg1 != ctg2)
 					out2.println("c"+ctg2.getRank()+"p"+pair.pos2+"\tc"+ctg1.getRank()+"p"+pair.pos1+"\t"+qual);
-/* for debugging	else if (ctg1.getRank()=='1'){
-					System.out.print("");
-				}*/
 			} else if((ctg1 == pair.ctg2 && ctg2 == pair.ctg1)){
 				out1.println("c"+ctg1.getRank()+"p"+pair.pos2+"\tc"+ctg2.getRank()+"p"+pair.pos1+"\t"+qual);
 				out2.println("c"+ctg2.getRank()+"p"+pair.pos1+"\tc"+ctg1.getRank()+"p"+pair.pos2+"\t"+qual);
