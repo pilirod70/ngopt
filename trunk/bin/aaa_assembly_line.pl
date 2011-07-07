@@ -256,7 +256,7 @@ sub run_sspace {
 	#my $input_fa = "$outbase-contig.fa";
 	my $input_fa = shift;
 	$input_fa = "$outbase.lib".($libraryI-1).".sspace.final.scaffolds.fasta" if $libraryI>1;
-	my $sspace_cmd = "$DIR/SSPACE_v1-1.pl -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 -l library_$libraryI.txt -s $input_fa -b $outbase.lib$libraryI.sspace";
+	my $sspace_cmd = "$DIR/SSPACE/SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 -l library_$libraryI.txt -s $input_fa -b $outbase.lib$libraryI.sspace";
 	if (-f "$outbase.unpaired.fastq") {
 		print STDERR "Running SSPACE with unpaired reads\n";
 		$sspace_cmd .= " -u $outbase.unpaired.fastq";
