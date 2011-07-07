@@ -33,7 +33,7 @@ public class FISHInputExporter {
 			NF.setMaximumFractionDigits(0);
 			NF.setGroupingUsed(false);
 			System.out.println("Reading "+args[0]);
-			System.out.println(System.getProperty("user.dir"));
+			System.out.println("Writing output to "+System.getProperty("user.dir"));
 			SAMFileParser sfp = new SAMFileParser(args[0]);
 			String base = args[1];
 			File outdir = new File(System.getProperty("user.dir"));
@@ -51,6 +51,10 @@ public class FISHInputExporter {
 				reads.put(tmp.hdr, tmp);
 			}
 			double[] ins = estimateInsertSize(reads);
+			if (ins[2] <= 0) {
+				System.err.println("No paired reads found. Cannot generate match files for running FISH.");
+				System.exit(-1);
+			}
 			File insFile = new File(outdir, base+".ins_size_unfilt.txt");
 			insFile.createNewFile();
 			PrintStream insOut = new PrintStream(insFile);
@@ -224,7 +228,6 @@ public class FISHInputExporter {
 		int j = arD.length/4;
 		for (int i = 0; i < dat.length; i++)
 			dat[i] = arD[j++];
-		System.out.println(dat.length+" pairs used for estimate");
 		double mean = SummaryStats.mean(dat);
 		double stdev = Math.sqrt(SummaryStats.variance(dat,mean));
 		/*try {
@@ -237,7 +240,7 @@ public class FISHInputExporter {
 			e.printStackTrace();
 		}*/
 		
-		double[] ret = {Math.round(mean),Math.round(stdev)};
+		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
 		return ret;
 	}
 	

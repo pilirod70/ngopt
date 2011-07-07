@@ -61,7 +61,7 @@ public class SAMFileParser {
 			int left = Integer.parseInt(line[3]);
 			boolean rev = isReverse(line[1]);
 			int len = 0;
-			if (Pattern.matches("[0-9]{2,}M",line[5])){
+			if (line[5].contains("M")){
 				len = cigarLength(line[5]);
 				rdlen += len;
 				den++;
