@@ -4,13 +4,13 @@
     <!--ANT 1.7 is required                                        -->
 	<property name="src" location="src"/>
 	<property name="ext" location="ext"/>
-	<property name="bin" location="blahblahblah"/>
+	<property name="bin" location="bin"/>
 	
 	<mkdir dir="${bin}" />
 	
 	<!--includes="${src}/org/halophiles/assembly/qc/FISHInputExporter.java,${src}/org/halophiles/assembly/Contig.java,${src}/org/halophiles/assembly/ReadPair.java,${src}/org/halophiles/assembly/SAMFileParser.java,${src}/org/halophiles/tools/SummaryStats.java" listfiles="true" includeantruntime="false"-->
 	<target name="compile" description="compile java code">
-		<javac srcdir="${src}" destdir="${bin}" target="1.5" source="1.5" classpath="${ext}/jgrapht-jdk1.6.jar"/>
+		<javac srcdir="${src}" destdir="${bin}" target="1.5" source="1.5" debug="true" classpath="${ext}/jgrapht-jdk1.6.jar" includeantruntime="false"/>
 	
     </target>
 
@@ -20,8 +20,9 @@
                 <attribute name="Main-Class" value="org.halophiles.assembly.qc.FISHInputExporter"/>
             </manifest>
             <fileset dir="${bin}">
-				<include name="**/org/halophiles/assembly/qc/FISHInputExporter.class"/>
+				<include name="**/org/halophiles/assembly/qc/FISHInputExporter*.class"/>
 				<include name="**/org/halophiles/assembly/Contig.class"/>
+				<include name="**/org/halophiles/assembly/ContigTerminal.class"/>
 				<include name="**/org/halophiles/assembly/ReadPair.class"/>
 				<include name="**/org/halophiles/assembly/SAMFileParser.class"/>
 				<include name="**/org/halophiles/tools/SummaryStats.class"/>
