@@ -1,17 +1,25 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<project name="Build JAR for exporting FISH input from a SAM file" default="create_run_jar">
+<project name="Build JAR for exporting FISH input from a SAM file" default="compile">
     <!--this file was created by Eclipse Runnable JAR Export Wizard-->
     <!--ANT 1.7 is required                                        -->
 	<property name="src" location="src"/>
-	<property name="bin" location="bin"/>
+	<property name="ext" location="ext"/>
+	<property name="bin" location="blahblahblah"/>
 	
-    <target name="create_run_jar">
-        <jar destfile="/Users/andrew/Java/FISHInputExporter.jar">
+	<mkdir dir="${bin}" />
+	
+	<!--includes="${src}/org/halophiles/assembly/qc/FISHInputExporter.java,${src}/org/halophiles/assembly/Contig.java,${src}/org/halophiles/assembly/ReadPair.java,${src}/org/halophiles/assembly/SAMFileParser.java,${src}/org/halophiles/tools/SummaryStats.java" listfiles="true" includeantruntime="false"-->
+	<target name="compile" description="compile java code">
+		<javac srcdir="${src}" destdir="${bin}" target="1.5" source="1.5" classpath="${ext}/jgrapht-jdk1.6.jar"/>
+	
+    </target>
+
+    <target name="jar">
+        <jar destfile="GetFishInput.jar">
             <manifest>
                 <attribute name="Main-Class" value="org.halophiles.assembly.qc.FISHInputExporter"/>
-                <attribute name="Class-Path" value=". FISHInputExporter_lib/colt.jar FISHInputExporter_lib/concurrent.jar FISHInputExporter_lib/jgrapht-jdk1.6.debug.jar FISHInputExporter_lib/jgraph.jar FISHInputExporter_lib/junit.jar FISHInputExporter_lib/svnant.jar FISHInputExporter_lib/svnClientAdapter.jar FISHInputExporter_lib/TGGraphLayout.jar FISHInputExporter_lib/xmlunit1.0.jar FISHInputExporter_lib/ajt-2.5.jar FISHInputExporter_lib/commons-math-1.2.jar FISHInputExporter_lib/Jama-1.0.2.jar FISHInputExporter_lib/javaml-0.1.6.jar FISHInputExporter_lib/libsvm.jar FISHInputExporter_lib/weka.jar FISHInputExporter_lib/jsc.jar FISHInputExporter_lib/bytecode.jar FISHInputExporter_lib/biojava.jar"/>
             </manifest>
-            <fileset dir="/Users/andrew/workspace/ngopt_trunk/bin">
+            <fileset dir="${bin}">
 				<include name="**/org/halophiles/assembly/qc/FISHInputExporter.class"/>
 				<include name="**/org/halophiles/assembly/Contig.class"/>
 				<include name="**/org/halophiles/assembly/ReadPair.class"/>
