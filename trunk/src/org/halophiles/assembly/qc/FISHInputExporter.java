@@ -251,7 +251,7 @@ public class FISHInputExporter {
 	
 	
 	public static void filterDiagReads(Map<String,ReadPair> reads, double[] ins, int nSd){
-		System.out.println("mean insert: " + NF.format(ins[0])+"\nstdev: " + NF.format(ins[1])+"\nnum stdev: "+nSd);
+		System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1])+"    num stdev: "+nSd);
 		System.out.println("Discarding pairs with inserts between "+NF.format(ins[0]-nSd*ins[1])+" - "+NF.format(ins[0]+nSd*ins[1]));
 		Iterator<String> it = reads.keySet().iterator();
 		Vector<String> rm = new Vector<String>();
