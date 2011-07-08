@@ -1,4 +1,4 @@
 [LIB]
-p1=phiX_p1.fastq.gz
-p2=phiX_p2.fastq.gz
+p1=phiX_p1.fastq
+p2=phiX_p2.fastq
 ins=300
