@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use File::Slurp;
 use File::Basename;
 use Cwd 'abs_path';
 
@@ -73,9 +74,10 @@ sub sga_clean {
 	my $sga_ind = "";
 	my $sga_ind_kb = 4000000;
 	do{
-		$sga_ind = `$DIR/sga index -d $sga_ind_kb -t 4  $outbase.pp.fastq > index.out 2>&1`;
+		$sga_ind = `$DIR/sga index -d $sga_ind_kb -t 4  $outbase.pp.fastq > index.out 2> index.err`;
+		$sga_ind = read_file('index.err');
 		$sga_ind_kb = int($sga_ind_kb/2);
-	}while($sga_ind =~ /bad_alloc/ || $? != 0);
+	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 0);
 	system("rm -f core*");
 	die "Error indexing reads with SGA\n" if( $? != 0 );
 	system("$DIR/sga correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out");
