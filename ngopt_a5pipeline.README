@@ -1,0 +1,47 @@
+Installation:
+
+Add a5_pipeline.pl to executable path. 
+$ ln -s bin/a5_pipeline.pl ~/bin/a5_pipeline.pl
+
+Optionally, a5_pipeline.pl can be called by its full path
+
+To run:
+
+Usage: aaa_assembly_line.pl <library file> <output base>
+
+Step 1: Making your library file.
+
+The library file must contain file paths to all libraries being assembled. 
+Separate libraries are delimited in the library file by '[LIB]'. 
+For a paired-end or mate-pair library, reads can passed as two files, one for each end, or as a single shuffled file. 
+Additionally, unpaired reads can be passed as a single file. 
+For a single-end library, reads must be passed as a single file.
+Reads must be in FASTQ format.
+
+Example library file:
+[LIB]
+p1=library1_p1.fastq
+p2=library1_p2.fastq
+up=library1_up.fastq
+ins=350
+[LIB]
+shuf=library2.fastq
+up=library2.unpaired.fq
+ins=6500
+[LIB]
+up=unpaired_library.fastq
+
+
+Step 2: Run the pipeline.
+
+To run the assembly pipeline, pass the library file and an output base to a5_pipeline.pl
+
+Example usage:
+a5_pipeline.pl my_libs assembly.out
+
+All output will be contained within the directory <output base>. The above example will produce the following directory and files:
+
+assembly.out/
+assembly.out/assembly.out.a5.final.fasta
+
+
