@@ -1,5 +1,57 @@
 #!/bin/bash
 
+
+function copy_bin {
+	bin="bwa fish sga idba"
+	for ex in $bin; do
+		cp $1/$ex $findir/bin
+	done
+}
+
+function copy_sspace {
+	echo "Copying SSPACE to $findir"
+	mkdir $sspace_dir
+	cp SSPACE/SSPACE $sspace_dir/ 
+	cp -r SSPACE/bin $sspace_dir/
+	cp -r SSPACE/dotlib $sspace_dir/
+}
+
+function copy_bowtie {
+	cp -rv $1/bowtie $sspace_dir
+	rm $sspace_dir/bowtie/*debug*
+}
+
+function copy_adhoc {
+	cp bin/aaa_assembly_line.pl bin/break_misassemblies.pl GetFishInput.jar $findir/bin
+	chmod +x $findir/aaa_assembly_line.pl
+	echo "Removing unnecessary .svn directories"
+	for dir in `find $findir/ -name .svn`; do 
+		rm -rf $dir; 
+	done
+}
+
+function copy_exdat {
+	echo "Copying example data and README to archive"
+	mkdir $findir/example
+	cp test/sequence/phiX* $findir/example
+	cp ngopt_a5pipeline.README $findir/README
+}
+
+function bundle_clean {
+	echo "Creating archive"
+	tar -czvf $findir.tar.gz $findir
+	rm -rf $findir
+}
+
+function reset {
+	if [ ! -d $findir ]; then
+		mkdir $findir
+		mkdir $findir/bin
+	else 
+		rm -rf $findir/*
+	fi
+}
+
 findir_base="ngopt_a5pipeline"
 
 ############################# Linux Build #############################
@@ -8,46 +60,19 @@ echo "Building pipeline for Linux x86"
 
 findir="${findir_base}_linux-x86_64"
 
-if [ ! -d $findir ]; then
-	mkdir $findir
-else 
-	rm -rf $findir/*
-fi
-
+reset
 echo "Copying Linux binaries to $findir"
-bin="bwa fish sga idba"
-for ex in $bin; do
-	cp linux-x86/$ex $findir/
-done
-
-echo "Copying SSPACE to $findir"
+copy_bin linux-x86
 sspace_dir="$findir/SSPACE"
-mkdir $sspace_dir
-cp SSPACE/SSPACE $sspace_dir/ 
-cp -r SSPACE/bin $sspace_dir/
-cp -r SSPACE/dotlib $sspace_dir/
+copy_sspace
 echo "Copying Linux specific bowtie binaries to SSPACE directory"
-cp -r ../vendor/SSPACE_linux-x86_64/current/bowtie $sspace_dir
+copy_bowtie ../vendor/SSPACE_linux-x86_64/current
 
 echo "Compiling Java code and bundling into executable Jar"
 ant -q compile jar
-
-cp bin/aaa_assembly_line.pl bin/break_misassemblies.pl GetFishInput.jar $findir/
-chmod +x $findir/aaa_assembly_line.pl
-echo "Removing unnecessary bowtie executables"
-rm $sspace_dir/bowtie/*debug*
-echo "Removing unnecessary .svn directories"
-for dir in `find $findir/ -name .svn`; do 
-	rm -rf $dir; 
-done
-
-echo "Copying example data to archive"
-mkdir $findir/example
-cp test/sequence/phiX* $findir/example
-
-echo "Creating archive"
-tar -czvf $findir.tar.gz $findir
-rm -rf $findir
+copy_adhoc
+copy_exdat
+bundle_clean
 
 ############################# Mac Build #############################
 
@@ -55,42 +80,15 @@ echo -e "\nBuilding pipeline for Mac OSX"
 
 findir="${findir_base}_macOS-x86_64"
 
-if [ ! -d $findir ]; then
-	mkdir $findir
-else 
-	rm -rf $findir/*
-fi
-
+reset
 echo "Copying Mac binaries to $findir"
-bin="bwa fish sga idba"
-for ex in $bin; do
-	cp osx/$ex $findir/
-done
-
-echo "Copying SSPACE to $findir"
+copy_bin osx
 sspace_dir="$findir/SSPACE"
-mkdir $sspace_dir
-cp SSPACE/SSPACE $sspace_dir/ 
-cp -r SSPACE/bin $sspace_dir/
-cp -r SSPACE/dotlib $sspace_dir/
+copy_sspace
 echo "Copying Mac specific bowtie binaries to SSPACE directory"
-cp -r ../vendor/SSPACE_macOS-x86_64/current/bowtie $sspace_dir
-
-cp bin/aaa_assembly_line.pl bin/break_misassemblies.pl GetFishInput.jar $findir/
-chmod +x $findir/aaa_assembly_line.pl
-echo "Removing unnecessary executables and giving Mac bowtie binaries executable permissions"
-rm $sspace_dir/bowtie/*debug*
+copy_bowtie ../vendor/SSPACE_macOS-x86_64/current
 chmod +x $sspace_dir/bowtie/bowtie*
-echo "Removing unnecessary .svn directories"
-for dir in `find $findir/ -name .svn`; do 
-	rm -rf $dir; 
-done
 
-echo "Copying example data to archive"
-mkdir $findir/example
-cp test/sequence/phiX* $findir/example
-
-echo "Creating archive"
-tar -czvf $findir.tar.gz $findir
-
-rm -rf $findir
+copy_adhoc
+copy_exdat
+bundle_clean
