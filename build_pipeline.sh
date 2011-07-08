@@ -22,8 +22,9 @@ function copy_bowtie {
 }
 
 function copy_adhoc {
-	cp bin/aaa_assembly_line.pl bin/break_misassemblies.pl GetFishInput.jar $findir/bin
-	chmod +x $findir/aaa_assembly_line.pl
+	cp bin/break_misassemblies.pl GetFishInput.jar $findir/bin
+	cp bin/aaa_assembly_line.pl $findir/bin/a5_pipeline.pl
+	chmod +x $findir/bin/a5_pipeline.pl
 	echo "Removing unnecessary .svn directories"
 	for dir in `find $findir/ -name .svn`; do 
 		rm -rf $dir; 
@@ -63,7 +64,7 @@ findir="${findir_base}_linux-x86_64"
 reset
 echo "Copying Linux binaries to $findir"
 copy_bin linux-x86
-sspace_dir="$findir/SSPACE"
+sspace_dir="$findir/bin/SSPACE"
 copy_sspace
 echo "Copying Linux specific bowtie binaries to SSPACE directory"
 copy_bowtie ../vendor/SSPACE_linux-x86_64/current
@@ -83,7 +84,7 @@ findir="${findir_base}_macOS-x86_64"
 reset
 echo "Copying Mac binaries to $findir"
 copy_bin osx
-sspace_dir="$findir/SSPACE"
+sspace_dir="$findir/bin/SSPACE"
 copy_sspace
 echo "Copying Mac specific bowtie binaries to SSPACE directory"
 copy_bowtie ../vendor/SSPACE_macOS-x86_64/current
