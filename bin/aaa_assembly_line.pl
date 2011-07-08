@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use File::Slurp;
 use File::Basename;
 use Cwd 'abs_path';
 
@@ -15,7 +14,7 @@ my %libs = ();
 sga_clean($libfile, $outbase, \%libs);
 my $maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
 idba_assemble($outbase, $maxrdlen);
-my $scafs = scaffold_sspace($libfile, $outbase, \%libs, "$outbase-contigs.fa");
+my $scafs = scaffold_sspace($libfile, $outbase, \%libs, "$outbase-contig.fa");
 $scafs = break_all_misasms($scafs,"$outbase.fish",\%libs);
 scaffold_sspace($libfile,"$outbase.rescaf",\%libs,$scafs);
  
@@ -84,6 +83,13 @@ sub sga_clean {
 	die "Error correcting reads with SGA\n" if( $? != 0 );
 }
 
+sub read_file {
+	my $file = shift;
+	local $/=undef;
+	open(FILE,"<",$file);
+	my $str = <FILE>;
+	return $str;
+}
 
 sub fastq_to_fasta {
 	my $fastq = shift;
