@@ -17,7 +17,7 @@ function copy_sspace {
 }
 
 function copy_bowtie {
-	cp -rv $1/bowtie $sspace_dir
+	cp -r $1/bowtie $sspace_dir
 	rm $sspace_dir/bowtie/*debug*
 }
 
