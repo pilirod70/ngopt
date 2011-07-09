@@ -15,7 +15,7 @@ sga_clean($libfile, $outbase, \%libs);
 my $maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
 idba_assemble($outbase, $maxrdlen);
 my $scafs = scaffold_sspace($libfile, $outbase, \%libs, "$outbase-contig.fa");
-$scafs = break_all_misasms($scafs,"$outbase.fish",\%libs);
+$scafs = break_all_misasms($scafs,\%libs,"$outbase.fish");
 scaffold_sspace($libfile,"$outbase.rescaf",\%libs,$scafs);
  
 
@@ -187,8 +187,8 @@ sub scaffold_sspace {
 	my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
 	print STDERR "Insert $prev_ins, expected links $exp_link\n";
 	my $fin_scafs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI,$curr_ctgs);
-	`mv $outbase.lib$libraryI.sspace.final.scaffolds.fasta $outbase.sspace.final.scaffolds.fasta`;
-	return $fin_scafs;
+	`mv $fin_scafs $outbase.sspace.final.scaffolds.fasta`;
+	return "$outbase.sspace.final.scaffolds.fasta";
 }
 
 sub break_all_misasms {
