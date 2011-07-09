@@ -9,7 +9,6 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.StringTokenizer;
-import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 public class SAMFileParser {
