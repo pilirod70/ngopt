@@ -52,7 +52,7 @@ public class FISHInputExporter {
 			}
 			double[] ins = estimateInsertSize(reads);
 			if (ins[2] <= 0) {
-				System.err.println("No paired reads found. Cannot generate match files for running FISH.");
+				System.err.println("No paired reads found. Cannot generate match files for running FISH misassembly detection.");
 				System.exit(-1);
 			}
 			File insFile = new File(outdir, base+".ins_size_unfilt.txt");
