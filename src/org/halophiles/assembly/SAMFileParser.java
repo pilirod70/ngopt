@@ -34,6 +34,7 @@ public class SAMFileParser {
 			br = new BufferedReader(new FileReader(samFile));
 		while(nextCharIs(br, '@')){ 
 			String[] hdr = br.readLine().split("\t");
+			if (!hdr[0].equals("@SQ")) continue;
 			String name = null;
 			int len = -1;
 			for (String s: hdr){
