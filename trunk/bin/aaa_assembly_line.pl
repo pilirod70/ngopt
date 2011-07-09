@@ -16,7 +16,9 @@ my $maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
 idba_assemble($outbase, $maxrdlen);
 my $scafs = scaffold_sspace($libfile, $outbase, \%libs, "$outbase-contig.fa");
 $scafs = break_all_misasms($scafs,\%libs,"$outbase.fish");
-scaffold_sspace($libfile,"$outbase.rescaf",\%libs,$scafs);
+$scafs = scaffold_sspace($libfile,"$outbase.rescaf",\%libs,$scafs);
+`mv $scafs $outbase.a5scafs.fasta`;
+print "Final assembly in $outbase.a5scafs.fasta\n";
  
 
 sub sga_assemble {
@@ -223,7 +225,7 @@ sub fish_break_misasms {
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
 	`java -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out`;
-	`$DIR/fish -b $outbase.blocks.txt > $outbase.fish.out`;
+	`$DIR/fish -f $outbase.control.txt -b $outbase.blocks.txt > $outbase.fish.out`;
 	die "Error getting blocks with FISH for $outbase\n" if ($? != 0);
 	`$DIR/break_misassemblies.pl $outbase.blocks.txt contig_labels.txt $ctgs > $outbase.broken.fasta 2> $outbase.break.out`;
 	die "Error getting breaking contigs after running FISH\n" if ($? != 0);
