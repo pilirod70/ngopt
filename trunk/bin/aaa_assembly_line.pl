@@ -4,22 +4,47 @@ use warnings;
 use File::Basename;
 use Cwd 'abs_path';
 
-die "Usage: ".basename($0)." <library file> <output base>\n" if(@ARGV!=2);
+die "Usage: ".basename($0)." [--begin=1-5] <library file> <output base>\n" if(@ARGV!=2 && @ARGV!=3 || (@ARGV==3 && $ARGV[0] !~ m/--begin=(1-5)/));
+my $start = 1;
+if (@ARGV==3) {
+	$start = $1;
+	shift;
+}
+
 my $libfile = $ARGV[0];
 my $outbase = $ARGV[1];
 
+
 my $DIR = dirname(abs_path($0));
 
-my %libs = ();
-sga_clean($libfile, $outbase, \%libs);
-my $maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
-idba_assemble($outbase, $maxrdlen);
-my $scafs = scaffold_sspace($libfile, $outbase, \%libs, "$outbase-contig.fa");
-$scafs = break_all_misasms($scafs,\%libs,"$outbase.fish");
-$scafs = scaffold_sspace($libfile,"$outbase.rescaf",\%libs,$scafs);
-`mv $scafs $outbase.a5scafs.fasta`;
-print "Final assembly in $outbase.a5scafs.fasta\n";
- 
+my %libs = read_lib_file($libfile);
+my $maxrdlen = -1;
+my $scafs;
+
+print STDERR "$libfile $start\n";
+
+if ($start <= 1) {
+	 sga_clean($outbase, \%libs); 
+} 
+if ($start <= 2) {
+	 $maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
+	 idba_assemble($outbase, $maxrdlen); 
+} 
+if ($start <= 3) {
+	 $scafs = scaffold_sspace($libfile, $outbase, \%libs, "$outbase-contig.fa");
+	 `mv $scafs $outbase.sspace.scaffolds.fasta`; 
+} 
+if ($start <= 4) {
+	 $scafs = "$outbase.sspace.scaffolds.fasta";
+	 $scafs = break_all_misasms($scafs,\%libs,"$outbase.fish"); 
+	 `mv $scafs $outbase.fish.broken.fasta`; 
+} 
+if ($start <= 5) {
+	 $scafs = "$outbase.fish.broken.fasta"; 
+	 $scafs = scaffold_sspace($libfile,"$outbase.rescaf",\%libs,$scafs);
+	 `mv $scafs $outbase.a5.final.fasta`;
+	 print "Final assembly in $outbase.a5scafs.fasta\n"; 
+} 
 
 sub sga_assemble {
 	my $r1fq = shift;
@@ -37,38 +62,22 @@ sub sga_assemble {
 }
 
 sub sga_clean {
-	my $libfile = shift;
 	my $outbase = shift;
 	my $libs = shift;
-	open(LIB,"<",$libfile);
-	my $lib_count = 0;
-	my %hash = ();
-#	my $maxrdlen = 0;
+	# figure out which files we need to pass to SGA
 	my $files = "";
-	while(<LIB>){
-		if ($_ =~ m/\[LIB\]/){
-			if ($lib_count > 0) {
-				for my $key (sort keys %hash){
-					push(@{$libs{"lib$lib_count"}},$hash{$key});
-				}
-			} 
-			$lib_count++;
-		} elsif ($_ =~ m/(p[1,2])=([\w\/\-\.]+)/) { 
-			$hash{$1} = $2;
-			$files .= "$2 ";
-		#	my $len = get_rdlen($2);
-		#	$maxrdlen = $len if ($len > $maxrdlen);
-		} elsif ($_ =~ m/up=([\w\/\-\.]+)/) { 
-			$hash{"up"} = $1;
-			$files .= "$1 ";
-		#	my $len = get_rdlen($1);
-		#	$maxrdlen = $len if ($len > $maxrdlen);
-		} elsif ($_ =~ m/ins=([\w\/\-\.]+)/) { 
-			$hash{"ins"} = $1;
+	for my $lib (keys %libs) {
+		my @lib_files = @{$libs{$lib}};
+		if (scalar(@lib_files) >= 2) {
+			shift @lib_files;
+			my $fq1 = shift @lib_files;
+			my $fq2 = shift @lib_files;
+			$files .= "$fq1 $fq2 ";
 		}
-	} 
-	for my $key (sort keys %hash){
-		push(@{$libs{"lib$lib_count"}},$hash{$key});
+		if (scalar(@lib_files) == 1){
+			my $up = shift @lib_files;
+			$files .= "$up ";
+		}
 	}
 	system("$DIR/sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq");
 	die "Error preprocessing reads with SGA\n" if( $? != 0 );
@@ -79,10 +88,42 @@ sub sga_clean {
 		$sga_ind = read_file('index.err');
 		$sga_ind_kb = int($sga_ind_kb/2);
 	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 0);
-	system("rm -f core*");
+	system("rm -f core*") if (-f "core*");
 	die "Error indexing reads with SGA\n" if( $? != 0 );
 	system("$DIR/sga correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out");
 	die "Error correcting reads with SGA\n" if( $? != 0 );
+}
+
+sub read_lib_file {
+	my $libfile = shift;
+	my %libs = ();
+	open(LIB,"<",$libfile);
+	my $lib_count = 0;
+	my %hash = ();
+	while(<LIB>){
+		if ($_ =~ m/\[LIB\]/){
+			if ($lib_count > 0) {
+				for my $key (sort keys %hash){
+					push(@{$libs{"lib$lib_count"}},$hash{$key});
+				}
+			} 
+			$lib_count++;
+		} elsif ($_ =~ m/shuf=([\w\/\-\.]+)/) { 
+			my ($fq1, $fq2) = split_shuf($1,"$outbase.lib$lib_count");
+			$hash{"p1"} = $fq1;
+			$hash{"p2"} = $fq2;
+		} elsif ($_ =~ m/(p[1,2])=([\w\/\-\.]+)/) { 
+			$hash{$1} = $2;
+		} elsif ($_ =~ m/up=([\w\/\-\.]+)/) { 
+			$hash{"up"} = $1;
+		} elsif ($_ =~ m/ins=([\w\/\-\.]+)/) { 
+			$hash{"ins"} = $1;
+		}
+	} 
+	for my $key (sort keys %hash){
+		push(@{$libs{"lib$lib_count"}},$hash{$key});
+	}
+	return %libs;
 }
 
 sub read_file {
@@ -110,6 +151,29 @@ sub fastq_to_fasta {
 	close FA;
 	# why are we removing 2 here?
 	return $maxrdlen - 2;	# -1 removes newline char
+}
+
+sub split_shuf {
+	my $shuf = shift;
+	my $outbase = shift;
+	my $fq1 = "$outbase\_p1.fastq";
+	my $fq2 = "$outbase\_p2.fastq";
+	open(FQ1,">$fq1");
+	open(FQ2,">$fq2");
+	open(IN,"<$shuf");
+	while(<IN>){
+		print FQ1 $_;
+		print FQ1 <IN>;
+		print FQ1 <IN>;
+		print FQ1 <IN>;
+		print FQ2 <IN>;
+		print FQ2 <IN>;
+		print FQ2 <IN>;
+		print FQ2 <IN>;
+	}
+	close FQ1;
+	close FQ2;
+	return ($fq1, $fq2);
 }
 
 # expects a file called $outbase.clean.fa in the current working directory
