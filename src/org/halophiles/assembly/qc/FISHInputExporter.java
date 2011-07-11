@@ -37,7 +37,6 @@ public class FISHInputExporter {
 			SAMFileParser sfp = new SAMFileParser(args[0]);
 			String base = args[1];
 			File outdir = new File(System.getProperty("user.dir"));
-			//outdir.mkdirs();
 			Map<String,Contig> contigs = new HashMap<String,Contig>();
 			Iterator<Contig> ctgIt = sfp.getContigs();
 			while(ctgIt.hasNext()){
@@ -48,24 +47,36 @@ public class FISHInputExporter {
 			Iterator<ReadPair> rpIt = sfp.getReadPairs();
 			while(rpIt.hasNext()){
 				ReadPair tmp = rpIt.next();
+				if (!tmp.paired) 
+					continue;
 				reads.put(tmp.hdr, tmp);
 			}
-			double[] ins = estimateInsertSize(reads);
-			if (ins[2] <= 0) {
+			if (reads.size() <= 0) {
 				System.err.println("No paired reads found. Cannot generate match files for running FISH misassembly detection.");
 				System.exit(-1);
 			}
+			System.out.print("Estimating insert size... ");
+			double[] ins = estimateInsertSize(reads);
+			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
+			int nSd = 3;
 			File insFile = new File(outdir, base+".ins_size_unfilt.txt");
 			insFile.createNewFile();
 			PrintStream insOut = new PrintStream(insFile);
 			exportInsertSize(reads, insOut);
 			insOut.close();
-			if (ins[0] > 1000) // if we have a mated library, filter out any small insert shadow library
+			if (ins[0] > 1000) { // if we have a mated library, filter out any small insert shadow library
+				System.out.print("Filtering discordant read pairs... ");
+				int before = reads.size();
 				filterDiscordantPairs(reads);
-			int nSd = 3;
+				System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
+				System.out.print("Re-estimating insert size... ");
+				ins = estimateInsertSize(reads);
+				System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
+			}
+			System.out.print("Filtering diagonal self-links. Discarding pairs with inserts between "+NF.format(ins[0]-nSd*ins[1])+" - "+NF.format(ins[0]+nSd*ins[1])+"... ");			
+			int before = reads.size();
 			filterDiagReads(reads,ins,nSd);
-			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
-			System.out.println("Discarded pairs with inserts between "+NF.format(ins[0]-nSd*ins[1])+" - "+NF.format(ins[0]+nSd*ins[1]));
+			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
 			insFile = new File(outdir,base+".ins_size_filt.txt");
 			insFile.createNewFile();
 			insOut = new PrintStream(insFile);
@@ -92,9 +103,6 @@ public class FISHInputExporter {
 		Iterator<ReadPair> rpIt = reads.values().iterator();
 		while(rpIt.hasNext()){
 			ReadPair tmpRp = rpIt.next();
-			if (!tmpRp.paired) 
-				continue;
-			
 			Contig ctg = tmpRp.ctg1;
 			boolean rev = tmpRp.rev1;
 			int left = tmpRp.pos1;
@@ -239,6 +247,9 @@ public class FISHInputExporter {
 	
 	public static boolean isDiag(ReadPair r, double[] ins, int nSd){
 		double dist = Math.abs(r.pos1 - r.pos2);
+		if (r.ctg2 == null){
+			System.out.print("");
+		}
 		return (dist < ins[0]+nSd*ins[1] && dist > ins[0]-nSd*ins[1]) && r.ctg1.equals(r.ctg2);
 	}
 	
@@ -264,11 +275,15 @@ public class FISHInputExporter {
 		Iterator<String> it = reads.keySet().iterator();
 		String tmp = null;
 		ReadPair read = null;
+		int nsyn = 0;
 		while(it.hasNext()){
 			tmp = it.next();
 			read = reads.get(tmp);
+			if (!read.paired) continue;
+			if (!read.ctg1.equals(read.ctg2)) continue;
 			if (!read.inward && !read.outward)
 				continue;
+			nsyn++;
 			if (read.outward){
 				outies.add(tmp);
 			} else {
@@ -277,8 +292,8 @@ public class FISHInputExporter {
 		}
 		double nOut = outies.size();
 		double nIn = inies.size();
-		nOut = nOut/reads.size();
-		nIn = nIn/reads.size();
+		nOut = nOut/nsyn;
+		nIn = nIn/nsyn;
 		if (nIn > nOut){ // have mostly inies
 			if (nIn > 0.5)
 				removeKeys(reads,outies);
