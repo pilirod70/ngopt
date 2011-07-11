@@ -68,6 +68,7 @@ public class SAMFileParser {
 			}
 			ctgStr = line[2];//.split("\\|")[0];
 			if (len <= 0) continue;			
+			if (ctgStr.equals("*")) continue;
 			if (reads.containsKey(line[0]))
 				tmp = reads.get(line[0]);
 			else {

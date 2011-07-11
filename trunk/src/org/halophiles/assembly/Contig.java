@@ -60,7 +60,14 @@ public class Contig implements Comparable<Contig> {
 	public boolean hasCov(){
 		return cov != 0;
 	}
-	public boolean equals(Contig c){ 
+	public boolean equals(Contig c){
+		if (c == null){
+			System.out.print("");
+		} else if (c.name == null){
+			System.out.print("");
+		} else if (this.name == null){
+			System.out.print("");			
+		}
 		return this.name.equals(c.name);
 	}
 	public void addLink(Contig c){
