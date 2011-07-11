@@ -293,7 +293,7 @@ sub fish_break_misasms {
 	die "Error getting blocks with FISH for $outbase\n" if ($? != 0);
 	`$DIR/break_misassemblies.pl $outbase.blocks.txt contig_labels.txt $ctgs > $outbase.broken.fasta 2> $outbase.break.out`;
 	die "Error getting breaking contigs after running FISH\n" if ($? != 0);
-	`rm $outbase.blocks.txt contig_labels.txt fish.* get_fish_input.* break_misasm.err $sam $sai`;
+	#`rm $outbase.blocks.txt contig_labels.txt fish.* get_fish_input.* break_misasm.err $sam $sai`;
 	return "$outbase.broken.fasta";
 }
 
