@@ -230,7 +230,7 @@ public class FISHInputExporter {
 		while(it.hasNext()){
 			tmp = it.next();
 			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
-				vals.add(new Double(Math.abs(tmp.pos1-tmp.pos2)));
+				vals.add(new Double(tmp.getInsert()));
 		}
 		Double[] arD = vals.toArray(new Double[vals.size()]);
 		Arrays.sort(arD);
@@ -246,7 +246,7 @@ public class FISHInputExporter {
 	}
 	
 	public static boolean isDiag(ReadPair r, double[] ins, int nSd){
-		double dist = Math.abs(r.pos1 - r.pos2);
+		double dist = Math.abs(r.pos1 - r.pos2 );
 		if (r.ctg2 == null){
 			System.out.print("");
 		}
@@ -315,12 +315,11 @@ public class FISHInputExporter {
 		while(it.hasNext()){
 			tmp = it.next();
 			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
-				out.println(Math.abs(tmp.pos1-tmp.pos2));
+				out.println(tmp.getInsert());
 		}
 	}
 	
 	private static class PrintStreamPair{
-		//private static Random r = new Random(123456789);
 		private File fishDir;
 		private PrintStream out1;
 		private PrintStream out2;

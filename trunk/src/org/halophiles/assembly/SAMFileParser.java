@@ -53,7 +53,6 @@ public class SAMFileParser {
 		if (contigs.size() == 0){
 			System.err.println("0 contigs found in SAM header.");
 		}
-		int rdlen = 0;
 		int den = 0;
 		while(br.ready()){
 			ReadPair tmp = null;
@@ -61,12 +60,9 @@ public class SAMFileParser {
 			int left = Integer.parseInt(line[3]);
 			boolean rev = isReverse(line[1]);
 			int len = 0;
-			if (line[5].contains("M")){
+			if (line[5].contains("M"))
 				len = cigarLength(line[5]);
-				rdlen += len;
-				den++;
-			}
-			ctgStr = line[2];//.split("\\|")[0];
+			ctgStr = line[2];
 			if (len <= 0) continue;			
 			if (ctgStr.equals("*")) continue;
 			if (reads.containsKey(line[0]))
@@ -82,7 +78,7 @@ public class SAMFileParser {
 				tmpCtg = new Contig(ctgStr);
 				contigs.put(ctgStr, tmpCtg);
 			}
-			int val = tmp.addRead(left, rev, tmpCtg, line);
+			int val = tmp.addRead(left, rev, len, tmpCtg, line);
 			if (val == 2){
 				
 			} else if (val == -1)
