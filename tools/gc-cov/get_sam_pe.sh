@@ -16,7 +16,7 @@ b2=`basename $p2`
 ins=$5
 prefix=$out/$ref_base.bwa
 
-bwa index -a is -p $prefix $ref > $out/index.out
+bwa index -a is -p $prefix $ref > /dev/null 
 bwa aln $prefix $p1 > $out/$b1.sai
 bwa aln $prefix $p2 > $out/$b2.sai
 bwa sampe -n 1 -a $ins $prefix $out/$b1.sai $out/$b2.sai $p1 $p2 
