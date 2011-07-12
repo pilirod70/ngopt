@@ -186,15 +186,14 @@ plotGapSizes <- function(files, extension, plottitle, sequence, pdfname, totalna
 	dev.off()
 }
 
-plotCalls(commandArgs(trailing=T), "__miscalls.txt", "Density of miscalled bases in genome", "miscalls.pdf", "Total number of miscalled bases", 4)
-plotCalls(commandArgs(trailing=T), "__uncalls.txt", "Density of uncalled bases in genome", "uncalls.pdf", "Total number of uncalled bases", 4)
-plotCalls(commandArgs(trailing=T), "__gaps.txt", "Density of missing and extra segments in genome", "missingextra.pdf", "Total number of missing or extra bases", 6)
-plotGapSizes(commandArgs(trailing=T), "__gaps.txt", "Size distribution of missing segments", "assembly", "missing_sizes.pdf", "Total number of missing segments")
-plotGapSizes(commandArgs(trailing=T), "__gaps.txt", "Size distribution of extra segments", "reference", "extra_sizes.pdf", "Total number of extra segments")
-
-
 scoresum <- read.table("summaries.txt",header=T)
 pnames <- sub( ".fa.fas", "", scoresum$Name, perl=TRUE)
+
+plotCalls(pnames, "__miscalls.txt", "Density of miscalled bases in genome", "miscalls.pdf", "Total number of miscalled bases", 4)
+plotCalls(pnames, "__uncalls.txt", "Density of uncalled bases in genome", "uncalls.pdf", "Total number of uncalled bases", 4)
+plotCalls(pnames, "__gaps.txt", "Density of missing and extra segments in genome", "missingextra.pdf", "Total number of missing or extra bases", 6)
+plotGapSizes(pnames, "__gaps.txt", "Size distribution of missing segments", "assembly", "missing_sizes.pdf", "Total number of missing segments")
+plotGapSizes(pnames, "__gaps.txt", "Size distribution of extra segments", "reference", "extra_sizes.pdf", "Total number of extra segments")
 
 
 pdf("mauve_scaffold_counts.pdf")

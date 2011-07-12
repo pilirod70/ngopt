@@ -36,7 +36,7 @@ s/jcm13557/Haloarcula_amylolytica/g
 s/dsm12282/Haloarcula_argentinensis/g
 s/dsm6131/Haloarcula_japonica/g
 s/atccBAA[-,_]651/Haloarcula_sp_GUBF-8/g
-s/jcm8877/Haloarcula_valismortis/g
+s/jcm8877/Haloferax_mediterranei/g
 s/dsm15987/Halobacterium_noricense/g
 s/dsm5350/Halococcus_saccharolyticus/g
 s/jcm13552/Halococcus_thailandensis/g
