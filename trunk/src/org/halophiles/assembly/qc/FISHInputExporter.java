@@ -371,7 +371,7 @@ public class FISHInputExporter {
 			}
 			System.out.println(" removed "+nRemoved+" reads");
 		} else {
-			System.err.println(" unable to detect a shadow library.");
+			System.out.println(" unable to detect a shadow library.");
 		}
 			
 	}
