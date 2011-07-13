@@ -20,6 +20,8 @@ import org.halophiles.assembly.ReadPair;
 import org.halophiles.assembly.SAMFileParser;
 import org.halophiles.tools.SummaryStats;
 
+import weka.estimators.KernelEstimator;
+
 public class FISHInputExporter {
 	private static NumberFormat NF;
 	
@@ -51,12 +53,16 @@ public class FISHInputExporter {
 					continue;
 				reads.put(tmp.hdr, tmp);
 			}
+			
+			System.out.println("Found "+contigs.size()+" contigs.");
+			System.out.println("Found "+sfp.getNumReads()+" total reads and "+sfp.getNumPairs()+" read-pairs.");
 			if (reads.size() <= 0) {
 				System.err.println("No paired reads found. Cannot generate match files for running FISH misassembly detection.");
 				System.exit(-1);
 			}
+			
 			System.out.print("Estimating insert size... ");
-			double[] ins = estimateInsertSize(reads);
+			double[] ins = estimateInsertSizeIQR(reads);
 			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
 			int nSd = 3;
 			File insFile = new File(outdir, base+".ins_size_unfilt.txt");
@@ -64,8 +70,10 @@ public class FISHInputExporter {
 			PrintStream insOut = new PrintStream(insFile);
 			exportInsertSize(reads, insOut);
 			insOut.close();
+			
+			
 			if (ins[0] > 1000) { // if we have a mated library, filter out any small insert shadow library
-				System.out.print("Filtering discordant read pairs... ");
+				System.out.print("Looks like this library was mated. Filtering discordant read pairs... ");
 				int before = reads.size();
 				filterDiscordantPairs(reads);
 				System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
@@ -77,6 +85,8 @@ public class FISHInputExporter {
 			int before = reads.size();
 			filterDiagReads(reads,ins,nSd);
 			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
+			
+			
 			insFile = new File(outdir,base+".ins_size_filt.txt");
 			insFile.createNewFile();
 			insOut = new PrintStream(insFile);
@@ -223,7 +233,29 @@ public class FISHInputExporter {
 			matchesOut.get(it.next()).close();
 	}
 	
+	
 	public static double[] estimateInsertSize(Map<String,ReadPair> reads){
+		Iterator<ReadPair> it = reads.values().iterator();
+		ReadPair tmp = null;
+		Vector<Double> vals = new Vector<Double>();
+		while(it.hasNext()){
+			tmp = it.next();
+			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
+				vals.add(new Double(tmp.getInsert()));
+		}
+		Double[] arD = vals.toArray(new Double[vals.size()]);
+		Arrays.sort(arD);
+		// discard the upper and lower quartiles to prevent any outliers from distorting our estimate
+		double[] dat = new double[arD.length];
+		for (int i = 0; i < dat.length; i++)
+			dat[i] = arD[i];
+		double mean = SummaryStats.mean(dat);
+		double stdev = Math.sqrt(SummaryStats.variance(dat,mean));
+		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
+		return ret;
+	}
+	
+	public static double[] estimateInsertSizeIQR(Map<String,ReadPair> reads){
 		Iterator<ReadPair> it = reads.values().iterator();
 		ReadPair tmp = null;
 		Vector<Double> vals = new Vector<Double>();
@@ -242,6 +274,22 @@ public class FISHInputExporter {
 		double mean = SummaryStats.mean(dat);
 		double stdev = Math.sqrt(SummaryStats.variance(dat,mean));
 		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
+		return ret;
+	}
+	
+	private static double[] getInsertData(Map<String,ReadPair> reads){
+		Iterator<ReadPair> it = reads.values().iterator();
+		ReadPair tmp = null;
+		Vector<Double> vals = new Vector<Double>();
+		while(it.hasNext()){
+			tmp = it.next();
+			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
+				vals.add(new Double(tmp.getInsert()));
+		}
+		Double[] arD = vals.toArray(new Double[vals.size()]);
+		double[] ret = new double[arD.length];
+		for (int i = 0; i < ret.length; i++)
+			ret[i] = arD[i];
 		return ret;
 	}
 	
@@ -295,8 +343,9 @@ public class FISHInputExporter {
 		nOut = nOut/nsyn;
 		nIn = nIn/nsyn;
 		if (nIn > nOut){ // have mostly inies
-			if (nIn > 0.5)
+			if (nIn > 0.5){
 				removeKeys(reads,outies);
+			}
 		} else if (nOut > nIn){ // have mostly outies
 			if (nOut > 0.5)
 				removeKeys(reads,inies);
