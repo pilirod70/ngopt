@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.text.NumberFormat;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -61,26 +62,17 @@ public class FISHInputExporter {
 				System.exit(-1);
 			}
 			
-			System.out.print("Estimating insert size... ");
-			double[] ins = estimateInsertSizeIQR(reads);
-			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
-			int nSd = 3;
 			File insFile = new File(outdir, base+".ins_size_unfilt.txt");
 			insFile.createNewFile();
 			PrintStream insOut = new PrintStream(insFile);
 			exportInsertSize(reads, insOut);
 			insOut.close();
 			
-			
-			if (ins[0] > 1000) { // if we have a mated library, filter out any small insert shadow library
-				System.out.print("Looks like this library was mated. Filtering discordant read pairs... ");
-				int before = reads.size();
-				filterDiscordantPairs(reads);
-				System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
-				System.out.print("Re-estimating insert size... ");
-				ins = estimateInsertSize(reads);
-				System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
-			}
+			filterShadowLibrary(reads);
+			System.out.print("Estimating insert size... ");
+			int nSd = 3;
+			double[] ins = estimateInsertSize(reads);
+			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
 			System.out.print("Filtering diagonal self-links. Discarding pairs with inserts between "+NF.format(ins[0]-nSd*ins[1])+" - "+NF.format(ins[0]+nSd*ins[1])+"... ");			
 			int before = reads.size();
 			filterDiagReads(reads,ins,nSd);
@@ -277,32 +269,14 @@ public class FISHInputExporter {
 		return ret;
 	}
 	
-	private static double[] getInsertData(Map<String,ReadPair> reads){
-		Iterator<ReadPair> it = reads.values().iterator();
-		ReadPair tmp = null;
-		Vector<Double> vals = new Vector<Double>();
-		while(it.hasNext()){
-			tmp = it.next();
-			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
-				vals.add(new Double(tmp.getInsert()));
-		}
-		Double[] arD = vals.toArray(new Double[vals.size()]);
-		double[] ret = new double[arD.length];
-		for (int i = 0; i < ret.length; i++)
-			ret[i] = arD[i];
-		return ret;
-	}
-	
-	public static boolean isDiag(ReadPair r, double[] ins, int nSd){
-		double dist = Math.abs(r.pos1 - r.pos2 );
-		if (r.ctg2 == null){
-			System.out.print("");
-		}
-		return (dist < ins[0]+nSd*ins[1] && dist > ins[0]-nSd*ins[1]) && r.ctg1.equals(r.ctg2);
-	}
-	
-	
-	public static void filterDiagReads(Map<String,ReadPair> reads, double[] ins, int nSd){
+	/**
+	 * 
+	 * @param reads
+	 * @param ins
+	 * @param nSd
+	 * @return a reference to the Map that was filtered
+	 */
+	public static Map<String,ReadPair> filterDiagReads(Map<String,ReadPair> reads, double[] ins, int nSd){
 		Iterator<String> it = reads.keySet().iterator();
 		Vector<String> rm = new Vector<String>();
 		String key = null;
@@ -315,15 +289,40 @@ public class FISHInputExporter {
 			}
 		}
 		removeKeys(reads,rm);
+		return reads;
 	}
 	
-	public static void filterDiscordantPairs(Map<String,ReadPair> reads){
-		Vector<String> outies = new Vector<String>();
-		Vector<String> inies = new Vector<String>();
+	/**
+	 * 
+	 * @param reads
+	 * @param ins
+	 * @param nSd
+	 * @return a reference to the Map that was filtered
+	 */
+	public static Map<String,ReadPair> filterOffDiagReads(Map<String,ReadPair> reads, double[] ins, int nSd){
+		Iterator<String> it = reads.keySet().iterator();
+		Vector<String> rm = new Vector<String>();
+		String key = null;
+		ReadPair r = null;
+		while(it.hasNext()){
+			key = it.next();
+			r = reads.get(key);
+			if (!isDiag(r, ins, nSd)){
+				rm.add(key);
+			}
+		}
+		removeKeys(reads,rm);
+		return reads;
+	}
+	
+	public static void filterShadowLibrary(Map<String,ReadPair> reads){
+		Map<String,ReadPair> outies = new HashMap<String, ReadPair>();
+		Map<String,ReadPair> inies = new HashMap<String, ReadPair>();
 		Iterator<String> it = reads.keySet().iterator();
 		String tmp = null;
 		ReadPair read = null;
 		int nsyn = 0;
+		System.out.print("Checking for shadow library... ");
 		while(it.hasNext()){
 			tmp = it.next();
 			read = reads.get(tmp);
@@ -333,31 +332,66 @@ public class FISHInputExporter {
 				continue;
 			nsyn++;
 			if (read.outward){
-				outies.add(tmp);
+				outies.put(tmp, reads.get(tmp));
 			} else {
-				inies.add(tmp);
+				inies.put(tmp, reads.get(tmp));
 			}
 		}
 		double nOut = outies.size();
 		double nIn = inies.size();
 		nOut = nOut/nsyn;
 		nIn = nIn/nsyn;
-		if (nIn > nOut){ // have mostly inies
-			if (nIn > 0.5){
-				removeKeys(reads,outies);
+		if (nOut > 0.1 && nIn > 0.1){ // we have a shadow library
+			System.out.print("found shadow library. \nFiltering shadow reads... ");
+			int nRemoved = -1;
+			double[] inIns = new double[inies.size()];
+			double[] outIns = new double[outies.size()];
+			it = inies.keySet().iterator();
+			for (int i = 0; i < inIns.length; i++)
+				inIns[i] = reads.get(it.next()).getInsert();
+			it = outies.keySet().iterator();
+			for (int i = 0; i < outIns.length; i++)
+				outIns[i] = reads.get(it.next()).getInsert();
+			double inMean = SummaryStats.mean(inIns);
+			double outMean = SummaryStats.mean(outIns);
+			if (inMean > outMean){
+				if (inMean > 2*outMean) { // remove outies
+					double[] ins = estimateInsertSize(outies);
+					filterOffDiagReads(outies, ins, 3);
+					nRemoved = outies.size();
+					removeKeys(reads,outies.keySet());
+				}
+			} else if (outMean > inMean) { 
+				if (outMean > 2*inMean){ // remove innies
+					double[] ins = estimateInsertSize(inies);
+					filterOffDiagReads(inies, ins, 3);
+					nRemoved = inies.size();
+					removeKeys(reads,inies.keySet());
+				}
+			} else {
+				System.out.println("Found innie and outie libraries with same insert.");
 			}
-		} else if (nOut > nIn){ // have mostly outies
-			if (nOut > 0.5)
-				removeKeys(reads,inies);
+			System.out.println(" removed "+nRemoved+" reads");
+		} else {
+			System.err.println(" unable to detect a shadow library.");
 		}
+			
 	}
 	
-	private static void removeKeys(Map<String,ReadPair> reads, Vector<String> torm){
+	private static boolean isDiag(ReadPair r, double[] ins, int nSd){
+		double dist = Math.abs(r.pos1 - r.pos2 );
+		if (r.ctg2 == null){
+			System.out.print("");
+		}
+		return (dist < ins[0]+nSd*ins[1] && dist > ins[0]-nSd*ins[1]) && r.ctg1.equals(r.ctg2);
+	}
+	
+	private static void removeKeys(Map<String,ReadPair> reads, Collection<String> torm){
 		Iterator<String> it = torm.iterator();
 		while(it.hasNext())
 			reads.remove(it.next());
 	}
-	
+
 	public static void exportInsertSize(Map<String,ReadPair> reads, PrintStream out) {
 		Iterator<ReadPair> it = reads.values().iterator();
 		ReadPair tmp = null;
