@@ -364,13 +364,17 @@ sub get_insert($$$$$) {
 	my $outbase = shift;
 	my $lib = shift;
 	my $ctgs = shift;
+
+	my $estimate_pair_count = 20000;
+	my $require_fraction = 0.5;
+	my $fq_linecount = $estimate_pair_count*2;
 	# estimate the library insert size with bwa
 	# just use a subsample of 40k reads
 	`$DIR/bwa index -a is $ctgs`;
-	`head -n 40000 $r1fq > $r1fq.sub`;
-	`tail -n 40000 $r1fq >> $r1fq.sub`;
-	`head -n 40000 $r2fq > $r2fq.sub`;
-	`tail -n 40000 $r2fq >> $r2fq.sub`;
+	`head -n $fq_linecount $r1fq > $r1fq.sub`;
+	`tail -n $fq_linecount $r1fq >> $r1fq.sub`;
+	`head -n $fq_linecount $r2fq > $r2fq.sub`;
+	`tail -n $fq_linecount $r2fq >> $r2fq.sub`;
 	`$DIR/bwa aln $ctgs $r1fq.sub > $r1fq.sub.sai`;
 	`$DIR/bwa aln $ctgs $r2fq.sub > $r2fq.sub.sai`;
 	# bwa will print the estimated insert size, let's capture it then kill the job
@@ -397,7 +401,7 @@ sub get_insert($$$$$) {
 #	$max = ($max - $ins_mean);
 #	$ins_error = (($min,$max)[$min < $max])/$ins_mean;
 	`rm $r1fq.sub* $r2fq.sub*`;
-	if ($ins_n > 20000) {		
+	if ($ins_n > $require_fraction * $estimate_pair_count) {		
 		$ins_error = $ins_sd*6 / $ins_mean;
 		$ins_mean = sprintf("%.0f",$ins_mean);
 		$ins_error = sprintf("%.3f",$ins_error);
