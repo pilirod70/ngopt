@@ -21,8 +21,6 @@ import org.halophiles.assembly.ReadPair;
 import org.halophiles.assembly.SAMFileParser;
 import org.halophiles.tools.SummaryStats;
 
-import weka.estimators.KernelEstimator;
-
 public class FISHInputExporter {
 	private static NumberFormat NF;
 	
