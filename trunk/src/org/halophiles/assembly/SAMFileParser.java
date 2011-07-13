@@ -16,6 +16,10 @@ public class SAMFileParser {
 	private HashMap<String,Contig> contigs;
 	private HashMap<String,ReadPair> reads;
 	
+	private int nreads;
+	
+	private int npairs;
+	
 	private int rdlen;
 	
 	private File samFile;
@@ -25,6 +29,9 @@ public class SAMFileParser {
 		reads = new HashMap<String, ReadPair>();
 		BufferedReader br = null;
 		String ctgStr = null;
+		
+		nreads = 0;
+		npairs = 0;
 
 		samFile = new File(samPath);
 		if (samFile.getName().endsWith(".gz")||samFile.getName().endsWith(".Z")||samFile.getName().endsWith(".z"))
@@ -53,7 +60,6 @@ public class SAMFileParser {
 		if (contigs.size() == 0){
 			System.err.println("0 contigs found in SAM header.");
 		}
-		int den = 0;
 		while(br.ready()){
 			ReadPair tmp = null;
 			String[] line = br.readLine().split("\t");
@@ -80,10 +86,12 @@ public class SAMFileParser {
 			}
 			int val = tmp.addRead(left, rev, len, tmpCtg, line);
 			if (val == 2){
-				
-			} else if (val == -1)
+				npairs++;
+			} else if (val == -1){
 				System.err.println("ambiguous mapping for read " + line[0]);
+			}
 			tmpCtg.addReadPair(tmp);
+			nreads++;
 		}
 	}
 	
@@ -108,6 +116,14 @@ public class SAMFileParser {
 	 */
 	public int getReadLength() {
 		return rdlen;
+	}
+	
+	public int getNumReads(){
+		return nreads;
+	}
+	
+	public int getNumPairs() {	
+		return npairs;
 	}
 	
 	public static boolean nextCharIs(BufferedReader br, char c) throws IOException{
