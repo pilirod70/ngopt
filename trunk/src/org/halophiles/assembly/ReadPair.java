@@ -85,4 +85,14 @@ public class ReadPair{
 		else 
 			return -1;
 	}
+	
+	public int getQual(){
+		if (sam1 == null)
+			return -1;
+		else if (sam2 == null)
+			return Integer.parseInt(this.sam1[4]) % 255;
+		else 
+			return ((Integer.parseInt(this.sam1[4]) % 255)+ (Integer.parseInt(this.sam2[4]) % 255))/2;
+	}
+	
 }

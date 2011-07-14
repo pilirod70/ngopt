@@ -23,16 +23,20 @@ import org.halophiles.tools.SummaryStats;
 
 public class FISHInputExporter {
 	private static NumberFormat NF;
+	private static int MINQUAL = 13;
 	
 	public static void main(String[] args){
 		if (args.length != 2){
-			System.err.println("Usage: java -jar GetFishInput.jar <sam_file> <output_base>");
+			System.err.println("Usage: java -jar GetFishInput.jar <sam_file> <output_base> <min_map_qual (optional)>");
 			System.exit(-1);
 		}
 		try{
 			NF = NumberFormat.getInstance();
 			NF.setMaximumFractionDigits(0);
 			NF.setGroupingUsed(false);
+			if (args.length == 3){
+				MINQUAL = Integer.parseInt(args[2]);
+			}
 			System.out.println("Reading "+args[0]);
 			System.out.println("Writing output to "+System.getProperty("user.dir"));
 			SAMFileParser sfp = new SAMFileParser(args[0]);
@@ -49,6 +53,8 @@ public class FISHInputExporter {
 			while(rpIt.hasNext()){
 				ReadPair tmp = rpIt.next();
 				if (!tmp.paired) 
+					continue;
+				if (tmp.getInsert() < MINQUAL)
 					continue;
 				reads.put(tmp.hdr, tmp);
 			}
