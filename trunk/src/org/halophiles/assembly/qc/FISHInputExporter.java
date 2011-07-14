@@ -72,10 +72,10 @@ public class FISHInputExporter {
 			exportInsertSize(reads, insOut);
 			insOut.close();
 			
-			filterShadowLibrary(reads);
 			System.out.print("Estimating insert size... ");
 			int nSd = 3;
 			double[] ins = estimateInsertSize(reads);
+			filterShadowLibrary(reads);
 			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
 			if (ins[1] > ins[0]){
 				System.out.print("Insert sizes are overdispersed. Recalculating variance from 2nd and 3rd quartiles... ");
@@ -362,29 +362,23 @@ public class FISHInputExporter {
 			it = outies.keySet().iterator();
 			for (int i = 0; i < outDat.length; i++)
 				outDat[i] = reads.get(it.next()).getInsert();
-			double[] inIns = estimateInsertSizeIQR(inies);
-			double[] outIns = estimateInsertSizeIQR(outies);
-			double inFullMean = SummaryStats.mean(inDat);
-			double outFullMean = SummaryStats.mean(outDat);
-			double inSd = Math.sqrt(SummaryStats.variance(inDat, inIns[0]));
-			double outSd = Math.sqrt(SummaryStats.variance(outDat, outIns[0]));
-			double inCv = inSd/inIns[0];
-			double outCv = outSd/outIns[0];
-			if (inIns[0] > outIns[0]){
-				if (inIns[0] > 2*outIns[0] || outCv > inCv) { // remove outies
-					double[] ins = estimateInsertSize(outies);
-					if (ins[1] > ins[0])
-						ins[1] = outIns[1];
-					filterOffDiagReads(outies, ins, 3);
+			double[] inIQR = estimateInsertSizeIQR(inies);
+			double[] outIQR = estimateInsertSizeIQR(outies);
+			double inSd = Math.sqrt(SummaryStats.variance(inDat, inIQR[0]));
+			double outSd = Math.sqrt(SummaryStats.variance(outDat, outIQR[0]));
+			double inCv = inSd/inIQR[0];
+			double outCv = outSd/outIQR[0];
+			if (inIQR[0] > outIQR[0]){
+				if (inIQR[0] > 2*outIQR[0] || outCv > inCv) { // remove outies
+					double[] ins = {outIQR[0], outSd};
+					filterOffDiagReads(outies, outIQR, 3);
 					nRemoved = outies.size();
 					removeKeys(reads,outies.keySet());
 				}
-			} else if (outIns[0] > inIns[0]) { 
-				if (outIns[0] > 2*inIns[0] || inCv > outCv){ // remove innies
-					double[] ins = estimateInsertSize(inies);
-					if (ins[1] > ins[0])
-						ins[1] = inIns[1];
-					filterOffDiagReads(inies, ins, 3);
+			} else if (outIQR[0] > inIQR[0]) { 
+				if (outIQR[0] > 2*inIQR[0] || inCv > outCv){ // remove innies
+					double[] ins = {inIQR[0], inSd};
+					filterOffDiagReads(inies, inIQR, 3);
 					nRemoved = inies.size();
 					removeKeys(reads,inies.keySet());
 				}

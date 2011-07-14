@@ -98,16 +98,11 @@ public class Contig implements Comparable<Contig> {
 		return this.name.compareTo(arg0.name);
 	}
 	public void addReadPair(ReadPair pair){
-		if (pair == null){
-			System.out.println();
-		} else if (pair.sam1 == null){
-			System.out.println();
-		}
 		if (reads.containsKey(pair.hdr)){
-			mappedBasesCount += SAMFileParser.cigarLength(pair.sam2[5]);
+			mappedBasesCount += SAMFileParser.cigarLength(pair.cig2);
 		} else {
 			mappedBasesCount += 
-				SAMFileParser.cigarLength(pair.sam1[5]);
+				SAMFileParser.cigarLength(pair.cig1);
 		}
 		reads.put(pair.hdr, pair);
 	}

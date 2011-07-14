@@ -197,14 +197,7 @@ public class CountMaxFlow {
 				
 				while(rpIt.hasNext()){
 					ReadPair tmp = rpIt.next();
-					cftSAMOut.print(tmp.sam1[0]);
-					for (int sI = 1; sI < NSAMCOL; sI++)
-						cftSAMOut.print("\t"+tmp.sam1[sI]);
-					cftSAMOut.println();
-					cftSAMOut.print(tmp.sam2[0]);
-					for (int sI = 1; sI < NSAMCOL; sI++)
-						cftSAMOut.print("\t"+tmp.sam2[sI]);
-					cftSAMOut.println();
+					cftSAMOut.println(tmp.toString());
 					cftTDOut.println(tmp.hdr+"\t"+tmp.ctg1.name+"\t"+tmp.pos1+"\t"+tmp.ctg2.name+"\t"+tmp.pos2);
 					String pair = tmp.ctg1.name+":"+tmp.ctg2.name;
 					if (datSets.containsKey(pair))

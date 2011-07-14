@@ -5,13 +5,17 @@ public class ReadPair{
 	public int pos1 = 0;
 	public boolean rev1 = false;
 	public int len1 = 0;
+	public int qual1 = -1;
+	public String cig1;
 	public Contig ctg1;
-	public String[] sam1;
+//	public String[] sam1;
 	public int pos2 = 0;
 	public boolean rev2 = false;
 	public int len2 = 0;
+	public String cig2;
 	public Contig ctg2;
-	public String[] sam2;
+	public int qual2 = -1;
+//	public String[] sam2;
 	public boolean paired;
 	public boolean outward;
 	public boolean inward;
@@ -21,13 +25,14 @@ public class ReadPair{
 	public String contigString(){
 		return ctg1.name+"-"+ctg2.name;
 	}
-	public int addRead(int pos, boolean rev, int len, Contig ctg, String[] sam){
+	public int addRead(int pos, boolean rev, int len, Contig ctg, int qual, String cig){
 		if (pos1 == 0){
 			pos1 = pos;
 			rev1 = rev;
 			len1 = len;
 			ctg1 = ctg;
-			sam1 = sam;
+			cig1 = cig;
+			qual1 = qual;
 			paired = false;
 			outward = false;
 			inward = false;
@@ -38,25 +43,29 @@ public class ReadPair{
 				rev2 = rev;
 				len2 = len;
 				ctg2 = ctg;
-				sam2 = sam;
+				cig2 = cig;
+				qual2 = qual;
 			} else if (ctg1.getId() == ctg.getId()){ 
 				if (pos1 > pos) { // order points for consistency
 					pos2 = pos1;
 					rev2 = rev1;
 					len2 = len1;
 					ctg2 = ctg1;
-					sam2 = sam1;
+					cig2 = cig1;
+					qual2 = qual1;
 					pos1 = pos;
 					rev1 = rev;
 					len1 = len;
 					ctg1 = ctg;
-					sam1 = sam;
+					cig1 = cig;
+					qual1 = qual;
 				} else {
 					pos2 = pos;
 					rev2 = rev;
 					len2 = len;
 					ctg2 = ctg;
-					sam2 = sam;				 
+					cig2 = cig;
+					qual2 = qual;
 				}
 				outward = rev1 && !rev2;
 				inward = !outward;
@@ -65,12 +74,14 @@ public class ReadPair{
 				rev2 = rev1;
 				len2 = len1;
 				ctg2 = ctg1;
-				sam2 = sam1;
+				cig2 = cig1;
+				qual2 = qual1;
 				pos1 = pos;
 				rev1 = rev;
 				len1 = len;
 				ctg1 = ctg;
-				sam1 = sam;
+				cig1 = cig;
+				qual1 = qual;
 			}
 			paired = true;
 			return 2;
@@ -87,12 +98,21 @@ public class ReadPair{
 	}
 	
 	public int getQual(){
-		if (sam1 == null)
+		if (pos1 == 0)
 			return -1;
-		else if (sam2 == null)
-			return Integer.parseInt(this.sam1[4]) % 255;
+		else if (pos2 == 0)
+			return qual1 % 255;
 		else 
-			return ((Integer.parseInt(this.sam1[4]) % 255)+ (Integer.parseInt(this.sam2[4]) % 255))/2;
+			return ((qual1 % 255)+ (qual2 % 255))/2;
+	}
+	
+	public String toString(){
+		String ret = null;
+		if (pos1 != 0)
+			ret = hdr+"/1\t"+(rev1?"-1":"1")+"\t"+ctg1.name+"\t"+pos1+"\t"+cig1+"\n";
+		if (pos2 != 0)
+			ret += hdr+"/2\t"+(rev2?"-1":"1")+"\t"+ctg2.name+"\t"+pos2+"\t"+cig2;
+		return ret;
 	}
 	
 }
