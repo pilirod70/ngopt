@@ -77,6 +77,12 @@ public class FISHInputExporter {
 			int nSd = 3;
 			double[] ins = estimateInsertSize(reads);
 			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
+			if (ins[1] > ins[0]){
+				System.out.print("Insert sizes are overdispersed. Recalculating variance from 2nd and 3rd quartiles... ");
+				double[] tmpIns = estimateInsertSizeIQR(reads);
+				ins[1] = tmpIns[1];
+				System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));				
+			}
 			System.out.print("Filtering diagonal self-links. Discarding pairs with inserts between "+NF.format(ins[0]-nSd*ins[1])+" - "+NF.format(ins[0]+nSd*ins[1])+"... ");			
 			int before = reads.size();
 			filterDiagReads(reads,ins,nSd);
@@ -251,6 +257,28 @@ public class FISHInputExporter {
 		return ret;
 	}
 	
+	public static double[] estimateInsertSizeIQR(Map<String,ReadPair> reads){
+		Iterator<ReadPair> it = reads.values().iterator();
+		ReadPair tmp = null;
+		Vector<Double> vals = new Vector<Double>();
+		while(it.hasNext()){
+			tmp = it.next();
+			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
+				vals.add(new Double(tmp.getInsert()));
+		}
+		Double[] arD = vals.toArray(new Double[vals.size()]);
+		Arrays.sort(arD);
+		// discard the upper and lower quartiles to prevent any outliers from distorting our estimate
+		double[] dat = new double[arD.length/2];
+		int j = arD.length/4;
+		for (int i = 0; i < dat.length; i++)
+			dat[i] = arD[j++];
+		double mean = SummaryStats.mean(dat);
+		double stdev = Math.sqrt(SummaryStats.variance(dat,mean));
+		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
+		return ret;
+	}
+	
 	/**
 	 * 
 	 * @param reads
@@ -326,26 +354,36 @@ public class FISHInputExporter {
 		if (nOut > 0.1 && nIn > 0.1){ // we have a shadow library
 			System.out.print("found shadow library. \nFiltering shadow reads... ");
 			int nRemoved = -1;
-			double[] inIns = new double[inies.size()];
-			double[] outIns = new double[outies.size()];
+			double[] inDat = new double[inies.size()];
+			double[] outDat = new double[outies.size()];
 			it = inies.keySet().iterator();
-			for (int i = 0; i < inIns.length; i++)
-				inIns[i] = reads.get(it.next()).getInsert();
+			for (int i = 0; i < inDat.length; i++)
+				inDat[i] = reads.get(it.next()).getInsert();
 			it = outies.keySet().iterator();
-			for (int i = 0; i < outIns.length; i++)
-				outIns[i] = reads.get(it.next()).getInsert();
-			double inMean = SummaryStats.mean(inIns);
-			double outMean = SummaryStats.mean(outIns);
-			if (inMean > outMean){
-				if (inMean > 2*outMean) { // remove outies
+			for (int i = 0; i < outDat.length; i++)
+				outDat[i] = reads.get(it.next()).getInsert();
+			double[] inIns = estimateInsertSizeIQR(inies);
+			double[] outIns = estimateInsertSizeIQR(outies);
+			double inFullMean = SummaryStats.mean(inDat);
+			double outFullMean = SummaryStats.mean(outDat);
+			double inSd = Math.sqrt(SummaryStats.variance(inDat, inIns[0]));
+			double outSd = Math.sqrt(SummaryStats.variance(outDat, outIns[0]));
+			double inCv = inSd/inIns[0];
+			double outCv = outSd/outIns[0];
+			if (inIns[0] > outIns[0]){
+				if (inIns[0] > 2*outIns[0] || outCv > inCv) { // remove outies
 					double[] ins = estimateInsertSize(outies);
+					if (ins[1] > ins[0])
+						ins[1] = outIns[1];
 					filterOffDiagReads(outies, ins, 3);
 					nRemoved = outies.size();
 					removeKeys(reads,outies.keySet());
 				}
-			} else if (outMean > inMean) { 
-				if (outMean > 2*inMean){ // remove innies
+			} else if (outIns[0] > inIns[0]) { 
+				if (outIns[0] > 2*inIns[0] || inCv > outCv){ // remove innies
 					double[] ins = estimateInsertSize(inies);
+					if (ins[1] > ins[0])
+						ins[1] = inIns[1];
 					filterOffDiagReads(inies, ins, 3);
 					nRemoved = inies.size();
 					removeKeys(reads,inies.keySet());
@@ -433,15 +471,14 @@ public class FISHInputExporter {
 		
 		private void print(ReadPair pair){
 			// phred-scaled geometric-mean of posterior probabilites that mapping position is incorrect
-			// mod 255 in case the quality score couldn't be computed. 
-			int qual = ((Integer.parseInt(pair.sam1[4]) % 255)+ (Integer.parseInt(pair.sam2[4]) % 255))/2;
+			// mod 255 in case the quality score couldn't be computed.	
 			if ((ctg1 == pair.ctg1 && ctg2 == pair.ctg2)) {
-				out1.println("c"+ctg1.getRank()+"p"+pair.pos1+"\tc"+ctg2.getRank()+"p"+pair.pos2+"\t"+qual);
+				out1.println("c"+ctg1.getRank()+"p"+pair.pos1+"\tc"+ctg2.getRank()+"p"+pair.pos2+"\t"+pair.getInsert());
 				if (ctg1 != ctg2)
-					out2.println("c"+ctg2.getRank()+"p"+pair.pos2+"\tc"+ctg1.getRank()+"p"+pair.pos1+"\t"+qual);
+					out2.println("c"+ctg2.getRank()+"p"+pair.pos2+"\tc"+ctg1.getRank()+"p"+pair.pos1+"\t"+pair.getInsert());
 			} else if((ctg1 == pair.ctg2 && ctg2 == pair.ctg1)){
-				out1.println("c"+ctg1.getRank()+"p"+pair.pos2+"\tc"+ctg2.getRank()+"p"+pair.pos1+"\t"+qual);
-				out2.println("c"+ctg2.getRank()+"p"+pair.pos1+"\tc"+ctg1.getRank()+"p"+pair.pos2+"\t"+qual);
+				out1.println("c"+ctg1.getRank()+"p"+pair.pos2+"\tc"+ctg2.getRank()+"p"+pair.pos1+"\t"+pair.getInsert());
+				out2.println("c"+ctg2.getRank()+"p"+pair.pos1+"\tc"+ctg1.getRank()+"p"+pair.pos2+"\t"+pair.getInsert());
 			} else {
 				throw new IllegalArgumentException("pair "+pair.hdr+" does not connect contigs "+ctg1.name+" and "+ctg2.name);
 			}
