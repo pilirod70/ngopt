@@ -25,32 +25,32 @@ my $scafs;
 print "$libfile $start\n";
 
 if ($start <= 1) {
-	print "Cleaning reads with SGA\n";
-	print STDERR "Cleaning reads with SGA\n";
+	print "CHECKPOINT: Cleaning reads with SGA\n";
+	print STDERR "CHECKPOINT: Cleaning reads with SGA\n";
 	sga_clean($outbase, \%LIBS); 
 } 
 if ($start <= 2) {
-	print "Building contigs with IDBA\n";
-	print STDERR "Building contigs with IDBA\n";
+	print "CHECKPOINT: Building contigs with IDBA\n";
+	print STDERR "CHECKPOINT: Building contigs with IDBA\n";
 	$maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
 	idba_assemble($outbase, $maxrdlen); 
 } 
 if ($start <= 3) {
-	print "Scaffolding contigs with SSPACE\n";
-	print STDERR "Scaffolding contigs with SSPACE\n";
+	print "CHECKPOINT: Scaffolding contigs with SSPACE\n";
+	print STDERR "CHECKPOINT: Scaffolding contigs with SSPACE\n";
 	$scafs = scaffold_sspace($libfile, $outbase, \%LIBS, "$outbase-contig.fa");
 	`mv $scafs $outbase.sspace.scaffolds.fasta`; 
 } 
 if ($start <= 4) {
-	print "Detecting and breaking misassemblies with FISH\n";
-	print STDERR "Detecting and breaking misassemblies with FISH\n";
+	print "CHECKPOINT: Detecting and breaking misassemblies with FISH\n";
+	print STDERR "CHECKPOINT: Detecting and breaking misassemblies with FISH\n";
 	$scafs = "$outbase.sspace.scaffolds.fasta";
 	$scafs = break_all_misasms($scafs,\%LIBS,"$outbase.fish"); 
 	`mv $scafs $outbase.fish.broken.fasta`; 
 } 
 if ($start <= 5) {
-	print "Scaffolding broken contigs with SSPACE\n";
-	print STDERR "Scaffolding broken contigs with SSPACE\n";
+	print "CHECKPOINT: Scaffolding broken contigs with SSPACE\n";
+	print STDERR "CHECKPOINT: Scaffolding broken contigs with SSPACE\n";
 	$scafs = "$outbase.fish.broken.fasta"; 
 	$scafs = scaffold_sspace($libfile,"$outbase.rescaf",\%LIBS,$scafs);
 	`mv $scafs $outbase.a5.final.fasta`;
