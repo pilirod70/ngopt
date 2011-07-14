@@ -245,28 +245,6 @@ public class FISHInputExporter {
 		return ret;
 	}
 	
-	public static double[] estimateInsertSizeIQR(Map<String,ReadPair> reads){
-		Iterator<ReadPair> it = reads.values().iterator();
-		ReadPair tmp = null;
-		Vector<Double> vals = new Vector<Double>();
-		while(it.hasNext()){
-			tmp = it.next();
-			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
-				vals.add(new Double(tmp.getInsert()));
-		}
-		Double[] arD = vals.toArray(new Double[vals.size()]);
-		Arrays.sort(arD);
-		// discard the upper and lower quartiles to prevent any outliers from distorting our estimate
-		double[] dat = new double[arD.length/2];
-		int j = arD.length/4;
-		for (int i = 0; i < dat.length; i++)
-			dat[i] = arD[j++];
-		double mean = SummaryStats.mean(dat);
-		double stdev = Math.sqrt(SummaryStats.variance(dat,mean));
-		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
-		return ret;
-	}
-	
 	/**
 	 * 
 	 * @param reads
