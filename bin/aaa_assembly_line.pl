@@ -4,7 +4,7 @@ use warnings;
 use File::Basename;
 use Cwd 'abs_path';
 
-die "Usage: ".basename($0)." [--begin=1-5] <library file> <output base>\n" if(@ARGV!=2 && @ARGV!=3 || (@ARGV==3 && $ARGV[0] !~ m/--begin=(1-5)/));
+die "Usage: ".basename($0)." [--begin=1-5] <library file> <output base>\n" if(@ARGV!=2 && @ARGV!=3 || (@ARGV==3 && $ARGV[0] !~ m/--begin=([1-5])/));
 my $start = 1;
 if (@ARGV==3) {
 	$start = $1;
@@ -17,33 +17,44 @@ my $outbase = $ARGV[1];
 
 my $DIR = dirname(abs_path($0));
 
-my %libs = read_lib_file($libfile);
+my %LIBS = read_lib_file($libfile);
+print STDERR "Found ".scalar(keys %LIBS)." libraries\n";
 my $maxrdlen = -1;
 my $scafs;
 
-print STDERR "$libfile $start\n";
+print "$libfile $start\n";
 
 if ($start <= 1) {
-	 sga_clean($outbase, \%libs); 
+	print "Cleaning reads with SGA\n";
+	print STDERR "Cleaning reads with SGA\n";
+	sga_clean($outbase, \%LIBS); 
 } 
 if ($start <= 2) {
-	 $maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
-	 idba_assemble($outbase, $maxrdlen); 
+	print "Building contigs with IDBA\n";
+	print STDERR "Building contigs with IDBA\n";
+	$maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
+	idba_assemble($outbase, $maxrdlen); 
 } 
 if ($start <= 3) {
-	 $scafs = scaffold_sspace($libfile, $outbase, \%libs, "$outbase-contig.fa");
-	 `mv $scafs $outbase.sspace.scaffolds.fasta`; 
+	print "Scaffolding contigs with SSPACE\n";
+	print STDERR "Scaffolding contigs with SSPACE\n";
+	$scafs = scaffold_sspace($libfile, $outbase, \%LIBS, "$outbase-contig.fa");
+	`mv $scafs $outbase.sspace.scaffolds.fasta`; 
 } 
 if ($start <= 4) {
-	 $scafs = "$outbase.sspace.scaffolds.fasta";
-	 $scafs = break_all_misasms($scafs,\%libs,"$outbase.fish"); 
-	 `mv $scafs $outbase.fish.broken.fasta`; 
+	print "Detecting and breaking misassemblies with FISH\n";
+	print STDERR "Detecting and breaking misassemblies with FISH\n";
+	$scafs = "$outbase.sspace.scaffolds.fasta";
+	$scafs = break_all_misasms($scafs,\%LIBS,"$outbase.fish"); 
+	`mv $scafs $outbase.fish.broken.fasta`; 
 } 
 if ($start <= 5) {
-	 $scafs = "$outbase.fish.broken.fasta"; 
-	 $scafs = scaffold_sspace($libfile,"$outbase.rescaf",\%libs,$scafs);
-	 `mv $scafs $outbase.a5.final.fasta`;
-	 print "Final assembly in $outbase.a5scafs.fasta\n"; 
+	print "Scaffolding broken contigs with SSPACE\n";
+	print STDERR "Scaffolding broken contigs with SSPACE\n";
+	$scafs = "$outbase.fish.broken.fasta"; 
+	$scafs = scaffold_sspace($libfile,"$outbase.rescaf",\%LIBS,$scafs);
+	`mv $scafs $outbase.a5.final.fasta`;
+	print "Final assembly in $outbase.a5scafs.fasta\n"; 
 } 
 
 sub sga_assemble {
@@ -66,8 +77,8 @@ sub sga_clean {
 	my $libs = shift;
 	# figure out which files we need to pass to SGA
 	my $files = "";
-	for my $lib (keys %libs) {
-		my @lib_files = @{$libs{$lib}};
+	for my $lib (keys %$libs) {
+		my @lib_files = @{$libs->{$lib}};
 		if (scalar(@lib_files) >= 2) {
 			shift @lib_files;
 			my $fq1 = shift @lib_files;
@@ -79,6 +90,7 @@ sub sga_clean {
 			$files .= "$up ";
 		}
 	}
+	print STDERR "sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq\n";
 	system("$DIR/sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq");
 	die "Error preprocessing reads with SGA\n" if( $? != 0 );
 	my $sga_ind = "";
@@ -101,6 +113,7 @@ sub read_lib_file {
 	my $lib_count = 0;
 	my %hash = ();
 	while(<LIB>){
+		chomp;
 		if ($_ =~ m/\[LIB\]/){
 			if ($lib_count > 0) {
 				for my $key (sort keys %hash){
@@ -118,6 +131,8 @@ sub read_lib_file {
 			$hash{"up"} = $1;
 		} elsif ($_ =~ m/ins=([\w\/\-\.]+)/) { 
 			$hash{"ins"} = $1;
+		} else {
+			die "Unrecognizable line in library file: >$_<\n";
 		}
 	} 
 	for my $key (sort keys %hash){
@@ -200,10 +215,10 @@ sub scaffold_sspace {
 	my $min_insert_size = -1;
 	# remove the unpaired file if present 
 	`rm $outbase.unpaired.fastq` if (-f "$outbase.unpaired.fastq");
-	for my $lib (keys %libs) {
+	for my $lib (keys %$libs) {
 	#	print STDERR "$lib\t".join(" ",@{$libs{$lib}})."\n";
 		# need to make a copy of this little array, so we can preserve the original for break_all_misasms
-		@lib_files = @{$libs{$lib}};
+		@lib_files = @{$libs->{$lib}};
 		#$lib_files = \@{$libs{$lib}};
 		# if we have at least two files in this library, assume the first two are paired
 		if (scalar(@lib_files) >= 2) {
@@ -262,13 +277,13 @@ sub break_all_misasms {
 	my $libs = shift;
 	my $outbase = shift;
 	my @lib_files;
-	my %tmp = %libs;
-	for my $lib (keys %libs){
-		$tmp{$lib} = @{$libs{$lib}} if (scalar(@{$libs{$lib}}) >= 2);
+	my %tmp = %$libs;
+	for my $lib (keys %$libs){
+		$tmp{$lib} = @{$libs->{$lib}} if (scalar(@{$libs->{$lib}}) >= 2);
 	}
 	# sort libraries by insert so we break with larger inserts first.
 	for my $lib (sort {$tmp{$b}[0] <=> $tmp{$a}[0]} keys %tmp){
-		@lib_files = @{$libs{$lib}};
+		@lib_files = @{$libs->{$lib}};
 		next unless (scalar(@lib_files) >= 2);
 		my $ins = shift @lib_files;
 		my $fq1 = shift @lib_files;
@@ -366,7 +381,7 @@ sub get_insert($$$$$) {
 	my $ctgs = shift;
 
 	my $estimate_pair_count = 20000;
-	my $require_fraction = 0.5;
+	my $require_fraction = 0.25;
 	my $fq_linecount = $estimate_pair_count*2;
 	# estimate the library insert size with bwa
 	# just use a subsample of 40k reads
@@ -385,8 +400,9 @@ sub get_insert($$$$$) {
 	my $max;
 	my $ins_sd;
 	my $ins_n;
+	my $found = 0;
 	while( my $line = <SAMPE> ){
-		if($line =~ m/^\[infer_isize\] inferred external isize from (\d+) pairs: ([\d\.]+) \+\/\- ([\d\.]+)$/){
+		if(!$found  && $line =~ m/^\[infer_isize\] inferred external isize from (\d+) pairs: ([\d\.]+) \+\/\- ([\d\.]+)$/){
 			$ins_n = $1;
 			$ins_mean = $2;
 			$ins_sd = $3;
@@ -407,6 +423,7 @@ sub get_insert($$$$$) {
 		$ins_error = sprintf("%.3f",$ins_error);
 		$ins_error =~ s/0+$//g;
 	} else {
+		print STDERR "Discarding estimate. Not enough data points: $ins_n\n";
 		$ins_mean = -1;
 		$ins_error = 0;
 	}

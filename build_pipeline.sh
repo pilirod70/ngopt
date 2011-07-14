@@ -34,7 +34,7 @@ function copy_adhoc {
 function copy_exdat {
 	echo "Copying example data and README to archive"
 	mkdir $findir/example
-	cp test/sequence/phiX* $findir/example
+	cp test/sequence/phiX_p[1,2].fastq test/sequence/phiX.libs $findir/example
 	cp ngopt_a5pipeline.README $findir/README
 }
 
