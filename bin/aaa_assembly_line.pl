@@ -18,11 +18,12 @@ my $outbase = $ARGV[1];
 my $DIR = dirname(abs_path($0));
 
 my %LIBS = read_lib_file($libfile);
+die "No libraries found in $libfile\n" unless(keys %LIBS);
 print STDERR "Found ".scalar(keys %LIBS)." libraries\n";
 my $maxrdlen = -1;
 my $scafs;
 
-print "$libfile $start\n";
+print "Starting pipeline at step $start\n";
 
 if ($start <= 1) {
 	print "CHECKPOINT: Cleaning reads with SGA\n";
@@ -279,7 +280,7 @@ sub break_all_misasms {
 	my @lib_files;
 	my %tmp = %$libs;
 	for my $lib (keys %$libs){
-		$tmp{$lib} = @{$libs->{$lib}} if (scalar(@{$libs->{$lib}}) >= 2);
+		@{$tmp{$lib}} = @{$libs->{$lib}} if (scalar(@{$libs->{$lib}}) >= 2);
 	}
 	# sort libraries by insert so we break with larger inserts first.
 	for my $lib (sort {$tmp{$b}[0] <=> $tmp{$a}[0]} keys %tmp){
