@@ -38,10 +38,12 @@ public class SAMFileParser {
 			br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(samFile))));
 		else
 			br = new BufferedReader(new FileReader(samFile));
+		String[] hdr = null;
+		String name = null;
 		while(nextCharIs(br, '@')){ 
-			String[] hdr = br.readLine().split("\t");
-			if (!hdr[0].equals("@SQ")) continue;
-			String name = null;
+			hdr = br.readLine().split("\t");
+			if (!hdr[0].equals("@SQ"))
+				continue;
 			int len = -1;
 			for (String s: hdr){
 				if (s.startsWith("SN")){
@@ -54,15 +56,16 @@ public class SAMFileParser {
 				System.err.println("Found nameless contig in SAM header");
 			else if (len == -1) 
 				System.err.println("Found contig of unknown length in SAM header");
-			Contig tmp = new Contig(name,len);
-			contigs.put(tmp.name, tmp);
+			contigs.put(name, new Contig(name,len));
 		}
 		if (contigs.size() == 0){
 			System.err.println("0 contigs found in SAM header.");
 		}
+		ReadPair tmp = null;
+		String[] line = null;
+		Contig tmpCtg = null;
 		while(br.ready()){
-			ReadPair tmp = null;
-			String[] line = br.readLine().split("\t");
+			line = br.readLine().split("\t");
 			int left = Integer.parseInt(line[3]);
 			boolean rev = isReverse(line[1]);
 			int len = 0;
@@ -77,7 +80,6 @@ public class SAMFileParser {
 				tmp = new ReadPair(line[0]);
 				reads.put(line[0], tmp);
 			}
-			Contig tmpCtg = null;
 			if (contigs.containsKey(ctgStr))
 				tmpCtg = contigs.get(ctgStr);
 			else {
