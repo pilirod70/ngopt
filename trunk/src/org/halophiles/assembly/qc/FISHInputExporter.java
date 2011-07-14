@@ -72,15 +72,15 @@ public class FISHInputExporter {
 			exportInsertSize(reads, insOut);
 			insOut.close();
 			
+			filterShadowLibrary(reads);
 			System.out.print("Estimating insert size... ");
 			int nSd = 3;
 			double[] ins = estimateInsertSize(reads);
-			filterShadowLibrary(reads);
 			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
 			if (ins[1] > ins[0]){
-				System.out.print("Insert sizes are overdispersed. Recalculating variance from 2nd and 3rd quartiles... ");
+				System.out.print("Insert sizes are overdispersed. Discarding upper and lower 10 percent and recomputing mean... ");
 				double[] tmpIns = estimateInsertSizeIQR(reads);
-				ins[1] = tmpIns[1];
+				ins = tmpIns;
 				System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));				
 			}
 			System.out.print("Filtering diagonal self-links. Discarding pairs with inserts between "+NF.format(ins[0]-nSd*ins[1])+" - "+NF.format(ins[0]+nSd*ins[1])+"... ");			
@@ -269,8 +269,8 @@ public class FISHInputExporter {
 		Double[] arD = vals.toArray(new Double[vals.size()]);
 		Arrays.sort(arD);
 		// discard the upper and lower quartiles to prevent any outliers from distorting our estimate
-		double[] dat = new double[arD.length/2];
-		int j = arD.length/4;
+		double[] dat = new double[(arD.length*8)/10];
+		int j = arD.length/10;
 		for (int i = 0; i < dat.length; i++)
 			dat[i] = arD[j++];
 		double mean = SummaryStats.mean(dat);
