@@ -86,7 +86,7 @@ public class SAMFileParser {
 				tmpCtg = new Contig(ctgStr);
 				contigs.put(ctgStr, tmpCtg);
 			}
-			int val = tmp.addRead(left, rev, len, tmpCtg, line);
+			int val = tmp.addRead(left, rev, len, tmpCtg, Integer.parseInt(line[4]), line[5]);
 			if (val == 2){
 				npairs++;
 			} else if (val == -1){
