@@ -10,8 +10,7 @@
 	
 	<!--includes="${src}/org/halophiles/assembly/qc/FISHInputExporter.java,${src}/org/halophiles/assembly/Contig.java,${src}/org/halophiles/assembly/ReadPair.java,${src}/org/halophiles/assembly/SAMFileParser.java,${src}/org/halophiles/tools/SummaryStats.java" listfiles="true" includeantruntime="false"-->
 	<target name="compile" description="compile java code">
-		<javac srcdir="${src}" destdir="${bin}" target="1.5" source="1.5" debug="true" includeantruntime="false"/>
-	
+		<javac srcdir="${src}" destdir="${bin}" target="1.5" source="1.5" classpath="${ext}/jgrapht-jdk1.6.jar" debug="true" includeantruntime="false"/>
     </target>
 
     <target name="jar">
