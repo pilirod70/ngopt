@@ -194,16 +194,16 @@ plotMissingGC <- function(files, pnames, extension, plottitle, sequence, pdfname
 	pdf(paste("mauve_", pdfname,sep=""),width=10,height=6)
 	den <- density(bgdist)
 	den$y <- den$y / max(den$y)
-	plot(den, main=plottitle, type="l", lwd=2,ylab=totalname,xlab="Fraction GC")
+	plot(den, main=plottitle, type="l", lty=ltys[1],lwd=2,ylab=totalname,xlab="Fraction GC")
 	# then add each assembly
 	for(i in 1:length(files)){
 		mcname <- paste( files[i], extension, sep="" )
 		mc <- read.table(mcname)
 		den <- density(mc$V1)
 		den$y <- den$y / max(den$y)
-		lines(den, lty=ltys[i], col=(i+1))
+		lines(den, lty=ltys[i+1], col=(i+1))
 	}
-	legend("topright", legend=c("Background GC",pnames), lty=ltys[seq(1,length(pnames))], col=seq(1,length(pnames)+1))
+	legend("topright", legend=c("Background GC",pnames), lty=ltys[seq(1,length(pnames)+1)], col=seq(1,length(pnames)+1))
 	dev.off()
 	
 }
