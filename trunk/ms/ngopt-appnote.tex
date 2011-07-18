@@ -1,200 +1,88 @@
-%\documentclass[11pt]{article}
 \documentclass{bioinfo}
-\copyrightyear{XXXX}
-\pubyear{XXXX}
-\firstpage{1}
-
-%\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}
-\usepackage{setspace}
-\usepackage{latexsym}
-\usepackage{graphicx}
-\usepackage{amsmath}
-\usepackage{natbib}
-\usepackage{multirow}
-\usepackage{algorithm}
-\usepackage{algorithmic}   
-%\usepackage{nopageno} 
-%\usepackage[nolists]{endfloat}
-\usepackage{url}
-
-\newcommand{\todo}[1]{\begin{center}To do: {\bf #1}\end{center}}
-\newcommand{\parplan}[2]{\noindent {\bf Par #1}:  #2}
-
-\newcommand{\fder}[1]{\frac{d}{d #1}}
-\newcommand{\hder}[2]{\frac{d^{#2}}{d {#1}^{#2}}}
-\newcommand{\fpart}[1]{\frac{\partial}{\partial #1}}
-\newcommand{\hpart}[2]{\frac{\partial^{#2}}{\partial {#1}^{#2}}}
-
-\newtheorem{theorem}{Theorem}
-\newtheorem{lemma}{Lemma}
- 
-\newcommand{\cprob}[2]{\ensuremath{\text{Pr}\left(#1 \,|\,#2\right)}}  
-\newcommand{\prob}[1]{\ensuremath{\text{Pr}\left(#1 \right)}}
-\newcommand{\cexpect}[4]{\ensuremath{\text{E}\left#3 #1 \,|\,#2\right#4}}  
-\newcommand{\expect}[3]{\ensuremath{\text{E}\left#2 #1 \right#3}}
-\newcommand{\parvec}{\ensuremath{\boldsymbol{\theta}}}
-\newcommand{\trait}{\ensuremath{X}}
-\newcommand{\spacesize}{\ensuremath{S}}
-\newcommand{\numtips}{\ensuremath{n}}
-\newcommand{\numbranches}{\ensuremath{B}}
-\newcommand{\branchind}{\ensuremath{b}}
-\newcommand{\dataind}{\ensuremath{D}}
-\newcommand{\datavec}{\ensuremath{\mathbf{\dataind}}}
-\newcommand{\internalind}{\ensuremath{u}}
-\newcommand{\internalvec}{\ensuremath{\mathbf{\internalind}}}
-\newcommand{\tree}{\ensuremath{\tau}}
-\newcommand{\brlenind}{\ensuremath{t}}
-\newcommand{\brlenvec}{\ensuremath{\mathbf{T}}}
-\newcommand{\rootdistind}{\ensuremath{\pi}}
-\newcommand{\rootdistvec}{\ensuremath{\boldsymbol{\rootdistind}}}
-\newcommand{\infgenind}{\ensuremath{\lambda}}
-\newcommand{\infgenmat}{\ensuremath{\boldsymbol{\Lambda}}}
-\newcommand{\mapping}{\ensuremath{\mathbf{M}}}
-\newcommand{\countpr}{\ensuremath{N}}
-\newcommand{\dwellpr}{\ensuremath{R}}
-\newcommand{\regist}{\ensuremath{\mathcal{L}}}
-\newcommand{\rewardind}{\ensuremath{w}}
-\newcommand{\rewardvec}{\ensuremath{\mathbf{\rewardind}}}
-\newcommand{\locprind}{\ensuremath{p}}
-\newcommand{\locprmat}{\ensuremath{\mathbf{P}}}
-\newcommand{\locexind}{\ensuremath{e}}
-\newcommand{\locexmat}{\ensuremath{\mathbf{E}}}
-\newcommand{\eigenval}{\ensuremath{d}}
-\newcommand{\eigenvaldiag}{\ensuremath{\mathbf{D}}}
-\newcommand{\eigenvecmat}{\ensuremath{\mathbf{U}}}
-\newcommand{\spectralmat}{\ensuremath{\mathbf{S}}}
-\newcommand{\globalmap}{\ensuremath{H}}
-\newcommand{\localmap}{\ensuremath{h}}
-\newcommand{\nodeindone}{\ensuremath{u}}
-\newcommand{\nodeindtwo}{\ensuremath{v}}
-\newcommand{\stateindone}{\ensuremath{s}}
-\newcommand{\statevecone}{\ensuremath{\mathbf{\stateindone}}}
-\newcommand{\stateindtwo}{\ensuremath{j}}
-\newcommand{\statevectwo}{\ensuremath{\mathbf{\stateindtwo}}}
-\newcommand{\stateindthree}{\ensuremath{k}}
-\newcommand{\intbrset}{\ensuremath{\mathcal{I}}}
-\newcommand{\termbrset}{\ensuremath{\mathcal{E}}}
-\newcommand{\parent}{\ensuremath{\psi}}
-\newcommand{\child}{\ensuremath{\phi}}
-\newcommand{\dismeas}{\ensuremath{d}}
-\newcommand{\sitetotal}{\ensuremath{L}}
-\newcommand{\siteind}{\ensuremath{l}}
-\newcommand{\codontotal}{\ensuremath{C}}
-\newcommand{\codonind}{\ensuremath{c}}
-\newcommand{\rateone}{\ensuremath{\alpha}}
-\newcommand{\ratetwo}{\ensuremath{\beta}}
-\newcommand{\forwardlike}{\ensuremath{F}}
-\newcommand{\forwardlikevec}{\ensuremath{\mathbf{\forwardlike}}}
-\newcommand{\backwardlike}{\ensuremath{G}}
-\newcommand{\backwardlikevec}{\ensuremath{\mathbf{\backwardlike}}}
-\newcommand{\splitlike}{\ensuremath{S}}
-\newcommand{\splitlikevec}{\ensuremath{\mathbf{\splitlike}}}
-\newcommand{\brsubset}{\ensuremath{\Omega}}
-\newcommand{\treelen}{\ensuremath{Z}}
-\newcommand{\discr}{\ensuremath{\Delta}}
-\newcommand{\pvalue}{\ensuremath{\text{ppp}}}
-\newcommand{\niter}{\ensuremath{N}}
-\newcommand{\tstvratio}{\ensuremath{\kappa}}
-
-\newcommand{\columnindone}{c}
-\newcommand{\columnsize}{C}
-\newcommand{\rateindone}{r}
-\newcommand{\ratevec}{\mathbf{\rateindone}}
-\newcommand{\ratesize}{R}
-\newcommand{\priorratemodel}[1]{\prob{#1}}
-\newcommand{\matrixentry}[4]{P^{(#1)}_{#2 #3}( #4 )}
-\newcommand{\fullmatrix}[2]{\mathbf{P}^{(#1)} ( #2 ) }
-\newcommand{\rate}{\mu}
-\newcommand{\taxasize}{N}
-
-\newcommand{\evec}{\ensuremath{\mathbf{E}}}
-\newcommand{\ievc}{\ensuremath{\evec^{-1}}}
-\newcommand{\infgenpar}{\ensuremath{\theta}}
-\newcommand{\diagmat}[1]{\ensuremath{\mathbf{D}_{#1}}}
-
-\newcommand{\transpose}{^{\prime}}
-\newcommand{\amat}{\mathbf{A}}
-\newcommand{\bmat}{\mathbf{B}}
-\newcommand{\submat}{_{\mbox{\tiny sub}}}
-\newcommand{\maxlikelihood}{M}
-\newcommand{\cdefine}[1]{\mbox{\sf #1}}
-
-\newcommand{\cbs}{\mbox{\sf CBS}}
-\newcommand{\pbs}{\mbox{\sf PBS}}
-
-\newcommand{\numberGPUs}{X}
+\copyrightyear{2011}
+\pubyear{2011}
 
 \begin{document}
+\firstpage{1}
 
-\bibliographystyle{sysbio}
+\title[a5]{a5}
+\author[ChangeMe \textit{et~al}]{ChangeMe\,$^{1}$\footnote{to whom correspondence should be addressed}, Andrew Tritt\,$^{1}$ Jonathan A. Eisen\,$^{1,2,3}$ and Marc T. Facciotti\,$^{1,4}$}
+\address{$^{1}$Genome Center, $^{2}$ Dept. of Evolution and Ecology, $^{3}$ Medical Microbiology and Immunology, 
+$^{4}$ Biomedical Engineering, University of California-Davis, Davis, CA 95616.}
 
-\title{Evaluating \textit{de novo} genome assembly quality with Mauve}
+\history{Received on XXXXX; revised on XXXXX; accepted on XXXXX}
 
-\author[Author et.~al.]{Author1\, Author2\,}
-  
-\address{
-$^1$Genome Center, University of California, Davis, CA, USA
-}
-
-\history{Received on XXXX; accepted on XXXX}
-
-\editor{Associate Editor: XXXX}
+\editor{Associate Editor: XXXXXXX}
 
 \maketitle
 
-%\doublespacing
-
 \begin{abstract}
-\section{Motivation:}
 
-\section{Results:}
+\section{Summary:}
+blahblah
+\section{Availability:}
+GPL source code and a usage tutorial is at \href{http://ngopt.googlecode.com}{http://ngopt.googlecode.com}
 
-\section{Availability and implementation:}
-
-\section{Contact:}
-\href\url{everyone@ucdavis.edu}
+\section{Contact:} \href{blahblah}{blahblah}
 \end{abstract}
 
 \section{Introduction}
+blah blah
 
-
+\begin{methods}
 \section{Methods}
+blahlbah
+
+\end{methods}
+
+\subsection{Another section blah}
 
 
-\section{Example}
-\begin{itemize}
-\item Point 1
-\item Point 2
-\item Point 3
-\end{itemize}
-
-\begin{figure}
-\caption{An alignment of an assembly to a reference.}
-\end{figure}
-
-\begin{table}
-\caption{Maybe a comparison with other assembly scoring approaches.}
-\begin{tabular}{l}
-\end{tabular}
+\begin{table}[!t]
+\processtable{Look ath these amazing numbers!
+\label{Tab:01}}
+{\begin{tabular}{l|cccc}\toprule
+Metric & volc454 & volcV & volcIDBA \\\midrule
+Scaffold count & 157 & 1394 & 50  \\
+Miscalled bases & 81 & 948 & 235  \\
+Uncalled bases & 0 & 53899 & 15188  \\
+Extra bases & 0.04\% & 10.8\% & 2.54\%  \\
+Missing bases & 3.13\% & 5.87\% & 2.71\%  \\
+Extra segments & 43 & 1079 & 262 \\
+Missing segments & 117 & 1144 & 192  \\
+DCJ Distance & 114 & 909 & 61 \\
+Intact CDS & 99.3\% & 87.8\% & 97.3\% \\
+\botrule
+\end{tabular}}{}
+\vspace{-1cm}
 \end{table}
+
+
+
 \section{Discussion}
 
+We kick ass.
 
-\subsection{Limitations}
+\begin{figure}[t]
+\includegraphics[width=3.5in]{missingextra_merge.eps}
+\vspace{-1cm}
+\caption{\textbf{Top:} Density of extra and missing segments in the assemblies of \textit{Haloferax volcanii} DS2.
+Reference genome coordinates are given on the x-axis, and red vertical bars delineate the boundaries of the
+five circular replicons in the reference genome. \textbf{Bottom:} Size distribution of missing and extra segments in each assembly.  The size of a missing segment is given on the x-axis, and the count of missing segments at that size on the y-axis.}\label{fig:01}
+\end{figure}
 
-Duplications.
-
-\section{Acknowledgments}
-
-NSF EF-0949453.
-
-%\clearpage
-
-\singlespacing
-\bibliography{ngopt}
-
-\clearpage
+\begin{figure}[t]
+\includegraphics[width=3.5in]{mauve_basecall_bias.eps}
+\vspace{-1cm}
+\caption{Biased errors in the base calling of each assembly. Errors are not uniformly random in any of the three assemblies. See Supplementary Material for more details.}\label{fig:02}
+\end{figure}
 
 
+
+\section*{Acknowledgements}
+This work was supported by National Science Foundation award ER 0949453.
+
+\bibliographystyle{natbib}
+\bibliography{ngopt-appnote}
 
 \end{document}

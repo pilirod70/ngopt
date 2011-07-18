@@ -27,11 +27,13 @@
 \ProcessOptions
 
 % Load all necessary packages
-\RequirePackage{crop,graphicx,amsmath,array,color,amssymb,flushend,stfloats,amsthm,chngpage,times}
-\def\helvetica{\fontfamily{phv}}
-\def\helveticaitalic{\fontfamily{phv}\itshape}
-\def\helveticabold{\fontfamily{phv}\bfseries}
-\def\helveticabolditalic{\fontfamily{phv}\bfseries\itshape}
+\RequirePackage{inputenc,crop,graphicx,amsmath,array,color,amssymb,flushend,stfloats,amsthm,chngpage,times}
+%\RequirePackage[LY1]{fontenc}
+%\RequirePackage[LY1,mtbold]{mathtime}
+\def\helvetica{\fontfamily{phv}\selectfont}
+\def\helveticaitalic{\fontfamily{phv}\itshape\selectfont}
+\def\helveticabold{\fontfamily{phv}\bfseries\selectfont}
+\def\helveticabolditalic{\fontfamily{phv}\bfseries\itshape\selectfont}
 
 % Not sure if needed.
 \newcommand\@ptsize{0}
@@ -243,12 +245,12 @@
   {%
   \def\@oddfoot{\vbox to 13\p@{\hbox{\rule{\textwidth}{1\p@}}\vss
         \hbox to \textwidth{\helvetica
-        \fontsize{7}{9}\fontshape{n}\selectfont \copyright\space Oxford University Press \@copyrightyear.%
+        \fontsize{7}{9}\fontshape{n}\selectfont \copyright\space The Authors \@copyrightyear.%
           \hfill\small\helveticabold\thepage}%
         }}%
   \def\@evenfoot{\vbox to 13\p@{\rule{\textwidth}{1\p@}\vss
         \hbox to \textwidth{\helvetica\thepage\hfill
-          \fontsize{7}{9}\fontshape{n}\selectfont \copyright\space Oxford University Press \@copyrightyear.}%
+          \fontsize{7}{9}\fontshape{n}\selectfont \copyright\space The Authors \@copyrightyear.}%
         }}%
   \let\@evenhead\relax
   \let\@oddhead\relax}
@@ -493,7 +495,7 @@
 \newenvironment{abstract}{%
   \begingroup
   \let\section\absection
-  \helvetica\fontsize{8}{11}\selectfont
+  \fontfamily{\sfdefault}\fontsize{8}{11}\sffamily\selectfont
   {\fontseries{b}\selectfont ABSTRACT}\par}
 {\endgroup\bigskip\@afterheading\@afterindentfalse\vskip 12pt plus 3pt minus 1pt}
 
@@ -519,10 +521,13 @@
   {-11\p@ plus -1\p@}{-1em}
   {\reset@font\normalfont\normalsize\itshape}}
 
-%% \def\paragraph{%
-%%   \@startsection{paragraph}{4}{\z@}
-%%   {-12\p@ plus -1\p@}{-1em}
-%%   {\reset@font\raggedright\helvetica\itshape}}
+\def\textcolon{\text{\rm :}}
+
+ \def\paragraph{%
+   \@startsection{paragraph}{4}{\z@}
+   {-6\p@}
+   {-.4em}
+   {\reset@font\itshape}}
 
 % ********************
 % Figures and tables *
