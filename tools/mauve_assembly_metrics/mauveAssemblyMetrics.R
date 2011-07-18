@@ -20,7 +20,7 @@ plotChromobounds <- function() {
 # read and plot all the miscalled bases files
 #
 
-plotCalls <- function(files, extension, plottitle, pdfname, totalname, column) {
+plotCalls <- function(files, pnames, extension, plottitle, pdfname, totalname, column) {
 	# first read the total number from each table
 	totals <- vector()
 	maxpoint<-0
@@ -33,11 +33,6 @@ plotCalls <- function(files, extension, plottitle, pdfname, totalname, column) {
 
 	#read chromosome bounds
 	chromos <- read.table("chromosomes.txt")
-
-	# simplify the assembly names
-	pnames <- sub( ".fa_scoring\\/\\d+\\/alignment\\d\\/alignment\\d", '', files, perl=TRUE)
-	pnames <- sub( ".fa_scoring\\/\\d+\\/alignment\\d", '', pnames, perl=TRUE)
-	pnames <- sub( ".*\\/", '', pnames, perl=TRUE)
 	
 	# set up a multi-row figure with one plot for every "maxseries" data series
 	maxseries <- 7
@@ -56,7 +51,7 @@ plotCalls <- function(files, extension, plottitle, pdfname, totalname, column) {
 			if(plotcount > 1){
 				plotChromobounds()
 				ss <- i-1
-				legend("bottomright", legend=pnames[s:ss], lty=ltys[seq(s,ss)], col=seq(s,ss))
+				legend("topright", legend=pnames[s:ss], lty=ltys[seq(s,ss)], col=seq(s,ss))
 				s <- i
 			}
 			plotcount <- plotcount + 1
@@ -90,7 +85,7 @@ plotCalls <- function(files, extension, plottitle, pdfname, totalname, column) {
 		}
 	}
 	plotChromobounds()
-	legend("bottomright", legend=pnames[s:i], lty=ltys[seq(s,i)], col=seq(s,i))
+	legend("topright", legend=pnames[s:i], lty=ltys[seq(s,i)], col=seq(s,i))
 	dev.off()
 	
 	# now make a PDF barplot with total counts
@@ -100,7 +95,7 @@ plotCalls <- function(files, extension, plottitle, pdfname, totalname, column) {
 }
 
 
-plotGapSizes <- function(files, extension, plottitle, sequence, pdfname, totalname) {
+plotGapSizes <- function(files, pnames, extension, plottitle, sequence, pdfname, totalname) {
 	totals <- vector()
 	maxpoint<-0
 	for(i in 1:length(files)){
@@ -114,11 +109,6 @@ plotGapSizes <- function(files, extension, plottitle, sequence, pdfname, totalna
 		den <- density(log2(mc$Length[mc$Sequence==sequence]), adjust=0.15)
 		maxpoint <- max(maxpoint, den$x)
 	}
-
-
-	pnames <- sub( ".fa_scoring\\/\\d+\\/alignment\\d\\/alignment\\d", '', files, perl=TRUE)
-	pnames <- sub( ".fa_scoring\\/\\d+\\/alignment\\d", '', pnames, perl=TRUE)
-	pnames <- sub( ".*\\/", '', pnames, perl=TRUE)
 
 	# set up a multi-row figure with one plot for every "maxseries" data series
 	maxseries <- 7
@@ -186,15 +176,48 @@ plotGapSizes <- function(files, extension, plottitle, sequence, pdfname, totalna
 	dev.off()
 }
 
+plotMissingGC <- function(files, pnames, extension, plottitle, sequence, pdfname, totalname) {
+	totals <- vector()
+	maxpoint<-0
+	# gather up background distribution
+	bgdist <- vector()
+	for(i in 1:length(files)){
+		mcname <- paste( files[i], "_background_gc_distribution.txt", sep="" )
+		mc <- read.table( mcname )
+		bgdist <- c(bgdist,mc$V1)
+	}
+
+	ltys <- c(1,2,4,5,6)
+	ltys <- c(ltys,ltys,ltys,ltys,ltys,ltys)
+
+	# first plot the background
+	pdf(paste("mauve_", pdfname,sep=""),width=10,height=6)
+	den <- density(bgdist)
+	den$y <- den$y / max(den$y)
+	plot(den, main=plottitle, type="l", lwd=2,ylab=totalname,xlab="Fraction GC")
+	# then add each assembly
+	for(i in 1:length(files)){
+		mcname <- paste( files[i], extension, sep="" )
+		mc <- read.table(mcname)
+		den <- density(mc$V1)
+		den$y <- den$y / max(den$y)
+		lines(den, lty=ltys[i], col=(i+1))
+	}
+	legend("topright", legend=c("Background GC",pnames), lty=ltys[seq(1,length(pnames))], col=seq(1,length(pnames)+1))
+	dev.off()
+	
+}
+
 scoresum <- read.table("summaries.txt",header=T)
 pnames <- sub( ".fa.fas", "", scoresum$Name, perl=TRUE)
 
-plotCalls(pnames, "__miscalls.txt", "Density of miscalled bases in genome", "miscalls.pdf", "Total number of miscalled bases", 4)
-plotCalls(pnames, "__uncalls.txt", "Density of uncalled bases in genome", "uncalls.pdf", "Total number of uncalled bases", 4)
-plotCalls(pnames, "__gaps.txt", "Density of missing and extra segments in genome", "missingextra.pdf", "Total number of missing or extra bases", 6)
-plotGapSizes(pnames, "__gaps.txt", "Size distribution of missing segments", "assembly", "missing_sizes.pdf", "Total number of missing segments")
-plotGapSizes(pnames, "__gaps.txt", "Size distribution of extra segments", "reference", "extra_sizes.pdf", "Total number of extra segments")
+plotCalls(commandArgs(TRUE),pnames, "__miscalls.txt", "Density of miscalled bases in genome", "miscalls.pdf", "Total number of miscalled bases", 4)
+plotCalls(commandArgs(TRUE),pnames, "__uncalls.txt", "Density of uncalled bases in genome", "uncalls.pdf", "Total number of uncalled bases", 4)
+plotCalls(commandArgs(TRUE),pnames, "__gaps.txt", "Density of missing and extra segments in genome", "missingextra.pdf", "Total number of missing or extra bases", 6)
+plotGapSizes(commandArgs(TRUE),pnames, "__gaps.txt", "Size distribution of missing segments", "assembly", "missing_sizes.pdf", "Total number of missing segments")
+plotGapSizes(commandArgs(TRUE),pnames, "__gaps.txt", "Size distribution of extra segments", "reference", "extra_sizes.pdf", "Total number of extra segments")
 
+plotMissingGC(commandArgs(TRUE),pnames, "_missing_gc.txt", "GC content distribution of missing regions", "reference", "missing_gc.pdf", "Total number of missing segments")
 
 pdf("mauve_scaffold_counts.pdf")
 scafs <- log10(scoresum$NumContigs)
@@ -238,7 +261,6 @@ baseacc <- scoresum$NumReferenceBases-scoresum$NumMisCalled-scoresum$NumUnCalled
 poscalls <- baseacc / scoresum$NumReferenceBases
 barplot(height=poscalls, names.arg=pnames, ylab="fraction", main="Recall of bases in haplotype", las=2, cex.names=0.5)
 dev.off()
-
 
 #
 # Make the base miscall bias plot
