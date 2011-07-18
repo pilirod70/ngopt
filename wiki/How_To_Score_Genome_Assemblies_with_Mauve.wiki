@@ -80,9 +80,9 @@ The following commands can be copied and pasted into a linux terminal.
 #
 # Get the software
 #
-wget http://gel.ahabs.wisc.edu/mauve/snapshots/2011/2011-06-10/linux-x64/mauve_linux_snapshot_2011-06-10.tar.gz
-tar xvzf mauve_linux_snapshot_2011-06-10.tar.gz
-cd mauve_snapshot_2011-06-10/
+wget http://gel.ahabs.wisc.edu/mauve/snapshots/2011/2011-07-18/linux-x64/mauve_linux_snapshot_2011-07-18.tar.gz
+tar xvzf mauve_linux_snapshot_2011-07-18.tar.gz
+cd mauve_snapshot_2011-07-18/
 wget http://ngopt.googlecode.com/svn/trunk/tools/mauve_assembly_metrics/mauveAssemblyMetrics.R
 wget http://ngopt.googlecode.com/svn/trunk/tools/mauve_assembly_metrics/mauveAssemblyMetrics.pl
 chmod 755 mauveAssemblyMetrics.*
