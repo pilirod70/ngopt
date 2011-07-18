@@ -27,31 +27,67 @@ GPL source code and a usage tutorial is at \href{http://ngopt.googlecode.com}{ht
 \end{abstract}
 
 \section{Introduction}
-blah blah
+Despite many efforts to solve the problem of genome assembly, the task still remains non-trivial. 
+
+Rapid growth of high throughput DNA sequence techonologies has made sequence 
+data readily available..... Analyzing this data is hard, in part because 
+assembly algorithms have many parameters and can be hard to optimize.... 
+
+We introduce a new de novo genome assembly pipeline that uses previously 
+published assembly and other short read tools. 
 
 \begin{methods}
 \section{Methods}
-blahlbah
+The genome assembly problem can be broken down into two main steps: 1) building
+contigs and 2) scaffolding contigs. 
+
+We separate building contigs into two steps. The first step in building contigs
+is read error correction. For this step we use error correction tools from the
+SGA software package/pipeline. After reads are corrected for sequencing errors,
+contigs are built using the assembler IDBA. (Do we discuss why we use IDBA?)  
+
+After contigs are built, paired/mated libraries can be used to scaffold contigs 
+together. For this stage, our pipeline uses the scaffolder SSPACE. A key 
+parameter for scaffolding is the insert size of libraries. Using the read
+mapping software package BWA, insert size estimations have been automated. Another
+key parameter in 
+
 
 \end{methods}
 
-\subsection{Another section blah}
+\subsection{Automated misassembly quality control}
+
+After assembling genomes, an important step is quality control and validation
+of "assembly connections". The final step in our pipeline is automated 
+misassembly detection. For this step, we use FISH to identify erroneously
+connected points in the genome. The FISH algorithm was orignally developed
+to identify collinear segments of homology between two genomes. Here, we use
+FISH to identify collinear segments of paired read connections. First, reads 
+are mapped onto scaffolds using BWA and connected segments are identified using 
+FISH. Scaffolds are then broken at the boundaries of the segments identified by
+FISH. The resulting contigs/scaffolds are rescaffolded using SSPACE as 
+described above.
+
+
+\subsection{Automated parameter selection}
+
+
 
 
 \begin{table}[!t]
-\processtable{Look ath these amazing numbers!
+\processtable{ Metrics on assemblies of Haloferax volcanii from four pipelines.
 \label{Tab:01}}
 {\begin{tabular}{l|cccc}\toprule
-Metric & volc454 & volcV & volcIDBA \\\midrule
-Scaffold count & 157 & 1394 & 50  \\
-Miscalled bases & 81 & 948 & 235  \\
-Uncalled bases & 0 & 53899 & 15188  \\
-Extra bases & 0.04\% & 10.8\% & 2.54\%  \\
-Missing bases & 3.13\% & 5.87\% & 2.71\%  \\
-Extra segments & 43 & 1079 & 262 \\
-Missing segments & 117 & 1144 & 192  \\
-DCJ Distance & 114 & 909 & 61 \\
-Intact CDS & 99.3\% & 87.8\% & 97.3\% \\
+Metric & SOAPdenovo & Velvet & IDBA+SSPACE & IDBA+SSPACE+FISH \\\midrule
+Scaffold count & 1000 & 10000 & 50  & 6 \\
+Miscalled bases & 1000 & 2e6 & 100 & 100 \\
+Uncalled bases & 15000 & 60000 & 10000 & 7500 \\
+Extra bases & 5.0\% & 2.5\% & 8.0\% & 4.0\% \\
+Missing bases & 7.5\% & 13.0\% & 7.5\% & 7.0\% \\
+Extra segments & 500 &  & 262 & 45 & 1 \\
+Missing segments & 117 & 1144 & 192 & \\
+DCJ Distance & 1100 & 10250 & 56 & 8 \\
+Intact CDS & 93.2\% & 89.4\% & 97.0\% & 97.3\% \\
 \botrule
 \end{tabular}}{}
 \vspace{-1cm}
@@ -61,7 +97,7 @@ Intact CDS & 99.3\% & 87.8\% & 97.3\% \\
 
 \section{Discussion}
 
-We kick ass.
+
 
 \begin{figure}[t]
 \includegraphics[width=3.5in]{missingextra_merge.eps}
