@@ -13,7 +13,9 @@ plotChromobounds <- function() {
 	# now plot chromosome bounds
 	chromos <- read.table("chromosomes.txt")
 	abline(v=chromos$V2, lwd=2, col=2)
+	par(srt=90)
 	text(x=chromos$V2, y=rep(0,length(chromos$V2)), labels=chromos$V1, pos=4)
+	par(srt=0)
 }
 
 #
