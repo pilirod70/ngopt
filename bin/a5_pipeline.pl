@@ -205,6 +205,7 @@ sub tagdust {
 sub idba_assemble {
 	my $outbase = shift;
 	my $maxrdlen = shift;
+	$maxrdlen = 90 if $maxrdlen > 90;	# idba seems to break if the max k gets too big
 	my $idba_cmd = "$DIR/idba -r $outbase.clean.fa -o $outbase --mink 29 --maxk $maxrdlen";
 	print STDERR $idba_cmd."\n";
 	`$idba_cmd > idba.out`;
