@@ -28,12 +28,13 @@ print "Starting pipeline at step $start\n";
 if ($start <= 1) {
 	print "CHECKPOINT: Cleaning reads with SGA\n";
 	print STDERR "CHECKPOINT: Cleaning reads with SGA\n";
-	sga_clean($outbase, \%LIBS); 
+	sga_clean($outbase, \%LIBS);
+	tagdust($outbase, "$outbase.pp.ec.fa");
 } 
 if ($start <= 2) {
 	print "CHECKPOINT: Building contigs with IDBA\n";
 	print STDERR "CHECKPOINT: Building contigs with IDBA\n";
-	$maxrdlen = fastq_to_fasta("$outbase.pp.ec.fa", "$outbase.clean.fa");
+	$maxrdlen = fastq_to_fasta("$outbase.dusted", "$outbase.clean.fa");
 	idba_assemble($outbase, $maxrdlen); 
 } 
 if ($start <= 3) {
@@ -192,11 +193,19 @@ sub split_shuf {
 	return ($fq1, $fq2);
 }
 
+sub tagdust {
+	my $outbase = shift;
+	my $readfile = shift;
+	my $tagdust_cmd = "$DIR/tagdust -o $outbase.dusted $DIR/../adapters.fa $readfile";
+	print STDERR "$tagdust_cmd\n";
+	system($tagdust_cmd);
+}
+
 # expects a file called $outbase.clean.fa in the current working directory
 sub idba_assemble {
 	my $outbase = shift;
 	my $maxrdlen = shift;
-	my $idba_cmd = "idba -r $outbase.clean.fa -o $outbase --mink 29 --maxk $maxrdlen";
+	my $idba_cmd = "$DIR/idba -r $outbase.clean.fa -o $outbase --mink 29 --maxk $maxrdlen";
 	print STDERR $idba_cmd."\n";
 	`$idba_cmd > idba.out`;
 	die "Error building contigs with IDBA\n" if ($? != 0);
