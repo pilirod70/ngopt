@@ -17,7 +17,8 @@ function copy_sspace {
 }
 
 function copy_bowtie {
-	cp -r $1/bowtie $sspace_dir
+	mkdir $sspace_dir/bowtie
+	cp -r $1/bowtie* $sspace_dir/bowtie
 }
 
 function copy_adhoc {
