@@ -196,7 +196,7 @@ sub split_shuf {
 sub tagdust {
 	my $outbase = shift;
 	my $readfile = shift;
-	my $tagdust_cmd = "$DIR/tagdust -o $outbase.dusted $DIR/../adapters.fa $readfile";
+	my $tagdust_cmd = "$DIR/tagdust -o $outbase.dusted $DIR/../adapter.fasta $readfile";
 	print STDERR "$tagdust_cmd\n";
 	system($tagdust_cmd);
 }
