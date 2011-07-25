@@ -2,7 +2,7 @@
 
 
 function copy_bin {
-	bin="bwa fish sga idba"
+	bin="bwa fish sga idba tagdust"
 	for ex in $bin; do
 		cp $1/$ex $findir/bin
 	done
@@ -18,13 +18,11 @@ function copy_sspace {
 
 function copy_bowtie {
 	cp -r $1/bowtie $sspace_dir
-	rm $sspace_dir/bowtie/*debug*
 }
 
 function copy_adhoc {
-	cp bin/break_misassemblies.pl GetFishInput.jar $findir/bin
-	cp bin/aaa_assembly_line.pl $findir/bin/a5_pipeline.pl
-	chmod +x $findir/bin/a5_pipeline.pl
+	cp bin/a5_pipeline.pl bin/break_misassemblies.pl GetFishInput.jar $findir/bin
+	cp adapter.fasta $findir/
 	echo "Removing unnecessary .svn directories"
 	for dir in `find $findir/ -name .svn`; do 
 		rm -rf $dir; 
@@ -63,11 +61,11 @@ findir="${findir_base}_linux-x86_64"
 
 reset
 echo "Copying Linux binaries to $findir"
-copy_bin linux-x86
+copy_bin linux-x64
 sspace_dir="$findir/bin/SSPACE"
 copy_sspace
 echo "Copying Linux specific bowtie binaries to SSPACE directory"
-copy_bowtie ../vendor/SSPACE_linux-x86_64/current
+copy_bowtie linux-x64
 
 echo "Compiling Java code and bundling into executable Jar"
 ant -q compile jar
@@ -87,8 +85,7 @@ copy_bin osx
 sspace_dir="$findir/bin/SSPACE"
 copy_sspace
 echo "Copying Mac specific bowtie binaries to SSPACE directory"
-copy_bowtie ../vendor/SSPACE_macOS-x86_64/current
-chmod +x $sspace_dir/bowtie/bowtie*
+copy_bowtie osx
 
 copy_adhoc
 copy_exdat
