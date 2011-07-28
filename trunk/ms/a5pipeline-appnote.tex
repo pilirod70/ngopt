@@ -30,8 +30,8 @@ GPL source code and a usage tutorial is at \href{http://ngopt.googlecode.com}{ht
 Despite many efforts to solve the problem of genome assembly, the task still remains non-trivial. 
 
 Rapid growth of high throughput DNA sequence techonologies has made sequence 
-data readily available..... Analyzing this data is hard, in part because 
-assembly algorithms have many parameters and can be hard to optimize.... 
+data readily available..... Analyzing this data is difficult, in part because 
+assembly algorithms have many parameters that are not easily optimized.... 
 
 We introduce a new de novo genome assembly pipeline that uses previously 
 published assembly and other short read tools. 
@@ -64,9 +64,8 @@ connected points in the genome. The FISH algorithm was orignally developed
 to identify collinear segments of homology between two genomes. Here, we use
 FISH to identify collinear segments of paired read connections. First, reads 
 are mapped onto scaffolds using BWA and connected segments are identified using 
-FISH. Scaffolds are then broken at the boundaries of the segments identified by
-FISH. The resulting contigs/scaffolds are rescaffolded using SSPACE as 
-described above.
+FISH. Scaffolds are then broken at the boundaries of these segments and the 
+resulting contigs/scaffolds are rescaffolded using SSPACE as described above.
 
 
 \subsection{Automated parameter selection}
@@ -77,10 +76,8 @@ described above.
 \begin{table}[!t]
 \processtable{ Metrics on assemblies of Haloferax volcanii from four pipelines.
 \label{Tab:01}}
-{\begin{tabular}{l|cccc}
-\toprule
-Metric & SOAPdenovo & Velvet & IDBA+SSPACE & IDBA+SSPACE+FISH \\
-\midrule
+{\begin{tabular}{l|cccc}\toprule
+Metric & volcS & volcV & volcA5 & volcA5-noQC\\\midrule
 Scaffold count & 1000 & 10000 & 50  & 6 \\
 Miscalled bases & 1000 & 2e6 & 100 & 100 \\
 Uncalled bases & 15000 & 60000 & 10000 & 7500 \\
