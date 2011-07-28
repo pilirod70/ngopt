@@ -77,20 +77,21 @@ described above.
 \begin{table}[!t]
 \processtable{ Metrics on assemblies of Haloferax volcanii from four pipelines.
 \label{Tab:01}}
-{\begin{tabular}{l|cccc}\toprule
-Metric & SOAPdenovo & Velvet & IDBA+SSPACE & IDBA+SSPACE+FISH \\\midrule
+{\begin{tabular}{l|cccc}
+\toprule
+Metric & SOAPdenovo & Velvet & IDBA+SSPACE & IDBA+SSPACE+FISH \\
+\midrule
 Scaffold count & 1000 & 10000 & 50  & 6 \\
 Miscalled bases & 1000 & 2e6 & 100 & 100 \\
 Uncalled bases & 15000 & 60000 & 10000 & 7500 \\
 Extra bases & 5.0\% & 2.5\% & 8.0\% & 4.0\% \\
 Missing bases & 7.5\% & 13.0\% & 7.5\% & 7.0\% \\
-Extra segments & 500 &  & 262 & 45 & 1 \\
-Missing segments & 117 & 1144 & 192 & \\
+Extra segments & 500 & 262 & 45 & 1 \\
+Missing segments & 117 & 1144 & 192 & abc \\
 DCJ Distance & 1100 & 10250 & 56 & 8 \\
 Intact CDS & 93.2\% & 89.4\% & 97.0\% & 97.3\% \\
-\botrule
+\botrule \\
 \end{tabular}}{}
-\vspace{-1cm}
 \end{table}
 
 
@@ -100,7 +101,7 @@ Intact CDS & 93.2\% & 89.4\% & 97.0\% & 97.3\% \\
 
 
 \begin{figure}[t]
-\includegraphics[width=3.5in]{missingextra_merge.eps}
+%\includegraphics[width=3.5in]{missingextra_merge.eps}
 \vspace{-1cm}
 \caption{\textbf{Top:} Density of extra and missing segments in the assemblies of \textit{Haloferax volcanii} DS2.
 Reference genome coordinates are given on the x-axis, and red vertical bars delineate the boundaries of the
@@ -108,7 +109,7 @@ five circular replicons in the reference genome. \textbf{Bottom:} Size distribut
 \end{figure}
 
 \begin{figure}[t]
-\includegraphics[width=3.5in]{mauve_basecall_bias.eps}
+%\includegraphics[width=3.5in]{mauve_basecall_bias.eps}
 \vspace{-1cm}
 \caption{Biased errors in the base calling of each assembly. Errors are not uniformly random in any of the three assemblies. See Supplementary Material for more details.}\label{fig:02}
 \end{figure}
