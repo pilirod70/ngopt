@@ -106,6 +106,9 @@ public class Contig implements Comparable<Contig> {
 		}
 		reads.put(pair.hdr, pair);
 	}
+	public void removeReadPair(String readHdr){
+		reads.remove(readHdr);
+	}
 	public int getNumLinkedContigs(){
 		return counts.size();
 	}

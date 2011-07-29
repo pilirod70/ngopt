@@ -120,6 +120,10 @@ public class SAMFileParser {
 		return rdlen;
 	}
 	
+	public int getNumContigs(){
+		return contigs.size();
+	}
+	
 	public int getNumReads(){
 		return nreads;
 	}

@@ -1,5 +1,6 @@
 package org.halophiles.assembly.qc;
 
+import java.util.List;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -7,8 +8,10 @@ import java.io.PrintStream;
 import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -42,12 +45,7 @@ public class FISHInputExporter {
 			SAMFileParser sfp = new SAMFileParser(args[0]);
 			String base = args[1];
 			File outdir = new File(System.getProperty("user.dir"));
-			Map<String,Contig> contigs = new HashMap<String,Contig>();
-			Iterator<Contig> ctgIt = sfp.getContigs();
-			while(ctgIt.hasNext()){
-				Contig tmp = ctgIt.next();
-				contigs.put(tmp.name, tmp);
-			}
+			
 			Map<String,ReadPair> reads = new HashMap<String,ReadPair>();
 			Iterator<ReadPair> rpIt = sfp.getReadPairs();
 			while(rpIt.hasNext()){
@@ -59,7 +57,7 @@ public class FISHInputExporter {
 				reads.put(tmp.hdr, tmp);
 			}
 			
-			System.out.println("Found "+contigs.size()+" contigs.");
+			System.out.println("Found "+sfp.getNumContigs()+" contigs.");
 			System.out.println("Found "+sfp.getNumReads()+" total reads and "+sfp.getNumPairs()+" read-pairs.");
 			if (reads.size() <= 0) {
 				System.err.println("No paired reads found. Cannot generate match files for running FISH misassembly detection.");
@@ -88,13 +86,16 @@ public class FISHInputExporter {
 			filterDiagReads(reads,ins,nSd);
 			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
 			
-			
+			System.out.print("Filtering tandem connections... ");
+			before = reads.size();
+			filterTandemConnections(reads);
+			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
 			insFile = new File(outdir,base+".ins_size_filt.txt");
 			insFile.createNewFile();
 			insOut = new PrintStream(insFile);
 			exportInsertSize(reads, insOut);
 			insOut.close();
-			export(contigs,reads,outdir,base);
+			export(reads,outdir,base);
 			
 		} catch(IOException e){
 			e.printStackTrace();
@@ -105,12 +106,13 @@ public class FISHInputExporter {
 		}
 	}
 	
-	public static void export(Map<String,Contig> contigs, Map<String,ReadPair> reads, File fishDir, String base) throws IOException{
+	public static void export(Map<String,ReadPair> reads, File fishDir, String base) throws IOException{
 		HashMap<String,Vector<Double>> mapPoints = new HashMap<String,Vector<Double>>();
 		HashMap<String,PrintStreamPair> matchesOut = new HashMap<String,PrintStreamPair>();
 		Vector<Double> tmpPts = null;
 		
 		File controlFile = new File(fishDir,base+".control.txt");
+		Map<String,Contig> contigs = new HashMap<String, Contig>();
 		PrintStream ctrlOut = new PrintStream(controlFile);
 		Iterator<ReadPair> rpIt = reads.values().iterator();
 		while(rpIt.hasNext()){
@@ -127,6 +129,7 @@ public class FISHInputExporter {
 			if (rev){
 				left = left * -1;
 			}
+			contigs.put(ctg.name, ctg);
 			tmpPts.add(new Double(left));
 			
 			ctg = tmpRp.ctg2;
@@ -141,6 +144,7 @@ public class FISHInputExporter {
 			if (rev){
 				left = left * -1;
 			}
+			contigs.put(ctg.name, ctg);
 			tmpPts.add(new Double(left));
 		}
 		// Rank contigs so FISH doesn't freak out about non-consecutive ids
@@ -392,6 +396,62 @@ public class FISHInputExporter {
 			
 	}
 	
+	private static void filterTandemConnections(Map<String,ReadPair> reads){
+		Iterator<String> it = reads.keySet().iterator();
+		Set<Contig> contigs = new HashSet<Contig>();
+		ReadPair pair = null;
+		// get a set of the contigs
+		while(it.hasNext()){
+			pair = reads.get(it.next());
+			contigs.add(pair.ctg1);
+			contigs.add(pair.ctg2);
+		}
+		Iterator<Contig> ctgIt = contigs.iterator();
+		List<ReadPoint> points = null;
+		Set<String> toRm = null;
+		ReadPoint rp1 = null;
+		ReadPoint rp2 = null;
+		Iterator<ReadPoint> ptIt = null;
+		Iterator<ReadPair> rpIt = null;
+		while(ctgIt.hasNext()){
+			// get all pairs where both reads map to this contig
+			rpIt = getReadPairs(reads, ctgIt.next()).iterator();
+			points = new Vector<ReadPoint>();
+			while(rpIt.hasNext()){
+				pair = rpIt.next();
+				points.add(new ReadPoint(pair.hdr,pair.pos1));
+				points.add(new ReadPoint(pair.hdr,pair.pos2));
+			}
+			if (points.size() < 2)
+				continue;
+			// sort by position
+			Collections.sort(points);
+			toRm = new HashSet<String>();
+			ptIt = points.iterator();
+			rp1 = ptIt.next();
+			while(ptIt.hasNext()){
+				rp2 = ptIt.next();
+				if (rp1.hdr.equals(rp2.hdr))
+					toRm.add(rp1.hdr);
+				rp1 = rp2;
+			}
+			removeKeys(reads, toRm);
+		}
+	}
+	
+	private static List<ReadPair> getReadPairs(Map<String,ReadPair> reads, Contig ctg){
+		Iterator<String> it = reads.keySet().iterator();
+		Vector<ReadPair> ret = new Vector<ReadPair>();
+		ReadPair pair = null;
+		while(it.hasNext()){
+			pair = reads.get(it.next());
+			if (pair.ctg1.equals(ctg) && pair.ctg2.equals(ctg))
+				ret.add(pair);
+		}
+		return ret;
+	}
+	
+	
 	private static boolean isDiag(ReadPair r, double[] ins, int nSd){
 		double dist = Math.abs(r.pos1 - r.pos2 );
 		if (r.ctg2 == null){
@@ -432,7 +492,7 @@ public class FISHInputExporter {
 				public int compare(ReadPair arg0, ReadPair arg1) {
 					if (arg0.pos1 == arg1.pos1){
 						if (arg0.pos2 == arg1.pos2)
-							return arg0.hdr.compareTo(arg1.hdr);
+							return 0;
 						else if (arg0.pos2 < arg1.pos2)
 							return -1;
 						else
@@ -467,12 +527,12 @@ public class FISHInputExporter {
 			// phred-scaled geometric-mean of posterior probabilites that mapping position is incorrect
 			// mod 255 in case the quality score couldn't be computed.	
 			if ((ctg1 == pair.ctg1 && ctg2 == pair.ctg2)) {
-				out1.println("c"+ctg1.getRank()+"p"+pair.pos1+"\tc"+ctg2.getRank()+"p"+pair.pos2+"\t"+pair.getInsert());
+				out1.println("c"+ctg1.getRank()+"p"+pair.pos1+"\tc"+ctg2.getRank()+"p"+pair.pos2+"\t"+pair.getQual());
 				if (ctg1 != ctg2)
-					out2.println("c"+ctg2.getRank()+"p"+pair.pos2+"\tc"+ctg1.getRank()+"p"+pair.pos1+"\t"+pair.getInsert());
+					out2.println("c"+ctg2.getRank()+"p"+pair.pos2+"\tc"+ctg1.getRank()+"p"+pair.pos1+"\t"+pair.getQual());
 			} else if((ctg1 == pair.ctg2 && ctg2 == pair.ctg1)){
-				out1.println("c"+ctg1.getRank()+"p"+pair.pos2+"\tc"+ctg2.getRank()+"p"+pair.pos1+"\t"+pair.getInsert());
-				out2.println("c"+ctg2.getRank()+"p"+pair.pos1+"\tc"+ctg1.getRank()+"p"+pair.pos2+"\t"+pair.getInsert());
+				out1.println("c"+ctg1.getRank()+"p"+pair.pos2+"\tc"+ctg2.getRank()+"p"+pair.pos1+"\t"+pair.getQual());
+				out2.println("c"+ctg2.getRank()+"p"+pair.pos1+"\tc"+ctg1.getRank()+"p"+pair.pos2+"\t"+pair.getQual());
 			} else {
 				throw new IllegalArgumentException("pair "+pair.hdr+" does not connect contigs "+ctg1.name+" and "+ctg2.name);
 			}
@@ -525,10 +585,19 @@ public class FISHInputExporter {
 			} else {
 				return this.ctg1.getRank() - arg0.ctg1.getRank();
 			}
+		}		
+	}
+	
+	static class ReadPoint implements Comparable<ReadPoint>{
+		String hdr;
+		int pos;
+		public ReadPoint(String hdr, int pos){
+			this.hdr = hdr;
+			this.pos = pos;
 		}
-		
-		
-		
+		public int compareTo(ReadPoint rp){
+			return this.pos - rp.pos;
+		}
 	}
 
 }
