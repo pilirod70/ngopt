@@ -232,7 +232,7 @@
       my $contigs = retrieve("$contigstored");
 #-------------------------------------------------Generate .fasta file and .evidence file with scaffolds
       open (LOG, ">>$log") || die "Can't write to $log -- fatal\n";
-      ($headscaffolds, $evidencefile) = &mergeContigs($scaffold, $contigs, $mergedtigs, 50, $verbose, $min_tig_overlap,$max_count_trim);
+      ($headscaffolds, $evidencefile) = &mergeContigs($scaffold, $contigs, $mergedtigs, 100, $verbose, $min_tig_overlap,$max_count_trim);
       $contig = $mergedtigs;
 #-------------------------------------------------write summary of scaffolds
       $sumfile .= "\tAfter scaffolding $lib:\n";
@@ -472,7 +472,7 @@ sub mergeContigs{
             if(length($seq)<=$chunk){
                $word = $seq;
             }else{
-               $word = substr($seq,length($seq)-$chunk,$chunk); ### this will be the next word to search with
+               $word = substr($seq,length($seq)-$chunk/2,$chunk/2); ### this will be the next word to search with
             }
             $prevEstimatedDistance = $estimatedDistance;
             $prevLinks = $links;
