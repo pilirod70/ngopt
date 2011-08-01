@@ -6,7 +6,7 @@
 \firstpage{1}
 
 \title[a5]{a5}
-\author[ChangeMe \textit{et~al}]{ChangeMe\,$^{1}$\footnote{to whom correspondence should be addressed}, Andrew Tritt\,$^{1}$ Jonathan A. Eisen\,$^{1,2,3}$ and Marc T. Facciotti\,$^{1,4}$}
+\author[ChangeMe \textit{et~al}]{Aaron Darling\,$^{1}$\footnote{to whom correspondence should be addressed}, Andrew Tritt\,$^{1}$ Jonathan A. Eisen\,$^{1,2,3}$ and Marc T. Facciotti\,$^{1,4}$}
 \address{$^{1}$Genome Center, $^{2}$ Dept. of Evolution and Ecology, $^{3}$ Medical Microbiology and Immunology, 
 $^{4}$ Biomedical Engineering, University of California-Davis, Davis, CA 95616.}
 
@@ -28,13 +28,24 @@ GPL source code and a usage tutorial is at \href{http://ngopt.googlecode.com}{ht
 
 \section{Introduction}
 Despite many efforts to solve the problem of genome assembly, the task still remains non-trivial. 
+The task of de novo genome assembly involves piecing together long sequences from many short sequences.
+Short sequences are often highly erroneous and long sequences usually contain repetitive elements.
+
+This difficulty of this problem presents itself in two forms: 1) inherent problems in the data being 
+analyzed and 2) the broad scope of available software for performing the task. The first pertains
+mainly to software developers and bionformaticians and will not be the focus of this work. The 
+second form of difficulty affects end user biologists.  
+
+De novo genome assembly involves many steps. The two main steps are contiging and scaffolding.
+In addition to these two steps,  
+
 
 Rapid growth of high throughput DNA sequence techonologies has made sequence 
-data readily available..... Analyzing this data is difficult, in part because 
-assembly algorithms have many parameters that are not easily optimized.... 
+data readily available. Analyzing this data is difficult, in part because 
+assembly algorithms have many parameters that are not easily optimized. 
 
 We introduce a new de novo genome assembly pipeline that uses previously 
-published assembly and other short read tools. 
+published assembly and other short read tools.  
 
 \begin{methods}
 \section{Methods}
@@ -43,14 +54,18 @@ contigs and 2) scaffolding contigs.
 
 We separate building contigs into two steps. The first step in building contigs
 is read error correction. For this step we use error correction tools from the
-SGA software package/pipeline. After reads are corrected for sequencing errors,
-contigs are built using the assembler IDBA. (Do we discuss why we use IDBA?)  
+SGA software package to correct reads for sequencing errors. Error corrected reads
+are then assembled into contigs using the assembler IDBA. (Do we discuss why we use IDBA?)  
 
 After contigs are built, paired/mated libraries can be used to scaffold contigs 
 together. For this stage, our pipeline uses the scaffolder SSPACE. A key 
 parameter for scaffolding is the insert size of libraries. Using the read
-mapping software package BWA, insert size estimations have been automated. Another
-key parameter in 
+mapping software package BWA, insert size estimations have been automated. 
+
+After contigs have been scaffolded, reads are mapped back to scaffolds. The locations
+of mapped reads and pairing information is used with FISH to identifiy putatively erroneous 
+contigs. 
+
 
 
 \end{methods}
@@ -62,15 +77,16 @@ of "assembly connections". The final step in our pipeline is automated
 misassembly detection. For this step, we use FISH to identify erroneously
 connected points in the genome. The FISH algorithm was orignally developed
 to identify collinear segments of homology between two genomes. Here, we use
-FISH to identify collinear segments of paired read connections. First, reads 
-are mapped onto scaffolds using BWA and connected segments are identified using 
+FISH to identify collinear segments of paired read connections between two contigs
+or within a single contig. First, reads are mapped onto scaffolds using BWA and 
+connected segments are identified using 
 FISH. Scaffolds are then broken at the boundaries of these segments and the 
 resulting contigs/scaffolds are rescaffolded using SSPACE as described above.
 
 
 \subsection{Automated parameter selection}
 
-
+Does this work on non-haloarchaea?
 
 
 \begin{table}[!t]
@@ -96,20 +112,21 @@ Intact CDS & 93.2\% & 89.4\% & 97.0\% & 97.3\% \\
 \section{Discussion}
 
 
-
 \begin{figure}[t]
-%\includegraphics[width=3.5in]{missingextra_merge.eps}
-\vspace{-1cm}
-\caption{\textbf{Top:} Density of extra and missing segments in the assemblies of \textit{Haloferax volcanii} DS2.
-Reference genome coordinates are given on the x-axis, and red vertical bars delineate the boundaries of the
-five circular replicons in the reference genome. \textbf{Bottom:} Size distribution of missing and extra segments in each assembly.  The size of a missing segment is given on the x-axis, and the count of missing segments at that size on the y-axis.}\label{fig:01}
-\end{figure}
-
-\begin{figure}[t]
-%\includegraphics[width=3.5in]{mauve_basecall_bias.eps}
+\includegraphics[width=3.5in]{mauve_basecall_bias.eps}
 \vspace{-1cm}
 \caption{Biased errors in the base calling of each assembly. Errors are not uniformly random in any of the three assemblies. See Supplementary Material for more details.}\label{fig:02}
 \end{figure}
+
+\begin{figure}[t]
+\includegraphics[width=3.5in]{fish-qc.pdf}
+\vspace{-1cm}
+\caption{\textbf{Left:} Topology of misassemblies in de novo genome assemblies. Orange and black lines represent paired read 
+connections. \textbf{Right:} Plot of points of connections by paired reads between Contig X and Contig Y. Vertical and horizontal 
+dashed lines represent locations of misassemblies in Contig X and Contig Y, repsectively. The gray circle represents the string of points
+that is identified using FISH. Orange and black points correspond to orange and black lines on left.}\label{fig:01}
+\end{figure}
+
 
 
 
