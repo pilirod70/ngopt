@@ -42,7 +42,7 @@ void process_arguments(int argc, char* argv[])
 	   }
 
 	  else if(temp=="-off")
-	    Max_Distance=0;
+	    Max_Distance=-1;
 	    
       else if(temp=="-q")
 	    QUIET_MODE=true;
