@@ -18,45 +18,45 @@ my $outbase = $ARGV[1];
 my $DIR = dirname(abs_path($0));
 
 my %LIBS = read_lib_file($libfile);
-die "No libraries found in $libfile\n" unless(keys %LIBS);
-print STDERR "Found ".scalar(keys %LIBS)." libraries\n";
+die "[a5] No libraries found in $libfile\n" unless(keys %LIBS);
+print "[a5] Found ".scalar(keys %LIBS)." libraries\n";
 my $maxrdlen = -1;
 my $scafs;
 
-print "Starting pipeline at step $start\n";
+print "[a5] Starting pipeline at step $start\n";
 
 if ($start <= 1) {
-	print "CHECKPOINT: Cleaning reads with SGA\n";
-	print STDERR "CHECKPOINT: Cleaning reads with SGA\n";
+	print "[a5] Cleaning reads with SGA\n";
+	print STDERR "[a5] Cleaning reads with SGA\n";
 	sga_clean($outbase, \%LIBS);
 	tagdust($outbase, "$outbase.pp.ec.fa");
 } 
 if ($start <= 2) {
-	print "CHECKPOINT: Building contigs with IDBA\n";
-	print STDERR "CHECKPOINT: Building contigs with IDBA\n";
+	print "[a5] Building contigs with IDBA\n";
+	print STDERR "[a5] Building contigs with IDBA\n";
 	$maxrdlen = fastq_to_fasta("$outbase.dusted", "$outbase.clean.fa");
 	idba_assemble($outbase, $maxrdlen); 
 } 
 if ($start <= 3) {
-	print "CHECKPOINT: Scaffolding contigs with SSPACE\n";
-	print STDERR "CHECKPOINT: Scaffolding contigs with SSPACE\n";
+	print "[a5] Scaffolding contigs with SSPACE\n";
+	print STDERR "[a5] Scaffolding contigs with SSPACE\n";
 	$scafs = scaffold_sspace($libfile, $outbase, \%LIBS, "$outbase-contig.fa");
 	`mv $scafs $outbase.sspace.scaffolds.fasta`; 
 } 
 if ($start <= 4) {
-	print "CHECKPOINT: Detecting and breaking misassemblies with FISH\n";
-	print STDERR "CHECKPOINT: Detecting and breaking misassemblies with FISH\n";
+	print "[a5] Detecting and breaking misassemblies with FISH\n";
+	print STDERR "[a5] Detecting and breaking misassemblies with FISH\n";
 	$scafs = "$outbase.sspace.scaffolds.fasta";
 	$scafs = break_all_misasms($scafs,\%LIBS,"$outbase.fish"); 
 	`mv $scafs $outbase.fish.broken.fasta`; 
 } 
 if ($start <= 5) {
-	print "CHECKPOINT: Scaffolding broken contigs with SSPACE\n";
-	print STDERR "CHECKPOINT: Scaffolding broken contigs with SSPACE\n";
+	print "[a5] Scaffolding broken contigs with SSPACE\n";
+	print STDERR "[a5] Scaffolding broken contigs with SSPACE\n";
 	$scafs = "$outbase.fish.broken.fasta"; 
 	$scafs = scaffold_sspace($libfile,"$outbase.rescaf",\%LIBS,$scafs);
 	`mv $scafs $outbase.a5.final.fasta`;
-	print "Final assembly in $outbase.a5scafs.fasta\n"; 
+	print "[a5] Final assembly in $outbase.a5scafs.fasta\n"; 
 } 
 
 sub sga_assemble {
@@ -92,9 +92,9 @@ sub sga_clean {
 			$files .= "$up ";
 		}
 	}
-	print STDERR "sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq\n";
+	print STDERR "[a5] sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq\n";
 	system("$DIR/sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $outbase.pp.fastq");
-	die "Error preprocessing reads with SGA\n" if( $? != 0 );
+	die "[a5] Error preprocessing reads with SGA\n" if( $? != 0 );
 	my $sga_ind = "";
 	my $sga_ind_kb = 4000000;
 	do{
@@ -103,9 +103,9 @@ sub sga_clean {
 		$sga_ind_kb = int($sga_ind_kb/2);
 	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 0);
 	system("rm -f core*") if (-f "core*");
-	die "Error indexing reads with SGA\n" if( $? != 0 );
+	die "[a5] Error indexing reads with SGA\n" if( $? != 0 );
 	system("$DIR/sga correct -k 31 -i 10 -t 4  $outbase.pp.fastq > correct.out");
-	die "Error correcting reads with SGA\n" if( $? != 0 );
+	die "[a5] Error correcting reads with SGA\n" if( $? != 0 );
 }
 
 sub read_lib_file {
@@ -134,7 +134,7 @@ sub read_lib_file {
 		} elsif ($_ =~ m/ins=([\w\/\-\.]+)/) { 
 			$hash{"ins"} = $1;
 		} else {
-			die "Unrecognizable line in library file: >$_<\n";
+			die "[a5] Unrecognizable line in library file: >$_<\n";
 		}
 	} 
 	for my $key (sort keys %hash){
@@ -197,7 +197,7 @@ sub tagdust {
 	my $outbase = shift;
 	my $readfile = shift;
 	my $tagdust_cmd = "$DIR/tagdust -o $outbase.dusted $DIR/../adapter.fasta $readfile";
-	print STDERR "$tagdust_cmd\n";
+	print STDERR "[a5] $tagdust_cmd\n";
 	system($tagdust_cmd);
 }
 
@@ -209,7 +209,7 @@ sub idba_assemble {
 	my $idba_cmd = "$DIR/idba -r $outbase.clean.fa -o $outbase --mink 29 --maxk $maxrdlen";
 	print STDERR $idba_cmd."\n";
 	`$idba_cmd > idba.out`;
-	die "Error building contigs with IDBA\n" if ($? != 0);
+	die "[a5] Error building contigs with IDBA\n" if ($? != 0);
 	`gzip -f $outbase.clean.fa`;
 	`rm $outbase.pp.* $outbase.kmer $outbase.graph`;
 }
@@ -227,7 +227,7 @@ sub scaffold_sspace {
 	# remove the unpaired file if present 
 	`rm $outbase.unpaired.fastq` if (-f "$outbase.unpaired.fastq");
 	for my $lib (keys %$libs) {
-	#	print STDERR "$lib\t".join(" ",@{$libs{$lib}})."\n";
+	#	print STDERR "[a5] $lib\t".join(" ",@{$libs{$lib}})."\n";
 		# need to make a copy of this little array, so we can preserve the original for break_all_misasms
 		@lib_files = @{$libs->{$lib}};
 		#$lib_files = \@{$libs{$lib}};
@@ -253,7 +253,7 @@ sub scaffold_sspace {
 		}
 	}
 	my $genome_size = get_genome_size($curr_ctgs);
-	print STDERR "Total contig length $genome_size\n";
+	print STDERR "[a5] Total contig length $genome_size\n";
 	my $libraryI=1;
 	open( LIBRARY, ">library_$libraryI.txt" );
 	my $prev_ins = -1;
@@ -266,7 +266,7 @@ sub scaffold_sspace {
 		if($prev_ins > 0 && ($prev_ins * 2) < $cur_ins){
 			close LIBRARY;
 			my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
-			print STDERR "Insert $prev_ins, expected links $exp_link\n";
+			print STDERR "[a5] Insert $prev_ins, expected links $exp_link\n";
 			$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI, $curr_ctgs);
 			$libraryI++;
 			open( LIBRARY, ">library_$libraryI.txt" );
@@ -277,7 +277,7 @@ sub scaffold_sspace {
 	}
 	close LIBRARY;
 	my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
-	print STDERR "Insert $prev_ins, expected links $exp_link\n";
+	print STDERR "[a5] Insert $prev_ins, expected links $exp_link\n";
 	my $fin_scafs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI,$curr_ctgs);
 	`mv $fin_scafs $outbase.sspace.final.scaffolds.fasta`;
 	return "$outbase.sspace.final.scaffolds.fasta";
@@ -314,12 +314,13 @@ sub fish_break_misasms {
 	`$DIR/bwa index -a is $ctgs > $outbase.index.out`;
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
-	print STDERR "java -Xmx3500m -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out";
-	`java -Xmx3500m -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out`;
+	my $cmd="java -Xmx3500m -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out";
+	print STDERR "[a5] $cmd\n"; 
+	`$cmd`;
 	`$DIR/fish -f $outbase.control.txt -b $outbase.blocks.txt > $outbase.fish.out`;
-	die "Error getting blocks with FISH for $outbase\n" if ($? != 0);
+	die "[a5] Error getting blocks with FISH for $outbase\n" if ($? != 0);
 	`$DIR/break_misassemblies.pl $outbase.blocks.txt contig_labels.txt $ctgs > $outbase.broken.fasta 2> $outbase.break.out`;
-	die "Error getting breaking contigs after running FISH\n" if ($? != 0);
+	die "[a5] Error getting breaking contigs after running FISH\n" if ($? != 0);
 	#`rm $outbase.blocks.txt contig_labels.txt fish.* get_fish_input.* break_misasm.err $sam $sai`;
 	return "$outbase.broken.fasta";
 }
@@ -338,7 +339,7 @@ sub calc_explinks {
 	}
 	$read_count /= 4;
 	my $cov = $maxrdlen * $read_count / $genome_size;
-	print STDERR "Lib $read_file coverage $cov\n";
+	print STDERR "[a5] Lib $read_file coverage $cov\n";
 	my $exp_link = $cov * $ins_len / $maxrdlen;
 	return $exp_link;
 }
@@ -359,10 +360,10 @@ sub run_sspace {
 	$input_fa = "$outbase.lib".($libraryI-1).".sspace.final.scaffolds.fasta" if $libraryI>1;
 	my $sspace_cmd = "$DIR/SSPACE/SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 -l library_$libraryI.txt -s $input_fa -b $outbase.lib$libraryI.sspace";
 	if (-f "$outbase.unpaired.fastq") {
-		print STDERR "Running SSPACE with unpaired reads\n";
+		print STDERR "[a5] Running SSPACE with unpaired reads\n";
 		$sspace_cmd .= " -u $outbase.unpaired.fastq";
 	}
-	print STDERR "$sspace_cmd\n";
+	print STDERR "[a5] $sspace_cmd\n";
 	`$sspace_cmd > sspace_lib$libraryI.out`;
 	`rm -rf bowtieoutput/ reads/`;
 	return "$outbase.lib$libraryI.sspace.final.scaffolds.fasta";
@@ -435,7 +436,7 @@ sub get_insert($$$$$) {
 		$ins_error = sprintf("%.3f",$ins_error);
 		$ins_error =~ s/0+$//g;
 	} else {
-		print STDERR "Discarding estimate. Not enough data points: $ins_n\n";
+		print STDERR "[a5] Discarding estimate. Not enough data points: $ins_n\n";
 		$ins_mean = -1;
 		$ins_error = 0;
 	}
