@@ -3,26 +3,34 @@
 use warnings;
 use strict;
 use Bio::SeqIO;
+use Getopt::Long;
 
 sub matches($$);
 
-#use Getopt::Std;
-#my %opts=();
-#getopt('t',\%opts);
-my $usage="Usage: extract_annotated_sequence.pl [t] <input_gbk_file> <search_term1> <search_term2> ... <search_termN> \n".
+my $translate = 0;
+my $upstr = 0;
+my $downstr = 0;
+my $help = 0;
+GetOptions( 'trans|t' => \$translate,
+			'up|u' => \$upstr,
+			'down|d' => \$downstr,
+			'help|h' => \$help );
+
+my $usage="extract_annotated_sequence.pl [options] <gbk_file> <term1> <term2> ... <termN> \n".
+          "\n".
+          "  options:\n".
+          "    -t, --trans               \n".
+          "    -u, --up=<int>            \n".
+          "    -d, --down=<int>          \n".
+          "\n".
           "if a search term begins with \'-\', annotations containing that search term will be excluded from the output\n".
 		  "use \'extract_annotated_sequence.pl -t\' if CDS are to be translated\n".
 		  "sequences are printed to standard output\n";
-if (scalar(@ARGV) < 2){
+if (scalar(@ARGV) < 2 || $help){
 	print $usage;
 	exit;
 }
 
-my $translate = 0;
-if ($ARGV[0] eq '-t'){
-	shift;
-	$translate=1;
-}
 my $gbk_file = shift;
 my @srch_str = @ARGV;
 unless(defined($gbk_file)){
@@ -74,19 +82,25 @@ while ( my $seq = $in->next_seq() ) {
 					}
 				}
 				if ($num_match == scalar(@srch_str)) { 
-					my $seq_str = $seq->subseq($feat->start,$feat->end);
-					if ($feat->primary_tag eq "CDS" && $translate){
-						@ar = $feat->get_tag_values('translation');
-						$seq_str = $ar[0];
-					} 
+					my $seq_str = ""; 
 					$inc = 1;
 					$display .= "-".$ltag if (length($ltag)>0);
 					$display .= "-".$seq_name;
 					if ($feat->strand() == -1) {
 						$display .= "|".$feat->end."-".$feat->start;
+						my $start = $feat->start-$downstr > 1 ? $feat->start-$downstr : 1;
+						my $end = $feat->end+$upstr < $seq->length() ? $feat->end+$upstr : $seq->length();
+						$seq->subseq($start,$end);
 					} else {
 						$display .= "|".$feat->start."-".$feat->end;
+						my $start = $feat->start-$upstr > 1 ? $feat->start-$upstr : 1;
+						my $end = $feat->end+$downstr < $seq->length() ? $feat->end+$downstr : $seq->length();
+						$seq->subseq($start,$end);
 					}
+					if ($feat->primary_tag eq "CDS" && $translate){
+						@ar = $feat->get_tag_values('translation');
+						$seq_str = $ar[0];
+					} 
 					$target = Bio::Seq->new( -seq => $seq_str,
 										    # -display_id => $ltag,
 										     -display_id => $display, 
