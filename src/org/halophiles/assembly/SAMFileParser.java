@@ -94,6 +94,7 @@ public class SAMFileParser {
 			}
 			tmpCtg.addReadPair(tmp);
 			nreads++;
+			line = null;
 		}
 	}
 	
