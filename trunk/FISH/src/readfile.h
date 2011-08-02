@@ -240,7 +240,7 @@ GENE_LIST::iterator chk_pos2;
    if(temp_map.size()>0)
    {
      sub_grid[sub_grid.size()-1].ext=true;
-     image_maps.insert(make_pair(contig1+contig2,temp_map));
+     image_maps.insert(make_pair(contig1+"&"+contig2,temp_map));
    }
 
    temp_map.clear();
@@ -327,7 +327,7 @@ GENE_LIST::iterator chk_pos2;
         if(image_maps.size()>0)
         {
 
-          pos1=image_maps.find(contig1+contig2);
+          pos1=image_maps.find(contig1+"&"+contig2);
 
           if(pos1==image_maps.end())
           {
@@ -339,16 +339,16 @@ GENE_LIST::iterator chk_pos2;
           {
             inserted++;
             mapexists=true;
-            tempscore=(image_maps[contig1+contig2][contig1+key_y+'&'+contig2+key_x]);
+            tempscore=(image_maps[contig1+"&"+contig2][contig1+key_y+'&'+contig2+key_x]);
 
             if(MAX_SCORE==true)
-              image_maps[contig1+contig2][contig1+key_y+'&'+contig2+key_x]=(MAX(tempscore,score));
+              image_maps[contig1+"&"+contig2][contig1+key_y+'&'+contig2+key_x]=(MAX(tempscore,score));
             else
             {
                if(tempscore==0)
-                 image_maps[contig1+contig2][contig1+key_y+'&'+contig2+key_x]=(score);
+                 image_maps[contig1+"&"+contig2][contig1+key_y+'&'+contig2+key_x]=(score);
                else
-                 image_maps[contig1+contig2][contig1+key_y+'&'+contig2+key_x]=(AVG(tempscore,score));
+                 image_maps[contig1+"&"+contig2][contig1+key_y+'&'+contig2+key_x]=(AVG(tempscore,score));
             }
 
            }
@@ -365,7 +365,7 @@ GENE_LIST::iterator chk_pos2;
     }
 
     if(mapexists==false)
-    image_maps.insert(make_pair(contig1+contig2,temp_map));
+    image_maps.insert(make_pair(contig1+"&"+contig2,temp_map));
 
     temp_map.clear();
 
@@ -400,7 +400,7 @@ GENE_LIST::iterator chk_pos2;
   {
    contig1=i2s(sub_grid[k].contig1);
    contig2=i2s(sub_grid[k].contig2);
-   contigs=contig1+contig2;
+   contigs=contig1+"&"+contig2;
    for(pos2=image_maps[contigs].begin();pos2!=image_maps[contigs].end();++pos2)
    {
    //cout<<"The firs key "<<pos2->first;
