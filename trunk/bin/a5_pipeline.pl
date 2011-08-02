@@ -317,7 +317,7 @@ sub fish_break_misasms {
 	my $cmd="java -Xmx3500m -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out";
 	print STDERR "[a5] $cmd\n"; 
 	`$cmd`;
-	`$DIR/fish -f $outbase.control.txt -b $outbase.blocks.txt > $outbase.fish.out`;
+	`$DIR/fish -off -f $outbase.control.txt -b $outbase.blocks.txt > $outbase.fish.out`;
 	die "[a5] Error getting blocks with FISH for $outbase\n" if ($? != 0);
 	`$DIR/break_misassemblies.pl $outbase.blocks.txt contig_labels.txt $ctgs > $outbase.broken.fasta 2> $outbase.break.out`;
 	die "[a5] Error getting breaking contigs after running FISH\n" if ($? != 0);
