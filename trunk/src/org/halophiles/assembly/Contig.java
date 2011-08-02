@@ -18,9 +18,8 @@ public class Contig implements Comparable<Contig> {
 	public int numSelfConnect;
 	private Map<String,ReadPair> reads;
 	private double mappedBasesCount;
+	private int mappedReadCount;
 	public Contig(String name, int len){
-	//	String[] spl = name.split("\\|");
-	//	this.name = spl[0];
 		this(name);
 		this.len = len;
 		concat_start=CONCAT_START;
@@ -49,9 +48,10 @@ public class Contig implements Comparable<Contig> {
 			reads = new HashMap<String,ReadPair>();
 			++CTG_COUNT;
 			mappedBasesCount = 0.0;
+			mappedReadCount = 0;
 			start = new ContigTerminal(this, ContigTerminal.START);
 			end = new ContigTerminal(this,ContigTerminal.END);
-		}
+	}
 	
 	public double getCov(){
 		if (len == -1) return -1;
@@ -82,6 +82,10 @@ public class Contig implements Comparable<Contig> {
 		else 
 			return counts.get(c);
 	}
+	public int numReads(){
+		return mappedReadCount;
+	}
+	
 	public int hashCode(){
 		return name.hashCode();
 	}
@@ -100,9 +104,11 @@ public class Contig implements Comparable<Contig> {
 	public void addReadPair(ReadPair pair){
 		if (reads.containsKey(pair.hdr)){
 			mappedBasesCount += SAMFileParser.cigarLength(pair.cig2);
+			mappedReadCount++;
 		} else {
 			mappedBasesCount += 
 				SAMFileParser.cigarLength(pair.cig1);
+			mappedReadCount++;
 		}
 		reads.put(pair.hdr, pair);
 	}
