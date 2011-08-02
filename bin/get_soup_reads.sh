@@ -1,6 +1,7 @@
 #!/bin/bash
 ##
 #$ -V
+#$ -pe threaded 3
 #$ -cwd
 #$ -S /bin/bash
 #$ -m e
@@ -29,22 +30,31 @@ cd $outdir
 while [ ! `mktemp -q $LOCKFILE` ]; do
 	sleep 10s	
 done
-cp $1 $2 $outdir
+tar -xzvf $1
+tar -xzvf $2
 rm $LOCKFILE
-SOUP1=$outdir/`basename $1`
-SOUP2=$outdir/`basename $2`
+SOUP1=$outdir/`basename $1 .tar.gz`
+SOUP2=$outdir/`basename $2 .tar.gz`
 
 
 function run {
 	base=$1
+	if [ ! -f $REFDIR/$base.scaf.fasta ] ; then
+		echo "No scaffolds for $base"
+		return 0
+	fi	
+	if [ -d $outdir/$base ]; then
+		rm -rf $outdir/$base
+	fi
 	mkdir $outdir/$base
 	cd $outdir/$base
-	get_sam.sh . $REFDIR/$base.scaf.fasta $SOUP1 > soup1.sam
-	get_sam.sh . $REFDIR/$base.*.fasta $SOUP2 > soup2.sam
+	bwa index -a is -p ref $REFDIR/$base.scaf.fasta
+	bwa aln -n 0 -t 4 ref $SOUP1 | bwa samse ref - $SOUP1 > soup1.sam
+	bwa aln -n 0 -t 4 ref $SOUP2 | bwa samse ref - $SOUP2 > soup2.sam
 	soupmap2fastq.pl soup1.sam soup2.sam $base.soup2.sam $base.soup2 	
-	mv $base.soup2.sam $SAMDIR
-	mv $base.soup2* $FQDIR
-	rm $outdir/$base
+	cp $base.soup2.sam $SAMDIR
+	cp $base.soup2* $FQDIR
+	rm -rf $outdir/$base
 }
 
 for org in `cat $3`; do
