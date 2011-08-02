@@ -22,7 +22,7 @@ function copy_bowtie {
 }
 
 function copy_adhoc {
-	cp bin/a5_pipeline.pl bin/break_misassemblies.pl GetFishInput.jar $findir/bin
+	cp bin/a5_pipeline.pl bin/break_misassemblies.pl bin/GetFishInput.jar $findir/bin
 	cp adapter.fasta $findir/
 	echo "Removing unnecessary .svn directories"
 	for dir in `find $findir/ -name .svn`; do 

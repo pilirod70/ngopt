@@ -13,6 +13,9 @@ if [ $# -ne 2 ]; then
 	exit
 fi
 
+export JAVA_HOME="/home/koadman/software/jre1.6.0_20"
+export PATH="/home/koadman/software/jre1.6.0_20/bin:$PATH"
+
 base=$1
 
 #
@@ -28,10 +31,11 @@ conf="/share/eisen-d2/koadman/haloasm/lib_files/$base.libs"
 DEST=$2
 # nothing below this line should need to be changed
 stdoe="$PWD/$JOB_NAME.*$JOB_ID"
-pipeline="aaa_assembly_line.pl"
+pipeline="a5_pipeline.pl"
 LOCKFILE="$DEST/liunjlkjadftydsfbg908"
 
 echo $JOB_ID `hostname` $JOB_NAME $@
+which java
 # create a temporary storage dir on the compute node
 OUT=""
 if [ -d "/data/scratch" ]; then

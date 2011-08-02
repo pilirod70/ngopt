@@ -14,7 +14,7 @@
     </target>
 
     <target name="jar">
-        <jar destfile="GetFishInput.jar">
+        <jar destfile="bin/GetFishInput.jar">
             <manifest>
                 <attribute name="Main-Class" value="org.halophiles.assembly.qc.FISHInputExporter"/>
             </manifest>
