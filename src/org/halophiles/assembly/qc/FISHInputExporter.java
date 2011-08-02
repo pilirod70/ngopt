@@ -47,23 +47,43 @@ public class FISHInputExporter {
 			File outdir = new File(System.getProperty("user.dir"));
 			
 			Map<String,ReadPair> reads = new HashMap<String,ReadPair>();
+			Set<ReadPair> uniq = new TreeSet<ReadPair>(new Comparator<ReadPair>(){
+				public int compare(ReadPair arg0, ReadPair arg1) {
+					if (arg0.ctg1.equals(arg1.ctg1)){
+						if (arg0.ctg2.equals(arg1.ctg2)){
+							if (arg0.pos1 == arg1.pos1){
+								if (arg0.pos2 == arg1.pos2){
+									return 0;
+								} else
+									return arg0.pos2 - arg1.pos2;
+							} else
+								return arg0.pos1 - arg1.pos1;
+						} else 
+							return arg0.ctg2.compareTo(arg1.ctg2);
+					} else 
+						return arg0.ctg1.compareTo(arg1.ctg1);
+				}
+			});
 			Iterator<ReadPair> rpIt = sfp.getReadPairs();
+			System.out.println("Filtering duplicate connections...");
 			while(rpIt.hasNext()){
 				ReadPair tmp = rpIt.next();
+				if (tmp.hdr.equals("A803WTABXX:1:1:12497:1415"))
+					System.out.print("");
 				if (!tmp.paired) 
 					continue;
-				if (tmp.getInsert() < MINQUAL)
+				if (tmp.ctg1.equals(tmp.ctg2) && tmp.getInsert() < MINQUAL)
 					continue;
-				reads.put(tmp.hdr, tmp);
+				
+				if(uniq.add(tmp))
+					reads.put(tmp.hdr, tmp);
 			}
-			
 			System.out.println("Found "+sfp.getNumContigs()+" contigs.");
 			System.out.println("Found "+sfp.getNumReads()+" total reads and "+sfp.getNumPairs()+" read-pairs.");
 			if (reads.size() <= 0) {
 				System.err.println("No paired reads found. Cannot generate match files for running FISH misassembly detection.");
 				System.exit(-1);
 			}
-			
 			File insFile = new File(outdir, base+".ins_size_unfilt.txt");
 			insFile.createNewFile();
 			PrintStream insOut = new PrintStream(insFile);
@@ -107,47 +127,56 @@ public class FISHInputExporter {
 	}
 	
 	public static void export(Map<String,ReadPair> reads, File fishDir, String base) throws IOException{
-		HashMap<String,Vector<Double>> mapPoints = new HashMap<String,Vector<Double>>();
-		HashMap<String,PrintStreamPair> matchesOut = new HashMap<String,PrintStreamPair>();
+		Map<String,Vector<Double>> mapPoints = new HashMap<String,Vector<Double>>();
+		Map<String,PrintStreamPair> psPairs = new TreeMap<String,PrintStreamPair>();
 		Vector<Double> tmpPts = null;
 		
 		File controlFile = new File(fishDir,base+".control.txt");
 		Map<String,Contig> contigs = new HashMap<String, Contig>();
 		PrintStream ctrlOut = new PrintStream(controlFile);
 		Iterator<ReadPair> rpIt = reads.values().iterator();
+		ReadPair tmpRp = null;
+		Contig tmpCtg = null;
 		while(rpIt.hasNext()){
-			ReadPair tmpRp = rpIt.next();
-			Contig ctg = tmpRp.ctg1;
+			tmpRp = rpIt.next();
+			tmpCtg = tmpRp.ctg1;
 			boolean rev = tmpRp.rev1;
 			int left = tmpRp.pos1;
-			if (mapPoints.containsKey(ctg.name)){
-				tmpPts = mapPoints.get(ctg.name);
+			if (mapPoints.containsKey(tmpCtg.name)){
+				tmpPts = mapPoints.get(tmpCtg.name);
 			} else {
 				tmpPts = new Vector<Double>();
-				mapPoints.put(ctg.name, tmpPts);
+				mapPoints.put(tmpCtg.name, tmpPts);
 			}
 			if (rev){
 				left = left * -1;
 			}
-			contigs.put(ctg.name, ctg);
+			contigs.put(tmpCtg.name, tmpCtg);
 			tmpPts.add(new Double(left));
 			
-			ctg = tmpRp.ctg2;
+			tmpCtg = tmpRp.ctg2;
 			rev = tmpRp.rev2;
 			left = tmpRp.pos2;
-			if (mapPoints.containsKey(ctg.name)){
-				tmpPts = mapPoints.get(ctg.name);
+			if (mapPoints.containsKey(tmpCtg.name)){
+				tmpPts = mapPoints.get(tmpCtg.name);
 			} else {
 				tmpPts = new Vector<Double>();
-				mapPoints.put(ctg.name, tmpPts);
+				mapPoints.put(tmpCtg.name, tmpPts);
 			}
 			if (rev){
 				left = left * -1;
 			}
-			contigs.put(ctg.name, ctg);
+			contigs.put(tmpCtg.name, tmpCtg);
 			tmpPts.add(new Double(left));
 		}
-		// Rank contigs so FISH doesn't freak out about non-consecutive ids
+		Iterator<Contig> ctgIt = contigs.values().iterator();
+		Set<Contig> singles = new TreeSet<Contig>();
+		while(ctgIt.hasNext()){
+			tmpCtg = ctgIt.next();
+			if (tmpCtg.numReads() <= 1)
+				singles.add(tmpCtg);
+		}
+		
 		Contig[] ctgRef = new Contig[contigs.values().size()];
 		contigs.values().toArray(ctgRef);
 		Arrays.sort(ctgRef,new Comparator<Contig>(){
@@ -155,11 +184,10 @@ public class FISHInputExporter {
 				return o1.getId() - o2.getId();
 			}
 		});
+		// Rank contigs so FISH doesn't freak out about non-consecutive ids
 		for (int i = 0; i < ctgRef.length; i++){
 			ctgRef[i].setRank(i+1);
 		}
-		
-		
 		
 		File ctgLblFile = new File(fishDir,base+".contig_labels.txt");
 		ctgLblFile.createNewFile();
@@ -169,18 +197,14 @@ public class FISHInputExporter {
 		
 		Iterator<String> it = mapPoints.keySet().iterator();
 		TreeMap<Integer,String> maps = new TreeMap<Integer, String>();
-		ctrlOut.println("-maps");
 		while(it.hasNext()){
 			String ctg = it.next();
-	//		if (contigs.get(ctg).getId() != 1 && contigs.get(ctg).getId() != 2)
-	//			continue;
 			Vector<Double> tmp = mapPoints.get(ctg);
 			Double[] ar = new Double[tmp.size()];
 			tmp.toArray(ar);
 			File ctgMapFile = new File(mapMatchDir,"map."+contigs.get(ctg).getRank()+".txt");
 			ctgLblOut.println(contigs.get(ctg).getRank()+"\t"+contigs.get(ctg).name);
 			PrintStream ctgMapOut = new PrintStream(ctgMapFile);
-			
 			Arrays.sort(ar, new Comparator<Double>(){
 				public int compare(Double arg0, Double arg1) {
 					if (Math.abs(arg0) < Math.abs(arg1)) return -1;
@@ -188,55 +212,61 @@ public class FISHInputExporter {
 					else return 0;
 				}	
 			});
-			
 			for (Double d: ar)
 				ctgMapOut.println("c"+contigs.get(ctg).getRank()+"p"+Math.abs(d.intValue())+"\t"+(d < 0 ? -1 : 1));
 			
 			ctgMapOut.close();
-//			maps.put(contigs.get(ctg).getRank(),ctgMapFile.getParentFile().getName()+"/"+ctgMapFile.getName());
 			maps.put(contigs.get(ctg).getRank(),ctgMapFile.getAbsolutePath());
 		}
 		ctgLblOut.close();
 		Iterator<Integer> it2 = maps.keySet().iterator();
+		ctrlOut.println("-maps");
 		while(it2.hasNext()){
 			Integer tmpInt = it2.next();
 			ctrlOut.println(tmpInt+"\t"+maps.get(tmpInt));
 		}
 		
 		it = reads.keySet().iterator();
-		PrintStreamPair matchOut = null;
+		PrintStreamPair tmpPSP = null;
 		ctrlOut.println("-matches");
 		String ctgStr;
-		TreeSet<MatchFile> matchFiles = new TreeSet<MatchFile>();
 		while(it.hasNext()) {
 			ReadPair tmp = reads.get(it.next());
-			/*if (!tmp.paired || !((tmp.ctg1.getId()== 1 && tmp.ctg2.getId()== 2) || 
-					(tmp.ctg1.getId()== 2 && tmp.ctg2.getId()== 2) || 
-					(tmp.ctg1.getId()== 1 && tmp.ctg2.getId()== 1)))
-					continue;*/
-			
 			if (tmp.ctg1 == null || tmp.ctg2 == null) 
 				continue;
 			ctgStr = tmp.contigString();
-			if (matchesOut.containsKey(ctgStr))
-				matchOut = matchesOut.get(ctgStr);
+			if (psPairs.containsKey(ctgStr))
+				tmpPSP = psPairs.get(ctgStr);
 			else {
-				matchOut = new PrintStreamPair(tmp.ctg1,tmp.ctg2,mapMatchDir);
-				matchOut.addMatchFile(matchFiles);
-				matchesOut.put(ctgStr, matchOut);
+				tmpPSP = new PrintStreamPair(tmp.ctg1,tmp.ctg2,mapMatchDir);
+				psPairs.put(ctgStr, tmpPSP);
 			}
-			matchOut.add(tmp);
+			tmpPSP.add(tmp);
 		}
 		
+		it = psPairs.keySet().iterator();
+		Vector<String> mfToRm = new Vector<String>();
+		
+		while(it.hasNext()){
+			ctgStr = it.next();
+			tmpPSP = psPairs.get(ctgStr);
+			if (tmpPSP.reads.size() <= 1)
+				mfToRm.add(ctgStr);
+		}
+		removeKeys(psPairs, mfToRm);
+		Set<MatchFile> matchFiles = new TreeSet<MatchFile>();
+		it = psPairs.keySet().iterator();
+		while(it.hasNext()) {
+			ctgStr = it.next();
+			matchFiles.addAll(psPairs.get(ctgStr).getMatchFiles());
+			psPairs.get(ctgStr).close();
+		}
 		Iterator<MatchFile> mfIt = matchFiles.iterator();
 		while(mfIt.hasNext())
 			ctrlOut.println(mfIt.next().toString());
+		
 		ctrlOut.println("end");
 		ctrlOut.close();
-	//	System.out.println(matchesOut.size()+" PrintStreamPairs for " + contigs.size() + " contigs");
-		it = matchesOut.keySet().iterator(); 
-		while(it.hasNext())
-			matchesOut.get(it.next()).close();
 	}
 	
 	
@@ -374,14 +404,12 @@ public class FISHInputExporter {
 			double outCv = outSd/outIQR[0];
 			if (inIQR[0] > outIQR[0]){
 				if (inIQR[0] > 2*outIQR[0] || outCv > inCv) { // remove outies
-					double[] ins = {outIQR[0], outSd};
 					filterOffDiagReads(outies, outIQR, 3);
 					nRemoved = outies.size();
 					removeKeys(reads,outies.keySet());
 				}
 			} else if (outIQR[0] > inIQR[0]) { 
 				if (outIQR[0] > 2*inIQR[0] || inCv > outCv){ // remove innies
-					double[] ins = {inIQR[0], inSd};
 					filterOffDiagReads(inies, inIQR, 3);
 					nRemoved = inies.size();
 					removeKeys(reads,inies.keySet());
@@ -460,7 +488,7 @@ public class FISHInputExporter {
 		return (dist < ins[0]+nSd*ins[1] && dist > ins[0]-nSd*ins[1]) && r.ctg1.equals(r.ctg2);
 	}
 	
-	private static void removeKeys(Map<String,ReadPair> reads, Collection<String> torm){
+	private static <V> void removeKeys(Map<String,V> reads, Collection<String> torm){
 		Iterator<String> it = torm.iterator();
 		while(it.hasNext())
 			reads.remove(it.next());
@@ -476,9 +504,10 @@ public class FISHInputExporter {
 		}
 	}
 	
-	private static class PrintStreamPair{
+	private static class PrintStreamPair implements Comparable<PrintStreamPair>{
 		private File fishDir;
-		private PrintStream out1;
+		// a PrintStream and File for both directions
+		private PrintStream out1; 
 		private PrintStream out2;
 		File file1;
 		File file2;
@@ -506,14 +535,14 @@ public class FISHInputExporter {
 			});
 			if (ctg1==ctg2){
 				file1 = new File(fishDir,"match."+ctg1.getRank()+"v"+ctg2.getRank()+".txt");
-				file1.createNewFile();
+				//file1.createNewFile();
 				this.ctg1 = ctg1;
 				this.ctg2 = ctg2;
 			} else { 
 				file1 = new File(fishDir,"match."+ctg1.getRank()+"v"+ctg2.getRank()+".txt");
 				file2 = new File(fishDir,"match."+ctg2.getRank()+"v"+ctg1.getRank()+".txt");
-				file1.createNewFile();
-				file2.createNewFile();
+				//file1.createNewFile();
+				//file2.createNewFile();
 				this.ctg1 = ctg1;
 				this.ctg2 = ctg2;
 			}
@@ -538,15 +567,17 @@ public class FISHInputExporter {
 			}
 		}
 		
-		public void close() throws FileNotFoundException{
-			if (ctg1==ctg2){
+		public void close() throws IOException{
+			if (ctg1 == ctg2){
+				file1.createNewFile();
 				out1 = new PrintStream(file1);
 			} else {
+				file1.createNewFile();
+				file2.createNewFile();
 				out1 = new PrintStream(file1);
 				out2 = new PrintStream(file2);
 			}
 			Iterator<ReadPair> it = reads.iterator();
-			ReadPair pair = null;
 			while(it.hasNext())
 				print(it.next());
 			
@@ -556,11 +587,22 @@ public class FISHInputExporter {
 		}
 
 		
-		public void addMatchFile(Set<MatchFile> mfiles){
+		public Set<MatchFile> getMatchFiles(){
+			Set<MatchFile> mfiles = new TreeSet<MatchFile>();
 			mfiles.add(new MatchFile(ctg1, ctg2, file1));
 			if (!ctg1.equals(ctg2))
 				mfiles.add(new MatchFile(ctg2, ctg1, file2));
+			return mfiles;
 		}
+
+		@Override
+		public int compareTo(PrintStreamPair arg0) {
+			if (this.ctg1.getRank() - arg0.ctg1.getRank() == 0){
+				return this.ctg2.getRank() - arg0.ctg2.getRank();
+			} else {
+				return this.ctg1.getRank() - arg0.ctg1.getRank();
+			}
+		}	
 	}
 	
 	static class MatchFile implements Comparable<MatchFile>{
@@ -575,7 +617,6 @@ public class FISHInputExporter {
 		}
 		
 		public String toString(){ 
-//			return ctg1.getRank()+"\t"+ctg2.getRank()+"\t"+file.getParentFile().getName()+"/"+file.getName();
 			return ctg1.getRank()+"\t"+ctg2.getRank()+"\t"+file.getAbsolutePath();
 		}
 		

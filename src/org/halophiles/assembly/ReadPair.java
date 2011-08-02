@@ -84,6 +84,9 @@ public class ReadPair{
 				qual1 = qual;
 			}
 			paired = true;
+			if (!ctg1.equals(ctg2)){
+				System.out.print("");
+			}
 			return 2;
 		} else {
 			return -1;
