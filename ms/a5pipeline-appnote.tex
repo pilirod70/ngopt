@@ -5,7 +5,7 @@
 \begin{document}
 \firstpage{1}
 
-\title[a5]{a5}
+\title[a5]{A User-friendly Pipeline for De Novo Genome Assembly}
 \author[ChangeMe \textit{et~al}]{Aaron Darling\,$^{1}$\footnote{to whom correspondence should be addressed}, Andrew Tritt\,$^{1}$ Jonathan A. Eisen\,$^{1,2,3}$ and Marc T. Facciotti\,$^{1,4}$}
 \address{$^{1}$Genome Center, $^{2}$ Dept. of Evolution and Ecology, $^{3}$ Medical Microbiology and Immunology, 
 $^{4}$ Biomedical Engineering, University of California-Davis, Davis, CA 95616.}
@@ -23,21 +23,24 @@ blahblah
 \section{Availability:}
 GPL source code and a usage tutorial is at \href{http://ngopt.googlecode.com}{http://ngopt.googlecode.com}
 
-\section{Contact:} \href{blahblah}{blahblah}
+\section{Contact:} \href{rabid apes}{}
 \end{abstract}
 
 \section{Introduction}
 Despite many efforts to solve the problem of genome assembly, the task still remains non-trivial. 
 The task of de novo genome assembly involves piecing together long sequences from many short sequences.
-Short sequences are often highly erroneous and long sequences usually contain repetitive elements.
+These short sequences are often highly erroneous and, target long sequences often contain repetitive 
+elements. 
 
 This difficulty of this problem presents itself in two forms: 1) inherent problems in the data being 
 analyzed and 2) the broad scope of available software for performing the task. The first pertains
 mainly to software developers and bionformaticians and will not be the focus of this work. The 
 second form of difficulty affects end user biologists.  
 
-De novo genome assembly involves many steps. The two main steps are contiging and scaffolding.
-In addition to these two steps,  
+De novo genome assembly involves many steps. In addition to contiging and scaffolding,
+there is error correction and quality control. There's a lot of software for 
+each of these stages, and it is really hard to choose one. If you've chosen one, then 
+you have to figure out how to use  
 
 
 Rapid growth of high throughput DNA sequence techonologies has made sequence 
@@ -113,9 +116,9 @@ Intact CDS & 93.2\% & 89.4\% & 97.0\% & 97.3\% \\
 
 
 \begin{figure}[t]
-\includegraphics[width=3.5in]{mauve_basecall_bias.eps}
+\includegraphics[width=3.5in]{a5pipeline-diagram.pdf}
 \vspace{-1cm}
-\caption{Biased errors in the base calling of each assembly. Errors are not uniformly random in any of the three assemblies. See Supplementary Material for more details.}\label{fig:02}
+\caption{Diagram of pipeline. }\label{fig:01}
 \end{figure}
 
 \begin{figure}[t]
@@ -124,7 +127,7 @@ Intact CDS & 93.2\% & 89.4\% & 97.0\% & 97.3\% \\
 \caption{\textbf{Left:} Topology of misassemblies in de novo genome assemblies. Orange and black lines represent paired read 
 connections. \textbf{Right:} Plot of points of connections by paired reads between Contig X and Contig Y. Vertical and horizontal 
 dashed lines represent locations of misassemblies in Contig X and Contig Y, repsectively. The gray circle represents the string of points
-that is identified using FISH. Orange and black points correspond to orange and black lines on left.}\label{fig:01}
+that is identified using FISH. Orange and black points correspond to orange and black lines on left.}\label{fig:02}
 \end{figure}
 
 
