@@ -1,4 +1,11 @@
 #!/usr/bin/env perl
+#
+# a5 pipeline
+# (c) 2011 Andrew Tritt and Aaron Darling
+# This is free software licensed under the GPL
+#
+# Usage: a5_pipeline.pl <library file> <output base>
+#
 use strict;
 use warnings;
 use File::Basename;
