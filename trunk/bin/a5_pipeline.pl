@@ -207,7 +207,7 @@ sub idba_assemble {
 	my $maxrdlen = shift;
 	$maxrdlen = 90 if $maxrdlen > 90;	# idba seems to break if the max k gets too big
 	my $idba_cmd = "$DIR/idba -r $outbase.clean.fa -o $outbase --mink 29 --maxk $maxrdlen";
-	print STDERR $idba_cmd."\n";
+	print STDERR "[a5] $idba_cmd\n";
 	`$idba_cmd > idba.out`;
 	die "[a5] Error building contigs with IDBA\n" if ($? != 0);
 	`gzip -f $outbase.clean.fa`;
