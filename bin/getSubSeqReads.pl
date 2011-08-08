@@ -21,8 +21,34 @@ for my $lib (keys %libs) {
 		`bwa aln $reffile $fq1 > $base.$lib.p1.sai`;
 		my $fq2 = shift @lib_files;
 		`bwa aln $reffile $fq2 > $base.$lib.p2.sai`;
-		`bwa sampe $reffile $base.$lib.p1.sai $base.$lib.p2.sai $fq1 $fq2 > $base.$lib.pe.sam`;
-		`extract_mapped_w_mates.pl $base.$lib.pe.sam > $base.$lib.16S.fasta`;
+		#`bwa sampe $reffile $base.$lib.p1.sai $base.$lib.p2.sai $fq1 $fq2 > $base.$lib.pe.sam`;
+		#`extract_mapped_w_mates.pl $base.$lib.pe.sam > $base.$lib.16S.sam`;
+		my %reads = ();
+		open(IN,"bwa sampe $reffile $base.$lib.p1.sai $base.$lib.p2.sai $fq1 $fq2 |");
+		open(SAM,">$base.$lib.16S.sam");
+		open(SAM,">$base.$lib.16S.sam");
+		open(FQ,">$base.$lib.16S.fastq");
+		while (<IN>){
+			chomp;
+			if ($_ =~ m/^@/) {
+				print SAM $_."\n";
+				next;
+			}
+			my @ar = split (/\t/, $_);
+			if (defined($reads{$ar[0]})){
+				my $r1 = $reads{$ar[0]};
+				if ($r1->[5] =~ m/.*M.*/ || $ar[5] =~ m/.*M.*/){
+					print SAM join("\t",@$r1)."\n".join("\t",@ar)."\n";
+					print FQ "@".$r1->[0]."\n".$r1->[9]."\n+".$r1->[0]."\n".$r1->[10]."\n";
+					print FQ "@".$ar[0]."\n".$ar[9]."\n+".$ar[0]."\n".$ar[10]."\n";
+				} 
+				delete($reads{$ar[0]});
+			} else {
+				$reads{$ar[0]} = \@ar;
+			}
+		}		
+		close SAM;
+		close FQ;
 	}
 }
 
@@ -42,10 +68,6 @@ sub read_lib_file {
 				}
 			} 
 			$lib_count++;
-		} elsif ($_ =~ m/shuf=([\w\/\-\.]+)/) { 
-			my ($fq1, $fq2) = split_shuf($1,"$base.lib$lib_count");
-			$hash{"p1"} = $fq1;
-			$hash{"p2"} = $fq2;
 		} elsif ($_ =~ m/(p[1,2])=([\w\/\-\.]+)/) { 
 			$hash{$1} = $2;
 		} elsif ($_ =~ m/up=([\w\/\-\.]+)/) { 

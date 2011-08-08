@@ -21,9 +21,7 @@ if (@ARGV==3) {
 my $libfile = $ARGV[0];
 my $outbase = $ARGV[1];
 
-
 my $DIR = dirname(abs_path($0));
-
 my %LIBS = read_lib_file($libfile);
 die "[a5] No libraries found in $libfile\n" unless(keys %LIBS);
 print "[a5] Found ".scalar(keys %LIBS)." libraries\n";
@@ -316,14 +314,17 @@ sub fish_break_misasms {
 	my $fq1 = shift;
 	my $fq2 = shift;
 	my $outbase = shift;
+	print STDERR "[a5] Exporting FISH input for $outbase\n";
 	my $sai = "$outbase.sai";
 	my $sam = "$outbase.sam";
+#	print STDERR "[a5] Attempting to run bwa from $DIR\n";	
 	`$DIR/bwa index -a is $ctgs > $outbase.index.out`;
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
-	my $cmd="java -Xmx3500m -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out";
-	print STDERR "[a5] $cmd\n"; 
+	my $cmd="java -Xmx7000m -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out";
+	#print STDERR "[a5] $cmd\n"; 
 	`$cmd`;
+	`gzip $sam`;
 	`$DIR/fish -off -f $outbase.control.txt -b $outbase.blocks.txt > $outbase.fish.out`;
 	die "[a5] Error getting blocks with FISH for $outbase\n" if ($? != 0);
 	`$DIR/break_misassemblies.pl $outbase.blocks.txt contig_labels.txt $ctgs > $outbase.broken.fasta 2> $outbase.break.out`;
