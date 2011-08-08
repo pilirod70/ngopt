@@ -143,7 +143,7 @@ sub read_lib_file {
 		}
 	} 
 	for my $key (sort keys %hash){
-		push(@{$libs{"lib$lib_count"}},$hash{$key});
+		push(@{$libs{"raw$lib_count"}},$hash{$key});
 	}
 	return %libs;
 }
@@ -241,14 +241,13 @@ sub scaffold_sspace {
 			my $ins = shift @lib_files;
 			my $fq1 = shift @lib_files;
 			my $fq2 = shift @lib_files;
-			my ($ins_mean, $ins_err) = get_insert($fq1,$fq2,$outbase,$lib,$curr_ctgs);
-			if ($ins_mean == -1) {
+			my ($ins_mean, $ins_err, $outtie) = get_insert($fq1,$fq2,$outbase,$lib,$curr_ctgs);
+			if ($ins_mean < 0) {
 				$ins_mean = $ins;
 				$ins_err = 0.7;
 			}
+			
 			$min_insert_size = $ins_mean if($min_insert_size == -1 || $min_insert_size > $ins_mean);
-			my $outtie = 0;
-			$outtie = 1 if $ins_mean > 1500;	# assume that anything > 1500 used mate-pairing
 			push (@library_file, "$lib $fq1 $fq2 $ins_mean $ins_err $outtie\n");
 		}
 		# if we have one file left, treat it as unpaired. 
@@ -260,6 +259,8 @@ sub scaffold_sspace {
 	my $genome_size = get_genome_size($curr_ctgs);
 	print STDERR "[a5] Total contig length $genome_size\n";
 	my $libraryI=1;
+	my @curr_lib_file = ();
+	my $curr_lib = "";
 	open( LIBRARY, ">library_$libraryI.txt" );
 	my $prev_ins = -1;
 	my $prev_reads = "";
@@ -268,24 +269,71 @@ sub scaffold_sspace {
 		# if we've hit a substantially different insert size, do a separate
 		# round of scaffolding
 		my $cur_ins = (split(' ',$line))[3];
-		if($prev_ins > 0 && ($prev_ins * 2) < $cur_ins){
-			close LIBRARY;
+		if($prev_ins > 0 && abs(log($prev_ins)-log($cur_ins)) > 0.1){
+			prep_libs_sspace(\@curr_lib_file,$libraryI,$outbase,$curr_ctgs);
 			my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
 			print STDERR "[a5] Insert $prev_ins, expected links $exp_link\n";
 			$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI, $curr_ctgs);
 			$libraryI++;
-			open( LIBRARY, ">library_$libraryI.txt" );
+			#open( LIBRARY, ">library_$libraryI.txt" );
+			@curr_lib_file = ();
+			$curr_lib = "";
 		}
 		$prev_reads = (split(' ',$line))[1];
 		$prev_ins = $cur_ins;
-		print LIBRARY $line;	
+		push (@curr_lib_file,$line);
+		$curr_lib .= (split(' ',$line))[0];
+#		print LIBRARY $line;	
 	}
-	close LIBRARY;
+	prep_libs_sspace(\@curr_lib_file,$libraryI,$outbase,$curr_lib,$curr_ctgs);
 	my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
 	print STDERR "[a5] Insert $prev_ins, expected links $exp_link\n";
 	my $fin_scafs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI,$curr_ctgs);
+
 	`mv $fin_scafs $outbase.sspace.final.scaffolds.fasta`;
 	return "$outbase.sspace.final.scaffolds.fasta";
+}
+
+sub prep_libs_sspace {
+	my $curr_lib_file = shift;
+	my $libraryI = shift;
+	my $outbase = shift;
+	my $curr_lib = shift;
+	my $curr_ctgs = shift;
+	my ($fq1, $fq2);
+	if (scalar(@$curr_lib_file) > 1) {
+		($fq1, $fq2) = merge_libraries($curr_lib_file,$curr_lib);
+	} else {
+		($fq1, $fq2) = (split(' ',$curr_lib_file->[0]))[1,2];
+	}
+	my ($ins_mean, $ins_err, $outtie) = get_insert($fq1,$fq2,$outbase,$curr_lib,$curr_ctgs);
+	$ins_mean = abs($ins_mean);
+	$ins_err = abs($ins_err);
+	open( LIBRARY, ">library_$libraryI.txt" );
+	print LIBRARY "$curr_lib $fq1 $fq2 $ins_mean $ins_err $outtie\n";
+	close LIBRARY;
+}
+
+sub merge_libraries {
+	my $curr_lib_file = shift;
+	my $curr_lib = shift;
+	my $fq1 = "$curr_lib\_p1.fastq";
+	my $fq2 = "$curr_lib\_p2.fastq";
+	open(my $fq1h,">$fq1");
+	open(my $fq2h,">$fq2");
+	# merge files for scaffolding, reverse complementing as necessary
+	print STDERR "[a5] Merging libraries";
+	for my $sublib (@$curr_lib_file){
+		my @ar  = split(' ',$sublib);
+		print STDERR " $sublib";
+		open(my $fq,"<$ar[1]");
+		pipe_fastq($fq,$fq1h,$ar[5]);
+		open($fq,"<$ar[2]");
+		pipe_fastq($fq,$fq2h,$ar[5]);
+	}	
+	close $fq1h;
+	close $fq2h;
+	return ($fq1, $fq2);
 }
 
 sub break_all_misasms {
@@ -331,6 +379,31 @@ sub fish_break_misasms {
 	die "[a5] Error getting breaking contigs after running FISH\n" if ($? != 0);
 	#`rm $outbase.blocks.txt contig_labels.txt fish.* get_fish_input.* break_misasm.err $sam $sai`;
 	return "$outbase.broken.fasta";
+}
+
+sub pipe_fastq {
+	my $from = shift;
+	my $to = shift;
+	my $rc = shift;
+	while (my $line = <$from>) {
+		print $to $line;
+		$line = <$from>;
+		if ($rc){
+			chomp $line;
+			$line =~ tr/ACGTacgt/TGCAtgca/; # complement
+			$line = reverse($line);         # reverse
+			print $to $line."\n";
+			print $to $from->getline;
+			$line = <$from>;
+			chomp $line;
+			$line = reverse($line);         # reverse
+			print $to $line."\n";
+		} else {
+			print $to $from->getline;
+			print $to $from->getline;
+			print $to $from->getline;
+		}
+	}
 }
 
 # calculate the expected number of read pairs to span a point in the assembly
@@ -445,10 +518,69 @@ sub get_insert($$$$$) {
 		$ins_error =~ s/0+$//g;
 	} else {
 		print STDERR "[a5] Discarding estimate. Not enough data points: $ins_n\n";
-		$ins_mean = -1;
-		$ins_error = 0;
+		$ins_mean *= -1; 
+		$ins_error *= -1;
 	}
-	return ($ins_mean, $ins_error);
+	my $orient = get_orientation("$outbase-pe.sam");
+	return ($ins_mean, $ins_error, $orient);
+}
+
+sub get_orientation {
+	my $samfile = shift;
+	open(SAM,"<$samfile");
+	my %reads = ();
+	my $in = 0;
+	my $out = 0;
+	while(<SAM>){
+		next if ($_ =~ /^@/);
+		my @r1 = split /\t/;
+		# skip this read pair if either the mate or the query is unmapped
+		next if (get_bit($r1[4],2));
+		next if (get_bit($r1[4],3));
+		if (defined($reads{$r1[0]})){
+			my $r2 = delete($reads{$r1[0]});
+			next unless($r1[2] eq $r2->[2]);
+			if ($r1[3] < $r2->[3]){
+				my $s1 = get_bit($r1[1],4);
+				my $s2 = get_bit($r2->[1],4);
+				# outie orientation if upstream read maps to reverse strand
+				if($s1 && !$s2){
+					$out++;
+				} elsif (!$s1 && $s2){
+					$in++;
+				}
+			} else {
+				my $s1 = get_bit($r1[1],4);
+				my $s2 = get_bit($r2->[1],4);
+				# outie orientation if upstream read maps to reverse strand
+				if(!$s1 && $s2){
+					$out++;
+				} elsif ($s1 && !$s2){
+					$in++;
+				}
+			}
+		} else {
+			$reads{$r1[0]} = \@r1;
+		}
+	}
+	if ($in < $out){
+		return 1;
+	} else {
+		return 0;
+	}	
+}
+
+sub get_bit {
+	my $mod = 0;
+	my $flag = shift;
+	my $dig = shift;
+	my $i = 0;
+	while($flag != 0){
+		$mod = $flag % 2;
+		$flag = int($flag/2);
+		return $mod if ($dig == $i); 
+	}
+	return 0;
 }
 
 sub get_rdlen($$){
