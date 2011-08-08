@@ -1,8 +1,6 @@
 package org.halophiles.assembly.qc;
 
-import java.util.List;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.text.NumberFormat;
@@ -13,6 +11,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -45,8 +44,12 @@ public class FISHInputExporter {
 			SAMFileParser sfp = new SAMFileParser(args[0]);
 			String base = args[1];
 			File outdir = new File(System.getProperty("user.dir"));
+
+			System.out.println("Found "+sfp.getNumContigs()+" contigs.");
+			System.out.println("Found "+sfp.getNumReads()+" total reads and "+sfp.getNumPairs()+" read-pairs.");
 			
 			Map<String,ReadPair> reads = new HashMap<String,ReadPair>();
+			System.out.println("Filtering duplicate connections...");
 			Set<ReadPair> uniq = new TreeSet<ReadPair>(new Comparator<ReadPair>(){
 				public int compare(ReadPair arg0, ReadPair arg1) {
 					if (arg0.ctg1.equals(arg1.ctg1)){
@@ -65,11 +68,8 @@ public class FISHInputExporter {
 				}
 			});
 			Iterator<ReadPair> rpIt = sfp.getReadPairs();
-			System.out.println("Filtering duplicate connections...");
 			while(rpIt.hasNext()){
 				ReadPair tmp = rpIt.next();
-				if (tmp.hdr.equals("A803WTABXX:1:1:12497:1415"))
-					System.out.print("");
 				if (!tmp.paired) 
 					continue;
 				if (tmp.ctg1.equals(tmp.ctg2) && tmp.getInsert() < MINQUAL)
@@ -78,8 +78,6 @@ public class FISHInputExporter {
 				if(uniq.add(tmp))
 					reads.put(tmp.hdr, tmp);
 			}
-			System.out.println("Found "+sfp.getNumContigs()+" contigs.");
-			System.out.println("Found "+sfp.getNumReads()+" total reads and "+sfp.getNumPairs()+" read-pairs.");
 			if (reads.size() <= 0) {
 				System.err.println("No paired reads found. Cannot generate match files for running FISH misassembly detection.");
 				System.exit(-1);
@@ -87,13 +85,13 @@ public class FISHInputExporter {
 			File insFile = new File(outdir, base+".ins_size_unfilt.txt");
 			insFile.createNewFile();
 			PrintStream insOut = new PrintStream(insFile);
-			exportInsertSize(reads, insOut);
+			ReadPair.exportInsertSize(reads.values(), insOut);
 			insOut.close();
-			
+	/*		
 			filterShadowLibrary(reads);
 			System.out.print("Estimating insert size... ");
 			int nSd = 3;
-			double[] ins = estimateInsertSize(reads);
+			double[] ins = ReadPair.estimateInsertSize(reads.values());
 			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
 			if (ins[1] > ins[0]){
 				System.out.print("Insert sizes are overdispersed. Discarding upper and lower 10 percent and recomputing mean... ");
@@ -106,14 +104,21 @@ public class FISHInputExporter {
 			filterDiagReads(reads,ins,nSd);
 			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
 			
+	*/
+			System.out.println("Filtering proper connections... ");
+			int before = reads.size();
+			filteProperConnections(reads);
+			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
+			
 			System.out.print("Filtering tandem connections... ");
 			before = reads.size();
 			filterTandemConnections(reads);
 			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
+			
 			insFile = new File(outdir,base+".ins_size_filt.txt");
 			insFile.createNewFile();
 			insOut = new PrintStream(insFile);
-			exportInsertSize(reads, insOut);
+			ReadPair.exportInsertSize(reads.values(), insOut);
 			insOut.close();
 			export(reads,outdir,base);
 			
@@ -270,26 +275,7 @@ public class FISHInputExporter {
 	}
 	
 	
-	public static double[] estimateInsertSize(Map<String,ReadPair> reads){
-		Iterator<ReadPair> it = reads.values().iterator();
-		ReadPair tmp = null;
-		Vector<Double> vals = new Vector<Double>();
-		while(it.hasNext()){
-			tmp = it.next();
-			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
-				vals.add(new Double(tmp.getInsert()));
-		}
-		Double[] arD = vals.toArray(new Double[vals.size()]);
-		Arrays.sort(arD);
-		// discard the upper and lower quartiles to prevent any outliers from distorting our estimate
-		double[] dat = new double[arD.length];
-		for (int i = 0; i < dat.length; i++)
-			dat[i] = arD[i];
-		double mean = SummaryStats.mean(dat);
-		double stdev = Math.sqrt(SummaryStats.variance(dat,mean));
-		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
-		return ret;
-	}
+
 	
 	public static double[] estimateInsertSizeIQR(Map<String,ReadPair> reads){
 		Iterator<ReadPair> it = reads.values().iterator();
@@ -358,7 +344,7 @@ public class FISHInputExporter {
 		removeKeys(reads,rm);
 		return reads;
 	}
-	
+	/*
 	public static void filterShadowLibrary(Map<String,ReadPair> reads){
 		Map<String,ReadPair> outies = new HashMap<String, ReadPair>();
 		Map<String,ReadPair> inies = new HashMap<String, ReadPair>();
@@ -383,23 +369,36 @@ public class FISHInputExporter {
 		}
 		double nOut = outies.size();
 		double nIn = inies.size();
+		System.out.println(inies.size()+" innies "+outies.size()+" outies");
 		nOut = nOut/nsyn;
 		nIn = nIn/nsyn;
+		double[] inDat = new double[inies.size()];
+		double[] outDat = new double[outies.size()];
+		it = inies.keySet().iterator();
+		for (int i = 0; i < inDat.length; i++)
+			inDat[i] = reads.get(it.next()).getInsert();
+		it = outies.keySet().iterator();
+		for (int i = 0; i < outDat.length; i++)
+			outDat[i] = reads.get(it.next()).getInsert();
+		double[] inIQR = estimateInsertSizeIQR(inies);
+		double[] outIQR = estimateInsertSizeIQR(outies);
+		double inMean = SummaryStats.mean(inDat);
+		double inSd = Math.sqrt(SummaryStats.variance(inDat, inMean));
+		double outMean = SummaryStats.mean(outDat);
+		double outSd = Math.sqrt(SummaryStats.variance(outDat, outMean));
+		System.out.println("innies: mu="+NF.format(inMean)+" sd="+NF.format(inSd));
+		System.out.println("outies: mu="+NF.format(outMean)+" sd="+NF.format(outSd));
+		System.out.println("IQR:");
+		System.out.println("innies: mu="+NF.format(inIQR[0])+" sd="+NF.format(Math.sqrt(inIQR[1])));
+		System.out.println("outies: mu="+NF.format(outIQR[0])+" sd="+NF.format(Math.sqrt(outIQR[1])));
+		
 		if (nOut > 0.1 && nIn > 0.1){ // we have a shadow library
-			System.out.print("found shadow library. \nFiltering shadow reads... ");
+			System.out.print("Found shadow library. Filtering shadow reads... ");
 			int nRemoved = -1;
-			double[] inDat = new double[inies.size()];
-			double[] outDat = new double[outies.size()];
-			it = inies.keySet().iterator();
-			for (int i = 0; i < inDat.length; i++)
-				inDat[i] = reads.get(it.next()).getInsert();
-			it = outies.keySet().iterator();
-			for (int i = 0; i < outDat.length; i++)
-				outDat[i] = reads.get(it.next()).getInsert();
-			double[] inIQR = estimateInsertSizeIQR(inies);
-			double[] outIQR = estimateInsertSizeIQR(outies);
-			double inSd = Math.sqrt(SummaryStats.variance(inDat, inIQR[0]));
-			double outSd = Math.sqrt(SummaryStats.variance(outDat, outIQR[0]));
+			//double inSd = Math.sqrt(SummaryStats.variance(inDat, inIQR[0]));
+			inSd = Math.sqrt(SummaryStats.variance(inDat, inIQR[0]));
+			//double outSd = Math.sqrt(SummaryStats.variance(outDat, outIQR[0]));
+			outSd = Math.sqrt(SummaryStats.variance(outDat, outIQR[0]));
 			double inCv = inSd/inIQR[0];
 			double outCv = outSd/outIQR[0];
 			if (inIQR[0] > outIQR[0]){
@@ -422,6 +421,64 @@ public class FISHInputExporter {
 			System.out.println(" unable to detect a shadow library.");
 		}
 			
+	}
+	*/
+	@SuppressWarnings("unchecked")
+	private static Collection<ReadPair>[] filteProperConnections(Map<String,ReadPair> reads){
+		int K = 2;
+		Vector<ReadPair> toFilt = new Vector<ReadPair>();
+		Iterator<ReadPair> rpIt = reads.values().iterator();
+		ReadPair tmp = null;
+		while(rpIt.hasNext()){
+			tmp = rpIt.next();
+			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
+				toFilt.add(tmp);
+		}
+		// estimate initial insert size to determine if we should look for shadow library.
+		double[] ins = ReadPair.estimateInsertSize(reads.values());
+		if (ins[0] > 1500){
+			System.out.print("EM-clustering insert sizes with K=3 (mean ins > 1500bp)... ");
+			K = 3;
+		} else {
+			System.out.print("EM-clustering insert sizes with K=2... ");
+		}
+		EMClusterer em = new EMClusterer(toFilt, K);
+		int iters = em.iterate(1000, 0.0001);
+		System.out.println("stopping after "+iters+" iterations.");
+		Collection<ReadPair>[] clusters = new Vector[K];
+		em.getClusters().toArray(clusters);
+		double[][] allIns = new double[K][3];
+		for (int i = 0; i < clusters.length; i++){
+			allIns[i][0] = i;
+			ins = ReadPair.estimateInsertSize(clusters[i]);
+			allIns[i][1] = ins[0];
+			allIns[i][2] = ins[1];
+		}
+		Arrays.sort(allIns, new Comparator<double[]>(){
+			public int compare(double[] o1, double[] o2) {
+				return (int) (Math.round(o1[1]) - Math.round(o2[1]));
+			}
+		});
+		Vector<String> toRm = new Vector<String>();
+		Map<String,ReadPair> map = null;
+		ReadPair tmpRp  = null;
+		for (int i = 0; i < allIns.length; i++){
+			System.out.println("cluster"+i+": mu="+NF.format(allIns[i][1])+" sd="+NF.format(allIns[i][2]));
+			// if insert size distribution is under dispersed, filter tails so we don't throw them out
+			if (allIns[i][2]/allIns[i][1] <= 1){
+				map = new HashMap<String,ReadPair>();
+				for (Iterator<ReadPair> it = clusters[(int)allIns[i][0]].iterator(); it.hasNext();){
+					tmpRp = it.next();
+					map.put(tmpRp.hdr, tmpRp);
+				}
+				ins[0] = allIns[i][1];
+				ins[1] = allIns[i][2];
+				filterOffDiagReads(map,ins,3);
+				toRm.addAll(map.keySet());
+			} 
+		}
+		removeKeys(reads, toRm);
+		return clusters;
 	}
 	
 	private static void filterTandemConnections(Map<String,ReadPair> reads){
@@ -467,7 +524,7 @@ public class FISHInputExporter {
 		}
 	}
 	
-	private static List<ReadPair> getReadPairs(Map<String,ReadPair> reads, Contig ctg){
+	private static Collection<ReadPair> getReadPairs(Map<String,ReadPair> reads, Contig ctg){
 		Iterator<String> it = reads.keySet().iterator();
 		Vector<ReadPair> ret = new Vector<ReadPair>();
 		ReadPair pair = null;
@@ -494,16 +551,6 @@ public class FISHInputExporter {
 			reads.remove(it.next());
 	}
 
-	public static void exportInsertSize(Map<String,ReadPair> reads, PrintStream out) {
-		Iterator<ReadPair> it = reads.values().iterator();
-		ReadPair tmp = null;
-		while(it.hasNext()){
-			tmp = it.next();
-			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
-				out.println(tmp.getInsert());
-		}
-	}
-	
 	private static class PrintStreamPair implements Comparable<PrintStreamPair>{
 		private File fishDir;
 		// a PrintStream and File for both directions

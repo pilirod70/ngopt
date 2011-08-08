@@ -1,5 +1,15 @@
 package org.halophiles.assembly;
 
+import java.io.PrintStream;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.Vector;
+
+import org.halophiles.tools.SummaryStats;
+
 public class ReadPair{
 	public final String hdr;
 	public int pos1 = 0;
@@ -115,6 +125,37 @@ public class ReadPair{
 			ret = hdr+"/1\t"+(rev1?"-1":"1")+"\t"+ctg1.name+"\t"+pos1+"\t"+cig1+"\n";
 		if (pos2 != 0)
 			ret += hdr+"/2\t"+(rev2?"-1":"1")+"\t"+ctg2.name+"\t"+pos2+"\t"+cig2;
+		return ret;
+	}
+	
+	public static void exportInsertSize(Collection<ReadPair> reads, PrintStream out) {
+		Iterator<ReadPair> it = reads.iterator();
+		ReadPair tmp = null;
+		while(it.hasNext()){
+			tmp = it.next();
+			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
+				out.println(tmp.getInsert()+"\t"+(tmp.inward?1:-1));
+		}
+	}
+	
+	public static double[] estimateInsertSize(Collection<ReadPair> reads){
+		Iterator<ReadPair> it = reads.iterator();
+		ReadPair tmp = null;
+		Vector<Double> vals = new Vector<Double>();
+		while(it.hasNext()){
+			tmp = it.next();
+			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
+				vals.add(new Double(tmp.getInsert()));
+		}
+		Double[] arD = vals.toArray(new Double[vals.size()]);
+		Arrays.sort(arD);
+		// discard the upper and lower quartiles to prevent any outliers from distorting our estimate
+		double[] dat = new double[arD.length];
+		for (int i = 0; i < dat.length; i++)
+			dat[i] = arD[i];
+		double mean = SummaryStats.mean(dat);
+		double stdev = Math.sqrt(SummaryStats.variance(dat,mean));
+		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
 		return ret;
 	}
 	
