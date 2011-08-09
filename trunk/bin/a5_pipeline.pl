@@ -248,7 +248,7 @@ sub scaffold_sspace {
 			}
 			
 			$min_insert_size = $ins_mean if($min_insert_size == -1 || $min_insert_size > $ins_mean);
-			push (@library_file, "$lib $fq1 $fq2 $ins_mean $ins_err $outtie\n");
+			push (@library_file, "$lib $fq1 $fq2 $ins_mean $ins_err $outtie");
 		}
 		# if we have one file left, treat it as unpaired. 
 		if (scalar(@lib_files) == 1){
@@ -272,8 +272,8 @@ sub scaffold_sspace {
 		if($prev_ins > 0 && abs(log($prev_ins)-log($cur_ins)) > 0.1){
 			# scaffold with the previous insert....
 			prep_libs_sspace(\@curr_lib_file,$libraryI,$outbase,$curr_lib,$curr_ctgs);
-			my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
-			print STDERR "[a5] Insert $prev_ins, expected links $exp_link\n";
+			my ($exp_link, $cov) = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
+			print STDERR "[a5] Insert $prev_ins, coverage $cov, expected links $exp_link\n";
 			$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI, $curr_ctgs);
 			# now move on to the next library...
 			$libraryI++;
@@ -288,8 +288,8 @@ sub scaffold_sspace {
 #		print LIBRARY $line;	
 	}
 	prep_libs_sspace(\@curr_lib_file,$libraryI,$outbase,$curr_lib,$curr_ctgs);
-	my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
-	print STDERR "[a5] Insert $prev_ins, expected links $exp_link\n";
+	my ($exp_link, $cov) = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
+	print STDERR "[a5] Insert $prev_ins, coverage $cov, expected links $exp_link\n";
 	my $fin_scafs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI,$curr_ctgs);
 
 	`mv $fin_scafs $outbase.sspace.final.scaffolds.fasta`;
@@ -364,7 +364,7 @@ sub fish_break_misasms {
 	my $fq1 = shift;
 	my $fq2 = shift;
 	my $outbase = shift;
-	print STDERR "[a5] Exporting FISH input for $outbase\n";
+	print STDERR "[a5] Breaking misassemblies with $outbase\n";
 	my $sai = "$outbase.sai";
 	my $sam = "$outbase.sam";
 #	print STDERR "[a5] Attempting to run bwa from $DIR\n";	
@@ -372,14 +372,18 @@ sub fish_break_misasms {
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
 	`rm $ctgs.*`;
-	my $cmd="java -Xmx7000m -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out";
-	#print STDERR "[a5] $cmd\n"; 
+	my $cmd = "java -Xmx7000m -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out\n";
+	print STDERR "[a5] $cmd\n"; 
 	`$cmd`;
 	`gzip $sam`;
-	print STDERR "[a5] Running FISH\n";
-	`$DIR/fish -off -f $outbase.control.txt -b $outbase.blocks.txt > $outbase.fish.out`;
+	$cmd = "$DIR/fish -off -f $outbase.control.txt -b $outbase.blocks.txt > $outbase.fish.out";
+	print STDERR "[a5] $cmd\n"; 
+	`$cmd`;
 	die "[a5] Error getting blocks with FISH for $outbase\n" if ($? != 0);
-	`$DIR/break_misassemblies.pl $outbase.blocks.txt contig_labels.txt $ctgs > $outbase.broken.fasta 2> $outbase.break.out`;
+
+	$cmd = "$DIR/break_misassemblies.pl $outbase.blocks.txt contig_labels.txt $ctgs > $outbase.broken.fasta 2> $outbase.break.out";
+	print STDERR "[a5] $cmd\n"; 
+	`$cmd`;
 	die "[a5] Error getting breaking contigs after running FISH\n" if ($? != 0);
 	#`rm $outbase.blocks.txt contig_labels.txt fish.* get_fish_input.* break_misasm.err $sam $sai`;
 	return "$outbase.broken.fasta";
@@ -397,15 +401,15 @@ sub pipe_fastq {
 			$line =~ tr/ACGTacgt/TGCAtgca/; # complement
 			$line = reverse($line);         # reverse
 			print $to $line."\n";
-			print $to $from->getline();
+			print $to readline($from);
 			$line = <$from>;
 			chomp $line;
 			$line = reverse($line);         # reverse
 			print $to $line."\n";
 		} else {
-			print $to $from->getline();
-			print $to $from->getline();
-			print $to $from->getline();
+			print $to readline($from);
+			print $to readline($from);
+			print $to readline($from);
 		}
 	}
 }
@@ -424,9 +428,8 @@ sub calc_explinks {
 	}
 	$read_count /= 4;
 	my $cov = $maxrdlen * $read_count / $genome_size;
-	print STDERR "[a5] Lib $read_file coverage $cov\n";
 	my $exp_link = $cov * $ins_len / $maxrdlen;
-	return $exp_link;
+	return ($exp_link, $cov);
 }
 
 sub run_sspace {
