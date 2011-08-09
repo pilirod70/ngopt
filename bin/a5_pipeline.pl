@@ -270,10 +270,12 @@ sub scaffold_sspace {
 		# round of scaffolding
 		my $cur_ins = (split(' ',$line))[3];
 		if($prev_ins > 0 && abs(log($prev_ins)-log($cur_ins)) > 0.1){
-			prep_libs_sspace(\@curr_lib_file,$libraryI,$outbase,$curr_ctgs);
+			# scaffold with the previous insert....
+			prep_libs_sspace(\@curr_lib_file,$libraryI,$outbase,$curr_lib,$curr_ctgs);
 			my $exp_link = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
 			print STDERR "[a5] Insert $prev_ins, expected links $exp_link\n";
 			$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI, $curr_ctgs);
+			# now move on to the next library...
 			$libraryI++;
 			#open( LIBRARY, ">library_$libraryI.txt" );
 			@curr_lib_file = ();
