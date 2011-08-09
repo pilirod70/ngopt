@@ -395,15 +395,15 @@ sub pipe_fastq {
 			$line =~ tr/ACGTacgt/TGCAtgca/; # complement
 			$line = reverse($line);         # reverse
 			print $to $line."\n";
-			print $to $from->getline;
+			print $to $from->getline();
 			$line = <$from>;
 			chomp $line;
 			$line = reverse($line);         # reverse
 			print $to $line."\n";
 		} else {
-			print $to $from->getline;
-			print $to $from->getline;
-			print $to $from->getline;
+			print $to $from->getline();
+			print $to $from->getline();
+			print $to $from->getline();
 		}
 	}
 }
