@@ -40,17 +40,17 @@ if ($start <= 1) {
 	`mv $reads $outbase.ec.fastq`;
 } 
 if ($start <= 2) {
-	$ec_reads = "$outbase.ec.fastq";
-	die "[a5_s2] Can't find error corrected reads $ec_reads" unless -f $ec_reads;
-	print "[a5_s2] Building contigs from $ec_reds with IDBA\n";
-	print STDERR "[a5_s2] Building contigs from $ec_reads with IDBA\n";
-	$maxrdlen = fastq_to_fasta($ec_reads,"$outbase.ec.fasta");
-	$ctgs = idba_assemble($outbase, "$outubase.ec.fasta", $maxrdlen); 
+	$reads = "$outbase.ec.fastq";
+	die "[a5_s2] Can't find error corrected reads $reads" unless -f $reads;
+	print "[a5_s2] Building contigs from $reads with IDBA\n";
+	print STDERR "[a5_s2] Building contigs from $reads with IDBA\n";
+	$maxrdlen = fastq_to_fasta($reads,"$outbase.ec.fasta");
+	$ctgs = idba_assemble($outbase, "$outbase.ec.fasta", $maxrdlen); 
 	`mv $ctgs $outbase.contigs.fasta`;
 	
 } 
 if ($start <= 3) {
-	$ctgs = "$outbase.contigs.fasta"
+	$ctgs = "$outbase.contigs.fasta";
 	die "[a5_s3] Can't find starting contigs $ctgs.\n" unless -f $ctgs;
 	print "[a5_s3] Scaffolding contigs from $ctgs with SSPACE\n";
 	print STDERR "[a5_s3] Scaffolding contigs from $ctgs with SSPACE\n";
