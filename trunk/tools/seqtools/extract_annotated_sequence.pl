@@ -90,12 +90,12 @@ while ( my $seq = $in->next_seq() ) {
 						$display .= "|".$feat->end."-".$feat->start;
 						my $start = $feat->start-$downstr > 1 ? $feat->start-$downstr : 1;
 						my $end = $feat->end+$upstr < $seq->length() ? $feat->end+$upstr : $seq->length();
-						$seq->subseq($start,$end);
+						$seq_str = $seq->subseq($start,$end);
 					} else {
 						$display .= "|".$feat->start."-".$feat->end;
 						my $start = $feat->start-$upstr > 1 ? $feat->start-$upstr : 1;
 						my $end = $feat->end+$downstr < $seq->length() ? $feat->end+$downstr : $seq->length();
-						$seq->subseq($start,$end);
+						$seq_str = $seq->subseq($start,$end);
 					}
 					if ($feat->primary_tag eq "CDS" && $translate){
 						@ar = $feat->get_tag_values('translation');
