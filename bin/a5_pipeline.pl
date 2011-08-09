@@ -27,41 +27,52 @@ die "[a5] No libraries found in $libfile\n" unless(keys %LIBS);
 print "[a5] Found ".scalar(keys %LIBS)." libraries\n";
 my $maxrdlen = -1;
 my $scafs;
+my $ctgs;
+my $reads;
 
 print "[a5] Starting pipeline at step $start\n";
 
 if ($start <= 1) {
 	print "[a5] Cleaning reads with SGA\n";
 	print STDERR "[a5] Cleaning reads with SGA\n";
-	sga_clean($outbase, \%LIBS);
-	tagdust($outbase, "$outbase.pp.ec.fa");
+	$reads = sga_clean($outbase, \%LIBS);
+	$reads = tagdust($outbase, $reads);
+	`mv $reads $outbase.ec.fastq`;
 } 
 if ($start <= 2) {
-	print "[a5] Building contigs with IDBA\n";
-	print STDERR "[a5] Building contigs with IDBA\n";
-	$maxrdlen = fastq_to_fasta("$outbase.dusted", "$outbase.clean.fa");
-	idba_assemble($outbase, $maxrdlen); 
+	$ec_reads = "$outbase.ec.fastq";
+	die "[a5_s2] Can't find error corrected reads $ec_reads" unless -f $ec_reads;
+	print "[a5_s2] Building contigs from $ec_reds with IDBA\n";
+	print STDERR "[a5_s2] Building contigs from $ec_reads with IDBA\n";
+	$maxrdlen = fastq_to_fasta($ec_reads,"$outbase.ec.fasta");
+	$ctgs = idba_assemble($outbase, "$outubase.ec.fasta", $maxrdlen); 
+	`mv $ctgs $outbase.contigs.fasta`;
+	
 } 
 if ($start <= 3) {
-	print "[a5] Scaffolding contigs with SSPACE\n";
-	print STDERR "[a5] Scaffolding contigs with SSPACE\n";
-	$scafs = scaffold_sspace($libfile, $outbase, \%LIBS, "$outbase-contig.fa");
-	`mv $scafs $outbase.sspace.scaffolds.fasta`; 
+	$ctgs = "$outbase.contigs.fasta"
+	die "[a5_s3] Can't find starting contigs $ctgs.\n" unless -f $ctgs;
+	print "[a5_s3] Scaffolding contigs from $ctgs with SSPACE\n";
+	print STDERR "[a5_s3] Scaffolding contigs from $ctgs with SSPACE\n";
+	$scafs = scaffold_sspace($libfile, $outbase, \%LIBS, $ctgs);
+	`mv $scafs $outbase.crude.scaffolds.fasta`; 
 } 
 if ($start <= 4) {
-	print "[a5] Detecting and breaking misassemblies with FISH\n";
-	print STDERR "[a5] Detecting and breaking misassemblies with FISH\n";
-	$scafs = "$outbase.sspace.scaffolds.fasta";
+	$scafs = "$outbase.crude.scaffolds.fasta";
+	die "[a5_s4] Can't find starting crude scaffolds $scafs\n" unless -f $scafs;
+	print "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
+	print STDERR "[a5_s4] Detecting and breaking misassemblies in scafs with FISH\n";
 	$scafs = break_all_misasms($scafs,\%LIBS,"$outbase.fish"); 
-	`mv $scafs $outbase.fish.broken.fasta`; 
+	`mv $scafs $outbase.broken.scaffolds.fasta`; 
 } 
 if ($start <= 5) {
-	print "[a5] Scaffolding broken contigs with SSPACE\n";
-	print STDERR "[a5] Scaffolding broken contigs with SSPACE\n";
-	$scafs = "$outbase.fish.broken.fasta"; 
+	$scafs = "$outbase.broken.scaffolds.fasta";
+	die "[a5_s5] Can't find starting broken scaffolds $scafs\n" unless -f $scafs;
+	print "[a5_s5] Scaffolding broken contigs with SSPACE\n";
+	print STDERR "[a5_s5] Scaffolding broken contigs with SSPACE\n";
 	$scafs = scaffold_sspace($libfile,"$outbase.rescaf",\%LIBS,$scafs);
-	`mv $scafs $outbase.a5.final.fasta`;
-	print "[a5] Final assembly in $outbase.a5scafs.fasta\n"; 
+	`mv $scafs $outbase.final.scaffolds.fasta`;
+	print "[a5] Final assembly in $outbase.final.scaffolds.fasta\n"; 
 } 
 
 sub sga_assemble {
@@ -160,8 +171,8 @@ sub fastq_to_fasta {
 	my $fastq = shift;
 	my $fasta = shift;
 	my $maxrdlen = 0;
-	open(FQ,"<$outbase.pp.ec.fa");
-	open(FA,">$outbase.clean.fa");
+	open(FQ,"<$fastq");
+	open(FA,">$fasta");
 	while(my $hdr = <FQ>) {
 		my $seq = <FQ>;
 		my $qhdr = <FQ>;
@@ -201,22 +212,25 @@ sub split_shuf {
 sub tagdust {
 	my $outbase = shift;
 	my $readfile = shift;
-	my $tagdust_cmd = "$DIR/tagdust -o $outbase.dusted $DIR/../adapter.fasta $readfile";
+	my $tagdust_cmd = "$DIR/tagdust -o $outbase.dusted.fq $DIR/../adapter.fasta $readfile";
 	print STDERR "[a5] $tagdust_cmd\n";
 	system($tagdust_cmd);
+	return "$outbase.dusted.fq";
 }
 
 # expects a file called $outbase.clean.fa in the current working directory
 sub idba_assemble {
 	my $outbase = shift;
+	my $reads = shift;
 	my $maxrdlen = shift;
 	$maxrdlen = 90 if $maxrdlen > 90;	# idba seems to break if the max k gets too big
-	my $idba_cmd = "$DIR/idba -r $outbase.clean.fa -o $outbase --mink 29 --maxk $maxrdlen";
+	my $idba_cmd = "$DIR/idba -r $reads -o $outbase --mink 29 --maxk $maxrdlen";
 	print STDERR "[a5] $idba_cmd\n";
 	`$idba_cmd > idba.out`;
 	die "[a5] Error building contigs with IDBA\n" if ($? != 0);
 	`gzip -f $outbase.clean.fa`;
 	`rm $outbase.pp.* $outbase.kmer $outbase.graph`;
+	return "$outbase-contig.fa";
 }
 
 
@@ -277,7 +291,6 @@ sub scaffold_sspace {
 			$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI, $curr_ctgs);
 			# now move on to the next library...
 			$libraryI++;
-			#open( LIBRARY, ">library_$libraryI.txt" );
 			@curr_lib_file = ();
 			$curr_lib = "";
 		}
@@ -285,11 +298,10 @@ sub scaffold_sspace {
 		$prev_ins = $cur_ins;
 		push (@curr_lib_file,$line);
 		$curr_lib .= (split(' ',$line))[0];
-#		print LIBRARY $line;	
 	}
 	prep_libs_sspace(\@curr_lib_file,$libraryI,$outbase,$curr_lib,$curr_ctgs);
 	my ($exp_link, $cov) = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
-	print STDERR "[a5] Insert $prev_ins, coverage $cov, expected links $exp_link\n";
+	print STDERR "[a5] $curr_lib -  Insert $prev_ins, coverage $cov, expected links $exp_link\n";
 	my $fin_scafs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI,$curr_ctgs);
 
 	`mv $fin_scafs $outbase.sspace.final.scaffolds.fasta`;
@@ -510,7 +522,7 @@ sub get_insert($$$$$) {
 			last;
 		} 
 	}
-	`rm $r1fq.sub* $r2fq.sub*`;
+	`rm $r1fq.sub* $r2fq.sub* $ctgs.*`;
 	if ($ins_n > $require_fraction * $estimate_pair_count) {		
 		$ins_error = $ins_sd*6 / $ins_mean;
 		$ins_mean = sprintf("%.0f",$ins_mean);
