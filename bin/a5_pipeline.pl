@@ -371,10 +371,12 @@ sub fish_break_misasms {
 	`$DIR/bwa index -a is $ctgs > $outbase.index.out`;
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
+	`rm $ctgs.*`;
 	my $cmd="java -Xmx7000m -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out";
 	#print STDERR "[a5] $cmd\n"; 
 	`$cmd`;
 	`gzip $sam`;
+	print STDERR "[a5] Running FISH\n";
 	`$DIR/fish -off -f $outbase.control.txt -b $outbase.blocks.txt > $outbase.fish.out`;
 	die "[a5] Error getting blocks with FISH for $outbase\n" if ($? != 0);
 	`$DIR/break_misassemblies.pl $outbase.blocks.txt contig_labels.txt $ctgs > $outbase.broken.fasta 2> $outbase.break.out`;
