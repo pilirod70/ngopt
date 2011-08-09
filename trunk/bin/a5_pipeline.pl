@@ -124,7 +124,7 @@ sub read_lib_file {
 		if ($_ =~ m/\[LIB\]/){
 			if ($lib_count > 0) {
 				for my $key (sort keys %hash){
-					push(@{$libs{"lib$lib_count"}},$hash{$key});
+					push(@{$libs{"raw$lib_count"}},$hash{$key});
 				}
 			} 
 			$lib_count++;
@@ -273,7 +273,7 @@ sub scaffold_sspace {
 			# scaffold with the previous insert....
 			prep_libs_sspace(\@curr_lib_file,$libraryI,$outbase,$curr_lib,$curr_ctgs);
 			my ($exp_link, $cov) = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
-			print STDERR "[a5] Insert $prev_ins, coverage $cov, expected links $exp_link\n";
+			print STDERR "[a5] $curr_lib -  Insert $prev_ins, coverage $cov, expected links $exp_link\n";
 			$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libraryI, $curr_ctgs);
 			# now move on to the next library...
 			$libraryI++;
@@ -498,7 +498,6 @@ sub get_insert($$$$$) {
 	my $ins_mean = 0;
 	my $ins_error = 0;
 	my $min;
-	my $max;
 	my $ins_sd;
 	my $ins_n;
 	my $found = 0;
@@ -509,14 +508,8 @@ sub get_insert($$$$$) {
 			$ins_sd = $3;
 			close SAMPE;
 			last;
-		} elsif ($line =~ m/^\[infer_isize\] low and high boundaries: (\d+) and (\d+) for estimating avg and std$/){
-			$min = $1;
-			$max = $2;
-		}
+		} 
 	}
-#	$min = ($ins_mean - $min)
-#	$max = ($max - $ins_mean);
-#	$ins_error = (($min,$max)[$min < $max])/$ins_mean;
 	`rm $r1fq.sub* $r2fq.sub*`;
 	if ($ins_n > $require_fraction * $estimate_pair_count) {		
 		$ins_error = $ins_sd*6 / $ins_mean;
