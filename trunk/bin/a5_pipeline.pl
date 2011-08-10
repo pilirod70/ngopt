@@ -24,10 +24,10 @@ my $OUTBASE = $ARGV[1];
 my $DIR = dirname(abs_path($0));
 my %RAW_LIBS = read_lib_file($libfile);
 print STDERR "[a5] Found the following libraries:\n";
-for my $lib (keys %RAW_LIBS) {
+for my $lib (sort keys %RAW_LIBS) {
 	my $notfirst = 0;
 	print STDERR "     $lib: ";
-	for my $att (keys %{$RAW_LIBS{$lib}}){
+	for my $att (sort keys %{$RAW_LIBS{$lib}}){
 		print STDERR " $att=".$RAW_LIBS{$lib}{$att};
 	}
 	print STDERR "\n";
@@ -175,17 +175,20 @@ sub read_lib_file {
 	my %libs = ();
 	open(LIB,"<",$libfile);
 	my $lib_count = 0;
-	my %hash = ();
 	my $id = "";
+	my %hash = ();
 	while(<LIB>){
 		chomp;
 		if ($_ =~ m/\[LIB\]/){
 			if ($lib_count > 0) {
-				$id = "raw$lib_count" unless (length($id));
-				$libs{$id} = \%hash;
+				$id = "raw$lib_count" unless (length($id)); # give a generic name unless user has specified one
+				for my $key (keys %hash){
+					$libs{$id}{$key} = $hash{$key};
+					delete($hash{$key});
+				}
 			} 
 			$lib_count++;
-			$id = "";
+			$id = "raw$lib_count";
 		} elsif ($_ =~ m/shuf=([\w\/\-\.]+)/) { 
 			my ($fq1, $fq2) = split_shuf($1,"$OUTBASE.lib$lib_count");
 			$hash{"p1"} = $fq1;
@@ -203,8 +206,10 @@ sub read_lib_file {
 			die "[a5] Unrecognizable line in library file: >$_<\n";
 		}
 	} 
-	$id = "raw$lib_count" unless (length($id));
-	$libs{$id} = \%hash;
+	$id = "raw$lib_count" unless (length($id)); # give a generic name unless user has specified one
+	for my $key (keys %hash){
+		$libs{$id}{$key} = $hash{$key};
+	}
 	return %libs;
 }
 
@@ -536,7 +541,6 @@ sub calc_explinks {
 	my $read_file = shift;
 	my $read_count = 0;
 	my $maxrdlen = -1;
-	print STDERR "\$read_file = $read_file\n";
 	open( READFILE, $read_file );
 	while( my $line = <READFILE> ){
 		$read_count++;

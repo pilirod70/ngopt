@@ -38,6 +38,9 @@ function copy_exdat {
 }
 
 function bundle_clean {
+	if [ -f $findir.tar.gz ]; then
+		rm $findir.tar.gz
+	fi
 	echo "Creating archive"
 	tar -czvf $findir.tar.gz $findir
 	rm -rf $findir

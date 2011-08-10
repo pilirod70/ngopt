@@ -76,7 +76,7 @@ cp $conf .
 # unlock it for others
 rm $LOCKFILE
 
-$pipeline $conf $base > $DEST/$base/stdout.$JOB_ID 2> $DEST/$base/stderr.$JOB_ID
+$pipeline $conf $base > stdout.$JOB_ID 2> stderr.$JOB_ID
 
 rm -rf *.fastq
 
