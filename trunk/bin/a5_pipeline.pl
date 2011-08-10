@@ -50,7 +50,7 @@ if ($start <= 1) {
 	mkdir($WD) if ! -d $WD;
 	$reads = sga_clean($OUTBASE, \%RAW_LIBS);
 	$reads = tagdust($OUTBASE, $reads);
-	`rm $WD/$OUTBASE.pp.*`;
+	`rm $WD/$OUTBASE.pp.* $OUTBASE.pp.*`;
 	`mv $reads $OUTBASE.ec.fastq`;
 } 
 if ($start <= 2) {
@@ -127,19 +127,13 @@ sub sga_clean {
 	# figure out which files we need to pass to SGA
 	my $files = "";
 	for my $lib (keys %libs) {
-		print STDERR "$lib\n";
-#		my %lib_files = %{$libs{$lib}};
-	#	my %lib_files = %{$libs{$lib}};
-#		%lib_files = %{$libs{$lib}};
-
 		if (defined($libs{$lib}{"p1"})) {
-			#shift @libs{$lib};
-			my $fq1 = $libs{$lib}{"p1"}; #shift @libs{$lib};
-			my $fq2 = $libs{$lib}{"p2"}; #shift @libs{$lib};
+			my $fq1 = $libs{$lib}{"p1"}; 
+			my $fq2 = $libs{$lib}{"p2"}; 
 			$files .= "$fq1 $fq2 ";
 		}
 		if (defined($libs{$lib}{"up"})){
-			my $up = $libs{$lib}{"up"}; #shift @libs{$lib};
+			my $up = $libs{$lib}{"up"}; 
 			$files .= "$up ";
 		}
 	}
@@ -179,9 +173,6 @@ sub read_lib_file {
 			if ($lib_count > 0) {
 				$id = "raw$lib_count" unless (length($id));
 				$libs{$id} = \%hash;
-#				for my $key (sort keys %hash){
-#					push($libs{"raw$lib_count"}{,$hash{$key});
-#				}
 			} 
 			$lib_count++;
 			$id = "";
@@ -204,9 +195,6 @@ sub read_lib_file {
 	} 
 	$id = "raw$lib_count" unless (length($id));
 	$libs{$id} = \%hash;
-#	for my $key (sort keys %hash){
-#		push(@{$libs{"raw$lib_count"}},$hash{$key});
-#	}
 	return %libs;
 }
 
@@ -305,15 +293,14 @@ sub scaffold_sspace {
 	my %run_lib;
 	# sort library.txt to so that we scaffold with smaller insert libraries first
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
-		%run_lib = %{$libs{$lib}};
-		my ($exp_link, $cov) = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
+		my ($exp_link, $cov) = calc_explinks( $genome_size, $libs{$lib}{"ins"}, $libs{$lib}{"p1"} ); 
 		print STDERR "[a5] $curr_lib -  Insert $prev_ins, coverage $cov, expected links $exp_link\n";
-		if (defined($run_lib{"up"})) { # run sspace with unpaired library if we have one
-			$curr_ctgs = run_sspace($genome_size, $run_lib{"ins"}, $exp_link, 
-                                      $outbase.".".$run_lib{"id"}, $run_lib{"libfile"}, $curr_ctgs, $run_lib{"up"});
+		if (defined($libs{$lib}{"up"})) { # run sspace with unpaired library if we have one
+			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
+                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $libs{$lib}{"up"});
 		} else {
-			$curr_ctgs = run_sspace($genome_size, $run_lib{"ins"}, $exp_link,
-                                      $outbase.".".$run_lib{"id"}, $run_lib{"libfile"}, $curr_ctgs);
+			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
+                                                  $libs{$lib}{"libfile"}, $curr_ctgs);
 		}
 	}
 
@@ -355,7 +342,7 @@ sub preprocess_libs {
 	my $prev_reads = "";
 	my $libraryI = 1;
 	my %processed = ();
-	my %run_lib;
+	my $run_lib;
 	# sort library.txt to so that we scaffold with smaller insert libraries first
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
 		# if we've hit a substantially different insert size, do a separate
@@ -364,9 +351,9 @@ sub preprocess_libs {
 		if($prev_ins > 0 && abs(log($prev_ins)-log($cur_ins)) > 0.1){
 			# scaffold with the previous insert....
 			# combine libraries if necessary, and return just one library hash
-			%run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
-			$run_lib{"libfile"} = print_libfile("library_$libraryI.txt", %run_lib);
-			$processed{$run_lib{"id"}} = %run_lib;
+			$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
+			$run_lib->{"libfile"} = print_libfile("library_$libraryI.txt", $run_lib);
+			$processed{$run_lib->{"id"}} = $run_lib;
 			# now move on to the next library...
 			$libraryI++;
 			@curr_lib_file = ();
@@ -377,9 +364,9 @@ sub preprocess_libs {
 		push (@curr_lib_file,$libs{$lib});
 		$curr_lib .= $lib;
 	}
-	%run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
-	$run_lib{"libfile"} = print_libfile("library_$libraryI.txt", %run_lib);
-	$processed{$run_lib{"id"}} = %run_lib;
+	$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
+	$run_lib->{"libfile"} = print_libfile("library_$libraryI.txt", $run_lib);
+	$processed{$run_lib->{"id"}} = $run_lib;
 	return %processed;
 }
 
@@ -413,17 +400,18 @@ sub aggregate_libs {
 	$fin_lib{"ins"} = abs($ins_mean);
 	$fin_lib{"err"} = abs($ins_err);	
 	$fin_lib{"nlibs"} = scalar(@$curr_lib_file);
-	return %fin_lib;		
+	return \%fin_lib;		
 }
 
 sub print_libfile {
 	my $file = shift;
-	my $lib = shift;
+	my $libref = shift;
+	print STDERR "$libref\n";
 	#open( LIBRARY, ">$WD/library_$libraryI.txt" );
 	open( LIBRARY, ">$file" );
 	#print LIBRARY "$curr_lib $fq1 $fq2 $ins_mean $ins_err $outtie\n";
-	print LIBRARY $lib->{"id"}." ".$lib->{"p1"}." ".$lib->{"p2"}." ".
-                  $lib->{"ins"}." ".$lib->{"err"}." ".$lib->{"rc"}."\n";
+	print LIBRARY $libref->{"id"}." ".$libref->{"p1"}." ".$libref->{"p2"}." ".
+                  $libref->{"ins"}." ".$libref->{"err"}." ".$libref->{"rc"}."\n";
 	close LIBRARY;
 	return $file;
 }
@@ -537,6 +525,7 @@ sub calc_explinks {
 	my $read_file = shift;
 	my $read_count = 0;
 	my $maxrdlen = -1;
+	print STDERR "\$read_file = $read_file\n";
 	open( READFILE, $read_file );
 	while( my $line = <READFILE> ){
 		$read_count++;
@@ -557,6 +546,7 @@ sub run_sspace {
 	my $input_fa = shift;
 
 	my $sspace_m = int(log2($genome_size)+3.99);
+	$sspace_m = 15 if $sspace_m < 15;
 	my $sspace_n = int(log2($insert_size)*1.25+.99);
 	my $sspace_k = int(log($exp_links)/log(1.4)-9.5);
 	# require at least 2 links to preclude chimeras

@@ -25,13 +25,18 @@
 sub MapReadsToContigs{
     my ($base_name, $contigFile, $singlereads, $library) = @_;
 
-    my $bowtieout = $outdir."/".$base_name . ".$library.bowtieIndex";
+    #my $bowtieout = $outdir."/".$base_name . ".$library.bowtieIndex";
+	# Andrew Tritt 8/10/2011: bowtieout was constructed incorrectly
+    my $bowtieout = $base_name . ".$library.bowtieIndex";
     my $bowbuildpath = "$Bin"."/bowtie/bowtie-build";
     my $bowtiepath = "$Bin"."/bowtie/bowtie";
     $bowtiepath =~ s/ /\\ /g;
     $bowbuildpath  =~ s/ /\\ /g;
-    my $outfileExt =  $outdir."/".$base_name . ".$library.unmapped";
-    my $outfileNotExt =  $outdir."/".$base_name . ".$library.mapped";
+    #my $outfileExt =  $outdir."/".$base_name . ".$library.unmapped";
+    #my $outfileNotExt =  $outdir."/".$base_name . ".$library.mapped";
+	# Andrew Tritt 8/10/2011: outfileExt and outfileNotExt were constructed incorrectly. Same as bowtieout
+    my $outfileExt =  $base_name . ".$library.unmapped";
+    my $outfileNotExt =  $base_name . ".$library.mapped";
     
     die "Contig file ($contigFile) not found. Exiting...\n" if(!(-e $contigFile));
     &printMessage("\n=>".getDate().": Building Bowtie index for contigs ($contigFile)\n");
