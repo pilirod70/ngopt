@@ -95,13 +95,18 @@ if ($start <= 4) {
 } 
 if ($start <= 5) {
 	$scafs = "$OUTBASE.broken.scaffolds.fasta";
-	die "[a5_s5] Can't find starting broken scaffolds $scafs\n" unless -f $scafs;
-	print "[a5_s5] Scaffolding broken contigs with SSPACE\n";
-	print STDERR "[a5_s5] Scaffolding broken contigs with SSPACE\n";
-	$WD="s5";
-	mkdir($WD) if ! -d $WD;
-	$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs);
-	`mv $scafs $OUTBASE.final.scaffolds.fasta`;
+	if (-z $scafs) {
+		print "[a5_s5] No misassemblies found.\n";
+		`cp $OUTBASE.crude.scaffolds.fasta $OUTBASE.final.scaffolds.fasta`;
+	} else {
+		die "[a5_s5] Can't find starting broken scaffolds $scafs\n" unless -f $scafs;
+		print "[a5_s5] Scaffolding broken contigs with SSPACE\n";
+		print STDERR "[a5_s5] Scaffolding broken contigs with SSPACE\n";
+		$WD="s5";
+		mkdir($WD) if ! -d $WD;
+		$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs);
+		`mv $scafs $OUTBASE.final.scaffolds.fasta`;
+	}
 	print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
 } 
 
@@ -251,9 +256,9 @@ sub split_shuf {
 sub tagdust {
 	my $outbase = shift;
 	my $readfile = shift;
-	my $tagdust_cmd = "$DIR/tagdust -s -o $WD/$outbase.dusted.fq $DIR/../adapter.fasta $readfile";
+	my $tagdust_cmd = "tagdust -s -o $WD/$outbase.dusted.fq $DIR/../adapter.fasta $readfile";
 	print STDERR "[a5] $tagdust_cmd\n";
-	system($tagdust_cmd);
+	system("$DIR/$tagdust_cmd");
 	return "$WD/$outbase.dusted.fq";
 }
 
@@ -263,9 +268,9 @@ sub idba_assemble {
 	my $reads = shift;
 	my $maxrdlen = shift;
 	$maxrdlen = 90 if $maxrdlen > 90;	# idba seems to break if the max k gets too big
-	my $idba_cmd = "$DIR/idba -r $reads -o $WD/$outbase --mink 29 --maxk $maxrdlen";
+	my $idba_cmd = "idba -r $reads -o $WD/$outbase --mink 29 --maxk $maxrdlen";
 	print STDERR "[a5] $idba_cmd\n";
-	`$idba_cmd > $WD/idba.out`;
+	`$DIR/$idba_cmd > $WD/idba.out`;
 	die "[a5] Error building contigs with IDBA\n" if ($? != 0);
 	`rm $WD/$outbase.kmer $WD/$outbase.graph`;
 	return "$WD/$outbase-contig.fa";
