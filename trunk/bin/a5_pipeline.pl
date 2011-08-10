@@ -304,15 +304,13 @@ sub scaffold_sspace {
 	print STDERR "[a5] Total contig length $genome_size\n";
 	my $libraryI=1;
 	my @curr_lib_file = ();
-	my $curr_lib = "";
-	my $prev_ins = -1;
+	my $curr_ins = -1;
 	my $prev_reads = "";
 	my %run_lib;
 	# sort library.txt to so that we scaffold with smaller insert libraries first
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
 		my ($exp_link, $cov) = calc_explinks( $genome_size, $libs{$lib}{"ins"}, $libs{$lib}{"p1"} ); 
-		$curr_lib = $libs{$lib}{"id"};
-		print STDERR "[a5] $curr_lib - Insert $prev_ins, coverage $cov, expected links $exp_link\n";
+		printf *STDERR "[a5] %s\: Insert %.0f, coverage %.2f, expected links %.0f\n", $libs{$lib}{"id"}, $libs{$lib}{"ins"}, $cov, $exp_link;
 		if (defined($libs{$lib}{"up"})) { # run sspace with unpaired library if we have one
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
                                                   $libs{$lib}{"libfile"}, $curr_ctgs, $libs{$lib}{"up"});
