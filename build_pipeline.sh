@@ -47,12 +47,11 @@ function bundle_clean {
 }
 
 function reset {
-	if [ ! -d $findir ]; then
-		mkdir $findir
-		mkdir $findir/bin
-	else 
-		rm -rf $findir/*
+	if [ -d $findir ]; then
+		rm -rf $findir
 	fi
+	mkdir $findir
+	mkdir $findir/bin
 }
 
 findir_base="ngopt_a5pipeline"
