@@ -50,7 +50,6 @@ if ($start <= 1) {
 	mkdir($WD) if ! -d $WD;
 	$reads = sga_clean($OUTBASE, \%RAW_LIBS);
 	$reads = tagdust($OUTBASE, $reads);
-	`rm $WD/$OUTBASE.pp.* $OUTBASE.pp.*`;
 	`mv $reads $OUTBASE.ec.fastq`;
 } 
 if ($start <= 2) {
@@ -161,7 +160,10 @@ sub sga_clean {
 	die "[a5] Error indexing reads with SGA\n" if( $? != 0 );
 	$cmd = "sga correct -k 31 -i 10 -t 4 -o $ec_file $WD/$outbase.pp.fastq > $WD/correct.out";
 	print STDERR "[a5] $cmd\n";
+	`rm $WD/$OUTBASE.pp.*` if (-f "$WD/$OUTBASE.pp.*");
+	`rm $OUTBASE.pp.*` if (-f "$OUTBASE.pp.*");
 	system("$DIR/$cmd");
+	
 	die "[a5] Error correcting reads with SGA\n" if( $? != 0 );
 	return $ec_file;
 }
