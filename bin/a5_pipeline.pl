@@ -142,21 +142,26 @@ sub sga_clean {
 			$files .= "$up ";
 		}
 	}
-	print STDERR "[a5] sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $WD/$outbase.pp.fastq\n";
-	system("$DIR/sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $WD/$outbase.pp.fastq");
+	my $cmd = "sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $WD/$outbase.pp.fastq";
+	print STDERR "[a5] $cmd\n";
+	system("$DIR/$cmd");
 	die "[a5] Error preprocessing reads with SGA\n" if( $? != 0 );
 	my $sga_ind = "";
 	my $sga_ind_kb = 4000000;
 	my $err_file = "$WD/index.err";
 	do{
-		$sga_ind = `$DIR/sga index -d $sga_ind_kb -t 4 $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file`;
+		$cmd = "sga index -d $sga_ind_kb -t 4 $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
+		print STDERR "[a5] $cmd\n";
+		$sga_ind = `$DIR/$cmd`;
 		$sga_ind = read_file($err_file);
 		$sga_ind_kb = int($sga_ind_kb/2);
 	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 0);
 	my $ec_file = "$WD/$outbase.pp.ec.fa";
 	system("rm -f core*") if (-f "core*");
 	die "[a5] Error indexing reads with SGA\n" if( $? != 0 );
-	system("$DIR/sga correct -k 31 -i 10 -t 4 -o $ec_file $WD/$outbase.pp.fastq > $WD/correct.out");
+	$cmd = "sga correct -k 31 -i 10 -t 4 -o $ec_file $WD/$outbase.pp.fastq > $WD/correct.out";
+	print STDERR "[a5] $cmd\n";
+	system("$DIR/$cmd");
 	die "[a5] Error correcting reads with SGA\n" if( $? != 0 );
 	return $ec_file;
 }
@@ -482,18 +487,19 @@ sub fish_break_misasms {
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
 	`rm $ctgs.* $sai`;
-	my $cmd = "java -Xmx7000m -jar $DIR/GetFishInput.jar $sam $outbase $WD > $WD/$outbase.fie.out\n";
-	print STDERR "[a5] $cmd\n"; 
-	`$cmd`;
+	my $mem = "7000m";
+	my $cmd = "GetFishInput.jar $sam $outbase $WD > $WD/$outbase.fie.out\n";
+	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
+	`java -Xmx$mem -jar $DIR/$cmd`;
 	`gzip -f $sam`;
-	$cmd = "$DIR/fish -off -f $WD/$outbase.control.txt -b $WD/$outbase.blocks.txt > $WD/$outbase.fish.out";
+	$cmd = "fish -off -f $WD/$outbase.control.txt -b $WD/$outbase.blocks.txt > $WD/$outbase.fish.out";
 	print STDERR "[a5] $cmd\n"; 
-	`$cmd`;
+	`$DIR/$cmd`;
 	die "[a5] Error getting blocks with FISH for $outbase\n" if ($? != 0);
 
-	$cmd = "$DIR/break_misassemblies.pl $WD/$outbase.blocks.txt $WD/$outbase.contig_labels.txt $ctgs > $WD/$outbase.broken.fasta 2> $WD/$outbase.break.out";
+	$cmd = "break_misassemblies.pl $WD/$outbase.blocks.txt $WD/$outbase.contig_labels.txt $ctgs > $WD/$outbase.broken.fasta 2> $WD/$outbase.break.out";
 	print STDERR "[a5] $cmd\n"; 
-	`$cmd`;
+	`$DIR/$cmd`;
 	die "[a5] Error getting breaking contigs after running FISH\n" if ($? != 0);
 	return "$WD/$outbase.broken.fasta";
 }
