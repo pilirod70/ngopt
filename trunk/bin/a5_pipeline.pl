@@ -19,12 +19,12 @@ if (@ARGV==3) {
 }
 
 my $libfile = $ARGV[0];
-my $outbase = $ARGV[1];
+my $OUTBASE = $ARGV[1];
 
 my $DIR = dirname(abs_path($0));
-my %LIBS = read_lib_file($libfile);
-die "[a5] No libraries found in $libfile\n" unless(keys %LIBS);
-print "[a5] Found ".scalar(keys %LIBS)." libraries\n";
+my %RAW_LIBS = read_lib_file($libfile);
+die "[a5] No libraries found in $libfile\n" unless(keys %RAW_LIBS);
+print "[a5] Found ".scalar(keys %RAW_LIBS)." libraries\n";
 my $maxrdlen = -1;
 my $scafs;
 my $ctgs;
@@ -38,51 +38,54 @@ if ($start <= 1) {
 	print STDERR "[a5] Cleaning reads with SGA\n";
 	$WD = "s1";
 	mkdir($WD) if ! -d $WD;
-	$reads = sga_clean($outbase, \%LIBS);
-	$reads = tagdust($outbase, $reads);
-	`rm $WD/$outbase.pp.*`
-	`mv $reads $outbase.ec.fastq`;
+	$reads = sga_clean($OUTBASE, \%RAW_LIBS);
+	$reads = tagdust($OUTBASE, $reads);
+	`rm $WD/$OUTBASE.pp.*`;
+	`mv $reads $OUTBASE.ec.fastq`;
 } 
 if ($start <= 2) {
-	$reads = "$outbase.ec.fastq";
+	$reads = "$OUTBASE.ec.fastq";
 	die "[a5_s2] Can't find error corrected reads $reads" unless -f $reads;
 	print "[a5_s2] Building contigs from $reads with IDBA\n";
 	print STDERR "[a5_s2] Building contigs from $reads with IDBA\n";
 	$WD="s2";
 	mkdir($WD) if ! -d $WD;
-	$maxrdlen = fastq_to_fasta($reads,"$WD/$outbase.ec.fasta");
-	$ctgs = idba_assemble($outbase, "$WD/$outbase.ec.fasta", $maxrdlen); 
-	`gzip -f $reads ` 
-	`rm $WD/$outbase.ec.fasta`;
-	`mv $ctgs $outbase.contigs.fasta`;
+	$maxrdlen = fastq_to_fasta($reads,"$WD/$OUTBASE.ec.fasta");
+	$ctgs = idba_assemble($OUTBASE, "$WD/$OUTBASE.ec.fasta", $maxrdlen); 
+	`gzip -f $reads `;
+	`rm $WD/$OUTBASE.ec.fasta`;
+	`mv $ctgs $OUTBASE.contigs.fasta`;
 	
 } 
+my %PAIR_LIBS = preprocess_libs(\%RAW_LIBS);
 if ($start <= 3) {
-	$ctgs = "$outbase.contigs.fasta";
+	$ctgs = "$OUTBASE.contigs.fasta";
 	die "[a5_s3] Can't find starting contigs $ctgs.\n" unless -f $ctgs;
 	print "[a5_s3] Scaffolding contigs from $ctgs with SSPACE\n";
 	print STDERR "[a5_s3] Scaffolding contigs from $ctgs with SSPACE\n";
 	$WD="s3";
 	mkdir($WD) if ! -d $WD;
-	$scafs = scaffold_sspace($libfile, $outbase, \%LIBS, $ctgs);
-	`mv $scafs $outbase.crude.scaffolds.fasta`; 
+	$scafs = scaffold_sspace($libfile, $OUTBASE, \%PAIR_LIBS, $ctgs);
+	`mv $scafs $OUTBASE.crude.scaffolds.fasta`; 
 } 
 if ($start <= 4) {
-	$scafs = "$outbase.crude.scaffolds.fasta";
+	$scafs = "$OUTBASE.crude.scaffolds.fasta";
 	die "[a5_s4] Can't find starting crude scaffolds $scafs\n" unless -f $scafs;
 	print "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
 	print STDERR "[a5_s4] Detecting and breaking misassemblies in scafs with FISH\n";
-	$scafs = break_all_misasms($scafs,\%LIBS,"$outbase.fish"); 
-	`mv $scafs $outbase.broken.scaffolds.fasta`; 
+	$WD="s4";
+	mkdir($WD) if ! -d $WD;
+	$scafs = break_all_misasms($scafs,\%PAIR_LIBS,"$OUTBASE.fish"); 
+	`mv $scafs $OUTBASE.broken.scaffolds.fasta`; 
 } 
 if ($start <= 5) {
-	$scafs = "$outbase.broken.scaffolds.fasta";
+	$scafs = "$OUTBASE.broken.scaffolds.fasta";
 	die "[a5_s5] Can't find starting broken scaffolds $scafs\n" unless -f $scafs;
 	print "[a5_s5] Scaffolding broken contigs with SSPACE\n";
 	print STDERR "[a5_s5] Scaffolding broken contigs with SSPACE\n";
-	$scafs = scaffold_sspace($libfile,"$outbase.rescaf",\%LIBS,$scafs);
-	`mv $scafs $outbase.final.scaffolds.fasta`;
-	print "[a5] Final assembly in $outbase.final.scaffolds.fasta\n"; 
+	$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs);
+	`mv $scafs $OUTBASE.final.scaffolds.fasta`;
+	print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
 } 
 
 sub sga_assemble {
@@ -159,7 +162,7 @@ sub read_lib_file {
 			$lib_count++;
 			$id = "";
 		} elsif ($_ =~ m/shuf=([\w\/\-\.]+)/) { 
-			my ($fq1, $fq2) = split_shuf($1,"$outbase.lib$lib_count");
+			my ($fq1, $fq2) = split_shuf($1,"$OUTBASE.lib$lib_count");
 			$hash{"p1"} = $fq1;
 			$hash{"p2"} = $fq2;
 		} elsif ($_ =~ m/(p[1,2])=([\w\/\-\.]+)/) { 
@@ -268,34 +271,7 @@ sub scaffold_sspace {
 	my $curr_ctgs = shift;
 	my @library_file = ();
 	my @lib_files;
-#vestigial?	my $min_insert_size = -1;
-	# remove the unpaired file if present 
-	`rm $outbase.unpaired.fastq` if (-f "$outbase.unpaired.fastq");
 
-#
-#       MAKE OUR INITIAL ESTIMATES OF INSERT SIZE HERE AND GET ERROR ESTIMATES
-#
-	for my $libid (keys %libs) {
-		if (defined($libs{$libid}{"p1"})) {
-			my $fq1 = $libs{$libid}{"p1"};
-			my $fq2 = $libs{$lib}{"p2"};
-			my ($ins_mean, $ins_err, $outtie) = get_insert($fq1,$fq2,"$outbase.$lib",$curr_ctgs);
-			if ($ins_mean > 0) {
-				$libs{$libid}{"ins"} = $ins_mean;
-				$libs{$libid}{"err"} = $ins_err;
-				$libs{$libid}{"rc"} = $outtie;
-			} 
-		}
-		# if we have one file left, treat it as unpaired. 
-		if (defined($libs{$libid}{"up"})) {
-			my $up = $libs{$libid}{"up"};
-			`cat $up >> $outbase.unpaired.fastq`;
-			delete($libs{$libid});
-		}
-	}
-#
-#       NOW MERGE LIBRARIES WITH SIMILIAR ENOUGH INSERT SIZE DISTRIBUTIONS
-#
 	my $genome_size = get_genome_size($curr_ctgs);
 	print STDERR "[a5] Total contig length $genome_size\n";
 	my $libraryI=1;
@@ -303,8 +279,59 @@ sub scaffold_sspace {
 	my $curr_lib = "";
 	my $prev_ins = -1;
 	my $prev_reads = "";
-	my $libfile_path;
-	my $up_path;
+	my %run_lib;
+	# sort library.txt to so that we scaffold with smaller insert libraries first
+	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
+		%run_lib = %{$libs{$lib}};
+		my ($exp_link, $cov) = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
+		print STDERR "[a5] $curr_lib -  Insert $prev_ins, coverage $cov, expected links $exp_link\n";
+		if (defined($run_lib{"up"})) { # run sspace with unpaired library if we have one
+			$curr_ctgs = run_sspace($genome_size, $run_lib{"ins"}, $exp_link, 
+                                      $outbase.".".$run_lib{"id"}, $run_lib{"libfile"}, $curr_ctgs, $run_lib{"up"});
+		} else {
+			$curr_ctgs = run_sspace($genome_size, $run_lib{"ins"}, $exp_link,
+                                      $outbase.".".$run_lib{"id"}, $run_lib{"libfile"}, $curr_ctgs);
+		}
+	}
+
+	return $curr_ctgs;
+}
+
+# Merge libraries with similar inserts to avoid gaps from complementary coverage
+sub preprocess_libs {
+	my $libsref = shift;
+	my %libs = %$libsref;
+	my $ctgs = shift;
+	`rm $OUTBASE.unpaired.fastq` if (-f "$OUTBASE.unpaired.fastq");
+#
+#       MAKE OUR INITIAL ESTIMATES OF INSERT SIZE HERE AND GET ERROR ESTIMATES.
+#       ALSO CONCATENATE UNPAIRED LIBRARIES AND REMOVE FROM HASH
+#
+	for my $libid (keys %libs) {
+		if (defined($libs{$libid}{"p1"})) {
+			my $fq1 = $libs{$libid}{"p1"};
+			my $fq2 = $libs{$libid}{"p2"};
+			my ($ins_mean, $ins_err, $outtie) = get_insert($fq1,$fq2,"$OUTBASE.$libid",$ctgs);
+			if ($ins_mean > 0) {
+				$libs{$libid}{"ins"} = $ins_mean;
+				$libs{$libid}{"err"} = $ins_err;
+				$libs{$libid}{"rc"} = $outtie;
+			} 
+		} else {
+			my $up = $libs{$libid}{"up"};
+			`cat $up >> $OUTBASE.unpaired.fastq`;
+			delete($libs{$libid}); # isn't paired, don't include in aggregated libraries
+		}
+	}
+#
+#       NOW MERGE SIMILIAR LIBRARIES
+#
+	my @curr_lib_file = ();
+	my $curr_lib = "";
+	my $prev_ins = -1;
+	my $prev_reads = "";
+	my $libraryI = 1;
+	my %processed = ();
 	my %run_lib;
 	# sort library.txt to so that we scaffold with smaller insert libraries first
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
@@ -314,21 +341,9 @@ sub scaffold_sspace {
 		if($prev_ins > 0 && abs(log($prev_ins)-log($cur_ins)) > 0.1){
 			# scaffold with the previous insert....
 			# combine libraries if necessary, and return just one library hash
-			%run_lib = prep_libs_sspace(\@curr_lib_file,$libraryI,$outbase,$curr_lib,$curr_ctgs);
-			$libfile_path = print_libfile("$WD/library_$libraryI.txt", %run_lib);
-			my ($exp_link, $cov) = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
-			print STDERR "[a5] $curr_lib -  Insert $prev_ins, coverage $cov, expected links $exp_link\n";
-			if (defined($run_lib{"up"})) {
-				# add unpaired libraries to unpaired reads from this library aggregate
-				`cat $outbase.unpaired.fastq >> $run_lib{"up"}` if -f "$outbase.unpaired.fastq";
-				$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libfile_path, $curr_ctgs, $run_lib{"up"});
-				 # if we combined libraries, removed the concatenated files
-				`rm $run_lib{"p1"} $run_lib{"p2"} $run_lib{"up"}` if (scalar(@curr_lib_file) > 1);
-			} else {
-				$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libfile_path, $curr_ctgs);
-				 # if we combined libraries, removed the concatenated files
-				`rm $run_lib{"p1"} $run_lib{"p2"}` if (scalar(@curr_lib_file) > 1);
-			}
+			%run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
+			$run_lib{"libfile"} = print_libfile("library_$libraryI.txt", %run_lib);
+			$processed{$run_lib{"id"}} = %run_lib;
 			# now move on to the next library...
 			$libraryI++;
 			@curr_lib_file = ();
@@ -339,30 +354,14 @@ sub scaffold_sspace {
 		push (@curr_lib_file,$libs{$lib});
 		$curr_lib .= $lib;
 	}
-	# combine libraries if necessary, and return just one library hash
-	%run_lib = prep_libs_sspace(\@curr_lib_file,$libraryI,$outbase,$curr_lib,$curr_ctgs);
-	$libfile_path = print_libfile("$WD/library_$libraryI.txt", %run_lib);
-	my ($exp_link, $cov) = calc_explinks( $genome_size, $prev_ins, $prev_reads ); 
-	print STDERR "[a5] $curr_lib -  Insert $prev_ins, coverage $cov, expected links $exp_link\n";
-	if (defined($run_lib{"up"})) {
-		# add unpaired libraries to unpaired reads from this library aggregate
-		`cat $outbase.unpaired.fastq >> $run_lib{"up"}` if -f "$outbase.unpaired.fastq";
-		$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libfile_path, $curr_ctgs, $run_lib{"up"});
-		 # if we combined libraries, removed the concatenated files
-		`rm $run_lib{"p1"} $run_lib{"p2"} $run_lib{"up"}` if (scalar(@curr_lib_file) > 1);
-	} else {
-		$curr_ctgs = run_sspace($genome_size, $prev_ins, $exp_link, $libfile_path, $curr_ctgs);
-		 # if we combined libraries, removed the concatenated files
-		`rm $run_lib{"p1"} $run_lib{"p2"}` if (scalar(@curr_lib_file) > 1);
-	}
-
-	return $curr_ctgs;
+	%run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
+	$run_lib{"libfile"} = print_libfile("library_$libraryI.txt", %run_lib);
+	$processed{$run_lib{"id"}} = %run_lib;
+	return %processed;
 }
 
-sub prep_libs_sspace {
+sub aggregate_libs {
 	my $curr_lib_file = shift;
-	my $libraryI = shift;
-	my $outbase = shift;
 	my $curr_lib = shift;
 	my $curr_ctgs = shift;
 	my ($fq1, $fq2,$up);
@@ -370,17 +369,27 @@ sub prep_libs_sspace {
 	if (scalar(@$curr_lib_file) > 1) { # if this is an aggregate of libraries, combine them into one file
 		($fq1, $fq2, $up) = merge_libraries($curr_lib_file,$curr_lib);
 	} else {
-		($fq1, $fq2) = ($curr_lib_file->[0]{"p1"}, $curr_lib_file->[0]{"p2"})
+		($fq1, $fq2) = ($curr_lib_file->[0]{"p1"}, $curr_lib_file->[0]{"p2"});
 		$up = $curr_lib_file->[0]{"up"} if (defined($curr_lib_file->[0]{"up"}));
 	}
 	$fin_lib{"id"} = $curr_lib;
 	$fin_lib{"p1"} = $fq1;
 	$fin_lib{"p2"} = $fq2;
-	$fin_lib{"up"} = $up if defined($up);
-	$fin_lib{"rc") = 0;
-	my ($ins_mean, $ins_err, $outtie) = get_insert($fq1,$fq2,"$outbase.$curr_lib",$curr_ctgs);
+	if (defined($up)){
+		$fin_lib{"up"} = $up;
+		# add unpaired libraries to unpaired reads from this library aggregate
+		`cat $OUTBASE.unpaired.fastq >> $fin_lib{"up"}` if -f "$OUTBASE.unpaired.fastq";
+	} elsif (-f "$OUTBASE.unpaired.fastq") {
+		$up = $fin_lib{"id"}.".up.fastq";	
+		`cat $OUTBASE.unpaired.fastq > $up`;
+		$fin_lib{"up"} = $up;
+	}
+	$fin_lib{"rc"} = 0;
+	# re-estimate insert sizes
+	my ($ins_mean, $ins_err, $outtie) = get_insert($fq1,$fq2,"$OUTBASE.$curr_lib",$curr_ctgs);
 	$fin_lib{"ins"} = abs($ins_mean);
 	$fin_lib{"err"} = abs($ins_err);	
+	$fin_lib{"nlibs"} = scalar(@$curr_lib_file);
 	return %fin_lib;		
 }
 
@@ -430,20 +439,15 @@ sub merge_libraries {
 
 sub break_all_misasms {
 	my $ctgs = shift;
-	my $libs = shift;
+	my $libsref = shift;
+	my %libs = %$libsref;
 	my $outbase = shift;
 	my @lib_files;
-	my %tmp = %$libs;
-	for my $lib (keys %$libs){
-		@{$tmp{$lib}} = @{$libs->{$lib}} if (scalar(@{$libs->{$lib}}) >= 2);
-	}
 	# sort libraries by insert so we break with larger inserts first.
-	for my $lib (sort {$tmp{$b}[0] <=> $tmp{$a}[0]} keys %tmp){
-		@lib_files = @{$libs->{$lib}};
-		next unless (scalar(@lib_files) >= 2);
-		my $ins = shift @lib_files;
-		my $fq1 = shift @lib_files;
-		my $fq2 = shift @lib_files;
+	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
+		my $ins = $libs{$lib}{"ins"};
+		my $fq1 = $libs{$lib}{"p1"};
+		my $fq2 = $libs{$lib}{"p2"};
 		$ctgs = fish_break_misasms($ctgs,$fq1,$fq2,"$outbase.lib$lib");
 	}	
 	return $ctgs;
@@ -455,28 +459,27 @@ sub fish_break_misasms {
 	my $fq2 = shift;
 	my $outbase = shift;
 	print STDERR "[a5] Breaking misassemblies with $outbase\n";
-	my $sai = "$outbase.sai";
-	my $sam = "$outbase.sam";
+	my $sai = "$WD/$outbase.sai";
+	my $sam = "$WD/$outbase.sam";
 #	print STDERR "[a5] Attempting to run bwa from $DIR\n";	
-	`$DIR/bwa index -a is $ctgs > $outbase.index.out`;
+	`$DIR/bwa index -a is $ctgs > $WD/$outbase.index.out`;
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
-	`rm $ctgs.*`;
-	my $cmd = "java -Xmx7000m -jar $DIR/GetFishInput.jar $sam $outbase > $outbase.fie.out\n";
+	`rm $ctgs.* $sai`;
+	my $cmd = "java -Xmx7000m -jar $DIR/GetFishInput.jar $sam $outbase $WD > $WD/$outbase.fie.out\n";
 	print STDERR "[a5] $cmd\n"; 
 	`$cmd`;
 	`gzip -f $sam`;
-	$cmd = "$DIR/fish -off -f $outbase.control.txt -b $outbase.blocks.txt > $outbase.fish.out";
+	$cmd = "$DIR/fish -off -f $WD/$outbase.control.txt -b $WD/$outbase.blocks.txt > $WD/$outbase.fish.out";
 	print STDERR "[a5] $cmd\n"; 
 	`$cmd`;
 	die "[a5] Error getting blocks with FISH for $outbase\n" if ($? != 0);
 
-	$cmd = "$DIR/break_misassemblies.pl $outbase.blocks.txt contig_labels.txt $ctgs > $outbase.broken.fasta 2> $outbase.break.out";
+	$cmd = "$DIR/break_misassemblies.pl $WD/$outbase.blocks.txt $WD/$outbase.contig_labels.txt $ctgs > $WD/$outbase.broken.fasta 2> $WD/$outbase.break.out";
 	print STDERR "[a5] $cmd\n"; 
 	`$cmd`;
 	die "[a5] Error getting breaking contigs after running FISH\n" if ($? != 0);
-	#`rm $outbase.blocks.txt contig_labels.txt fish.* get_fish_input.* break_misasm.err $sam $sai`;
-	return "$outbase.broken.fasta";
+	return "$WD/$outbase.broken.fasta";
 }
 
 sub pipe_fastq {
@@ -526,6 +529,7 @@ sub run_sspace {
 	my $genome_size = shift;
 	my $insert_size = shift;
 	my $exp_links = shift;
+	my $outbase = shift;
 	my $libfile = shift;
 	my $input_fa = shift;
 
@@ -536,15 +540,10 @@ sub run_sspace {
 	$sspace_k = $sspace_k < 2 ? 2 : $sspace_k;	
 #	$sspace_k = 5;	# gives best results on mediterranei
 
-	#my $input_fa = "$outbase-contig.fa";
-	# why was this done? 
-	#$input_fa = "$outbase.lib".($libraryI-1).".sspace.final.scaffolds.fasta" if $libraryI>1;
 	my $sspace_cmd = "$DIR/SSPACE/SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 ".
                                         "-l $libfile -s $input_fa -b $outbase -d $WD";
-                                        #"-l $libfile -s $input_fa -b $outbase.lib$libraryI.sspace";
 	if (@_) {
 		print STDERR "[a5] Running SSPACE with unpaired reads\n";
-		
 		my $up = shift;
 		$sspace_cmd .= " -u $up";
 	}
@@ -591,7 +590,7 @@ sub get_insert($$$$$) {
 	`$DIR/bwa aln $ctgs $r2fq.sub > $r2fq.sub.sai`;
 	# bwa will print the estimated insert size, let's capture it then kill the job
 	my $cmd = "$DIR/bwa sampe -P $ctgs $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub ".
-												"> $WD/$outbase.pe.sam 2> $WD/$outbase.sampe.out";
+												"> $WD/$outbase.sub.pe.sam 2> $WD/$outbase.sampe.out";
 	`$cmd`;
 	open(SAMPE, "<","$WD/$outbase.sampe.out");
 	my $ins_mean = 0;
@@ -620,7 +619,7 @@ sub get_insert($$$$$) {
 		$ins_mean *= -1; 
 		$ins_error *= -1;
 	}
-	my $orient = get_orientation("$WD/$outbase.pe.sam");
+	my $orient = get_orientation("$WD/$outbase.sub.pe.sam");
 	return ($ins_mean, $ins_error, $orient);
 }
 
