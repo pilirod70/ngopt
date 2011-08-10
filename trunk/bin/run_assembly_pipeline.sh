@@ -30,7 +30,6 @@ conf="/share/eisen-d2/koadman/haloasm/lib_files/$base.libs"
 #DEST="/share/eisen-d2/koadman/haloasm_aggressive/"
 DEST=$2
 # nothing below this line should need to be changed
-stdoe="$PWD/$JOB_NAME.*$JOB_ID"
 pipeline="a5_pipeline.pl"
 LOCKFILE="$DEST/liunjlkjadftydsfbg908"
 
@@ -80,6 +79,7 @@ $pipeline $conf $base > stdout.$JOB_ID 2> stderr.$JOB_ID
 
 rm -rf *.fastq
 
+stdoe="$PWD/$JOB_NAME.*$JOB_ID"
 mv $OUT/$base.$JOB_ID/* $DEST/$base/
 mv $stdoe $DEST/$base/
 
