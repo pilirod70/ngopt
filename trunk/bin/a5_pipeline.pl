@@ -23,6 +23,17 @@ my $OUTBASE = $ARGV[1];
 
 my $DIR = dirname(abs_path($0));
 my %RAW_LIBS = read_lib_file($libfile);
+print "[a5] Found the following libraries:\n";
+print STDERR "[a5] Found the following libraries:\n";
+for my $lib (keys %RAW_LIBS) {
+	my $notfirst = 0;
+	print "$lib: ";
+	for my $att (keys %{$RAW_LIBS{$lib}}){
+		print " $att=".$RAW_LIBS{$lib}{$att};
+	}
+	print "\n";
+}
+
 die "[a5] No libraries found in $libfile\n" unless(keys %RAW_LIBS);
 print "[a5] Found ".scalar(keys %RAW_LIBS)." libraries\n";
 my $maxrdlen = -1;
@@ -83,6 +94,8 @@ if ($start <= 5) {
 	die "[a5_s5] Can't find starting broken scaffolds $scafs\n" unless -f $scafs;
 	print "[a5_s5] Scaffolding broken contigs with SSPACE\n";
 	print STDERR "[a5_s5] Scaffolding broken contigs with SSPACE\n";
+	$WD="s5";
+	mkdir($WD) if ! -d $WD;
 	$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs);
 	`mv $scafs $OUTBASE.final.scaffolds.fasta`;
 	print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
@@ -105,19 +118,24 @@ sub sga_assemble {
 
 sub sga_clean {
 	my $outbase = shift;
-	my $libs = shift;
+	my $libsref = shift;
+	my %libs = %$libsref;
 	# figure out which files we need to pass to SGA
 	my $files = "";
-	for my $lib (keys %$libs) {
-		my %lib_files = %{$libs->{$lib}};
-		if (defined($lib_files{"p1"})) {
-			#shift @lib_files;
-			my $fq1 = $lib_files{"p1"}; #shift @lib_files;
-			my $fq2 = $lib_files{"p2"}; #shift @lib_files;
+	for my $lib (keys %libs) {
+		print STDERR "$lib\n";
+#		my %lib_files = %{$libs{$lib}};
+	#	my %lib_files = %{$libs{$lib}};
+#		%lib_files = %{$libs{$lib}};
+
+		if (defined($libs{$lib}{"p1"})) {
+			#shift @libs{$lib};
+			my $fq1 = $libs{$lib}{"p1"}; #shift @libs{$lib};
+			my $fq2 = $libs{$lib}{"p2"}; #shift @libs{$lib};
 			$files .= "$fq1 $fq2 ";
 		}
-		if (defined($lib_files{"up"})){
-			my $up = $lib_files{"up"}; #shift @lib_files;
+		if (defined($libs{$lib}{"up"})){
+			my $up = $libs{$lib}{"up"}; #shift @libs{$lib};
 			$files .= "$up ";
 		}
 	}
@@ -126,9 +144,10 @@ sub sga_clean {
 	die "[a5] Error preprocessing reads with SGA\n" if( $? != 0 );
 	my $sga_ind = "";
 	my $sga_ind_kb = 4000000;
+	my $err_file = "$WD/index.err";
 	do{
-		$sga_ind = `$DIR/sga index -d $sga_ind_kb -t 4  $WD/$outbase.pp.fastq > $WD/index.out 2> $WD/index.err`;
-		$sga_ind = read_file('index.err');
+		$sga_ind = `$DIR/sga index -d $sga_ind_kb -t 4  $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file`;
+		$sga_ind = read_file($err_file);
 		$sga_ind_kb = int($sga_ind_kb/2);
 	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 0);
 	system("rm -f core*") if (-f "core*");
@@ -154,7 +173,7 @@ sub read_lib_file {
 		if ($_ =~ m/\[LIB\]/){
 			if ($lib_count > 0) {
 				$id = "raw$lib_count" unless (length($id));
-				$libs{$id} = %hash;
+				$libs{$id} = \%hash;
 #				for my $key (sort keys %hash){
 #					push($libs{"raw$lib_count"}{,$hash{$key});
 #				}
@@ -179,8 +198,7 @@ sub read_lib_file {
 		}
 	} 
 	$id = "raw$lib_count" unless (length($id));
-	$libs{$id} = %hash;
-	$libs{"raw$lib_count"} = %hash;
+	$libs{$id} = \%hash;
 #	for my $key (sort keys %hash){
 #		push(@{$libs{"raw$lib_count"}},$hash{$key});
 #	}
