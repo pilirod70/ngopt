@@ -329,18 +329,22 @@ public class FISHInputExporter {
 	 * @param nSd
 	 * @return a reference to the Map that was filtered
 	 */
-	public static Map<String,ReadPair> filterOffDiagReads(Map<String,ReadPair> reads, double[] ins, int nSd){
-		Iterator<String> it = reads.keySet().iterator();
-		Vector<String> rm = new Vector<String>();
-		String key = null;
-		ReadPair r = null;
-		while(it.hasNext()){
-			key = it.next();
-			r = reads.get(key);
-			if (!isDiag(r, ins, nSd)){
-				rm.add(key);
+	public static Map<String,ReadPair> filterTailPairs(Map<String,ReadPair> reads, double alpha){
+		ReadPair[] ar = new ReadPair[reads.size()];
+		reads.values().toArray(ar);
+		Arrays.sort(ar,new Comparator<ReadPair>() {
+			public int compare(ReadPair o1, ReadPair o2) {
+				return o1.getInsert() - o2.getInsert();
 			}
-		}
+		});
+		
+		Vector<String> rm = new Vector<String>();
+		int l = (int) alpha * ar.length;
+		int r = (int) (1-alpha) * ar.length;
+		for (int i = 0; i < l; i++)
+			rm.add(ar[i].hdr);
+		for (int i = r; i < ar.length; i++)
+			rm.add(ar[i].hdr);
 		removeKeys(reads,rm);
 		return reads;
 	}
@@ -463,7 +467,7 @@ public class FISHInputExporter {
 		Map<String,ReadPair> map = null;
 		ReadPair tmpRp  = null;
 		String rmClusters = "";
-		int nSd = 3;
+		double alpha = 0.01;
 		for (int i = 0; i < allIns.length; i++){
 			System.out.println("cluster"+NF.format(allIns[i][0])+": mu="+pad(NF.format(allIns[i][1]),10)+"sd="+pad(NF.format(allIns[i][2]),10)+"n="+clusters[(int)allIns[i][0]].size());
 			// if insert size distribution is under dispersed, filter tails so we don't throw them out
@@ -475,7 +479,7 @@ public class FISHInputExporter {
 				}
 				ins[0] = allIns[i][1];
 				ins[1] = allIns[i][2];
-				filterOffDiagReads(map,ins,3);
+				filterTailPairs(map,alpha);
 				toRm.addAll(map.keySet());
 				if (rmClusters.length()>0)
 					rmClusters = rmClusters+" "+NF.format(allIns[i][0])+"("+map.keySet().size()+")";
@@ -485,7 +489,7 @@ public class FISHInputExporter {
 			} 
 		}
 		if (rmClusters.length()>0)
-			System.out.println("Removed clusters "+rmClusters);
+			System.out.println("Removed but keeping tails from clusters "+rmClusters);
 		
 		removeKeys(reads, toRm);
 		return clusters;
