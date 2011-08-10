@@ -451,12 +451,13 @@ public class FISHInputExporter {
 		System.out.println("stopping after "+iters+" iterations.");
 		Collection<ReadPair>[] clusters = new Vector[K];
 		em.getClusters().toArray(clusters);
-		double[][] allIns = new double[K][3];
+		double[][] allIns = new double[K][4];
 		for (int i = 0; i < clusters.length; i++){
 			allIns[i][0] = i;
 			ins = ReadPair.estimateInsertSize(clusters[i]);
 			allIns[i][1] = ins[0];
 			allIns[i][2] = ins[1];
+			allIns[i][3] = ins[2]/toFilt.size();
 		}
 		Arrays.sort(allIns, new Comparator<double[]>(){
 			public int compare(double[] o1, double[] o2) {
@@ -470,6 +471,9 @@ public class FISHInputExporter {
 		double alpha = 0.01;
 		for (int i = 0; i < allIns.length; i++){
 			System.out.println("cluster"+NF.format(allIns[i][0])+": mu="+pad(NF.format(allIns[i][1]),10)+"sd="+pad(NF.format(allIns[i][2]),10)+"n="+clusters[(int)allIns[i][0]].size());
+			// if we have a small and very high variance, but not overdispersed cluster, don't discard 
+			if(allIns[i][2]/allIns[i][1] >= 0.90 && allIns[i][3] < 0.05)
+				continue;
 			// if insert size distribution is under dispersed, filter tails so we don't throw them out
 			if (allIns[i][2]/allIns[i][1] <= 1){
 				map = new HashMap<String,ReadPair>();
