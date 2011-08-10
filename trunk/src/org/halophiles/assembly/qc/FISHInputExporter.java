@@ -339,8 +339,8 @@ public class FISHInputExporter {
 		});
 		
 		Vector<String> rm = new Vector<String>();
-		int l = (int) alpha * ar.length;
-		int r = (int) (1-alpha) * ar.length;
+		int l = (int) ((alpha/2) * ar.length);
+		int r = (int) ((1-(alpha/2)) * ar.length);
 		for (int i = 0; i < l; i++)
 			rm.add(ar[i].hdr);
 		for (int i = r; i < ar.length; i++)
