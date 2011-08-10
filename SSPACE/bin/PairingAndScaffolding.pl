@@ -194,7 +194,7 @@ sub buildScaffolds{
    }
    if(keys (%$repeathash) > 0){
      my $totsize=0;
-     open(REPEATS, ">intermediate_results/$base_name.".$lib.".repeats") || die "Can't open $base_name".".repeats -- fatal\n";
+     open(REPEATS, ">$outdir/intermediate_results/$base_name.".$lib.".repeats") || die "Can't open $outdir/intermediate_results/$base_name.$lib.repeats -- fatal\n";
      foreach my $sizetig (keys %$repeathash){
        $totsize += ($repeathash->{$sizetig}->{'size'} * $repeathash->{$sizetig}->{'links'});
        print REPEATS "contig $sizetig is repeated $repeathash->{$sizetig}->{'links'} times. Size = $repeathash->{$sizetig}->{'size'}\n";

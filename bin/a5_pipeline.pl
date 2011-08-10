@@ -311,7 +311,8 @@ sub scaffold_sspace {
 	# sort library.txt to so that we scaffold with smaller insert libraries first
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
 		my ($exp_link, $cov) = calc_explinks( $genome_size, $libs{$lib}{"ins"}, $libs{$lib}{"p1"} ); 
-		print STDERR "[a5] $curr_lib -  Insert $prev_ins, coverage $cov, expected links $exp_link\n";
+		$curr_lib = $libs{$lib}{"id"};
+		print STDERR "[a5] $curr_lib - Insert $prev_ins, coverage $cov, expected links $exp_link\n";
 		if (defined($libs{$lib}{"up"})) { # run sspace with unpaired library if we have one
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
                                                   $libs{$lib}{"libfile"}, $curr_ctgs, $libs{$lib}{"up"});
@@ -570,7 +571,7 @@ sub run_sspace {
 	$sspace_k = $sspace_k < 2 ? 2 : $sspace_k;	
 #	$sspace_k = 5;	# gives best results on mediterranei
 
-	my $sspace_cmd = "$DIR/SSPACE/SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 ".
+	my $sspace_cmd = "SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 ".
                                         "-l $libfile -s $input_fa -b $outbase -d $WD";
 	if (@_) {
 		print STDERR "[a5] Running SSPACE with unpaired reads\n";
@@ -578,7 +579,7 @@ sub run_sspace {
 		$sspace_cmd .= " -u $up";
 	}
 	print STDERR "[a5] $sspace_cmd > $WD/$outbase.out\n";
-	`$sspace_cmd > $WD/$outbase.out`;
+	`$DIR/SSPACE/$sspace_cmd > $WD/$outbase.out`;
 	`rm -rf $WD/bowtieoutput/ $WD/reads/`;
 	return "$WD/$outbase.final.scaffolds.fasta";
 }
