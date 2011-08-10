@@ -23,15 +23,14 @@ my $OUTBASE = $ARGV[1];
 
 my $DIR = dirname(abs_path($0));
 my %RAW_LIBS = read_lib_file($libfile);
-print "[a5] Found the following libraries:\n";
 print STDERR "[a5] Found the following libraries:\n";
 for my $lib (keys %RAW_LIBS) {
 	my $notfirst = 0;
-	print "$lib: ";
+	print STDERR "     $lib: ";
 	for my $att (keys %{$RAW_LIBS{$lib}}){
-		print " $att=".$RAW_LIBS{$lib}{$att};
+		print STDERR " $att=".$RAW_LIBS{$lib}{$att};
 	}
-	print "\n";
+	print STDERR "\n";
 }
 
 die "[a5] No libraries found in $libfile\n" unless(keys %RAW_LIBS);
@@ -55,27 +54,32 @@ if ($start <= 1) {
 	`mv $reads $OUTBASE.ec.fastq`;
 } 
 if ($start <= 2) {
-	$reads = "$OUTBASE.ec.fastq";
+	my $fq_reads = "$OUTBASE.ec.fastq";
+	`gunzip $fq_reads.gz` if -f "$fq_reads.gz";
+	$reads = $fq_reads;
 	die "[a5_s2] Can't find error corrected reads $reads" unless -f $reads;
 	print "[a5_s2] Building contigs from $reads with IDBA\n";
 	print STDERR "[a5_s2] Building contigs from $reads with IDBA\n";
 	$WD="s2";
 	mkdir($WD) if ! -d $WD;
-	$maxrdlen = fastq_to_fasta($reads,"$WD/$OUTBASE.ec.fasta");
-	$ctgs = idba_assemble($OUTBASE, "$WD/$OUTBASE.ec.fasta", $maxrdlen); 
-	`gzip -f $reads `;
-	`rm $WD/$OUTBASE.ec.fasta`;
+	($reads, $maxrdlen) = fastq_to_fasta($reads,"$WD/$OUTBASE.ec.fasta");
+#	`gzip -f $fq_reads`;
+
+	print STDERR "$reads exists\n" if -f $reads;
+	print STDERR "$reads does not exist\n" if ! -f $reads;
+	$ctgs = idba_assemble($OUTBASE, $reads, $maxrdlen); 
+	`rm $reads`;
 	`mv $ctgs $OUTBASE.contigs.fasta`;
 	
 } 
-my %PAIR_LIBS = preprocess_libs(\%RAW_LIBS);
+$WD="s3";
+mkdir($WD) if ! -d $WD;
+my %PAIR_LIBS = preprocess_libs(\%RAW_LIBS,"$OUTBASE.contigs.fasta");
 if ($start <= 3) {
 	$ctgs = "$OUTBASE.contigs.fasta";
 	die "[a5_s3] Can't find starting contigs $ctgs.\n" unless -f $ctgs;
 	print "[a5_s3] Scaffolding contigs from $ctgs with SSPACE\n";
 	print STDERR "[a5_s3] Scaffolding contigs from $ctgs with SSPACE\n";
-	$WD="s3";
-	mkdir($WD) if ! -d $WD;
 	$scafs = scaffold_sspace($libfile, $OUTBASE, \%PAIR_LIBS, $ctgs);
 	`mv $scafs $OUTBASE.crude.scaffolds.fasta`; 
 } 
@@ -146,15 +150,16 @@ sub sga_clean {
 	my $sga_ind_kb = 4000000;
 	my $err_file = "$WD/index.err";
 	do{
-		$sga_ind = `$DIR/sga index -d $sga_ind_kb -t 4  $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file`;
+		$sga_ind = `$DIR/sga index -d $sga_ind_kb -t 4 $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file`;
 		$sga_ind = read_file($err_file);
 		$sga_ind_kb = int($sga_ind_kb/2);
 	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 0);
+	my $ec_file = "$WD/$outbase.pp.ec.fa";
 	system("rm -f core*") if (-f "core*");
 	die "[a5] Error indexing reads with SGA\n" if( $? != 0 );
-	system("$DIR/sga correct -k 31 -i 10 -t 4  $WD/$outbase.pp.fastq > $WD/correct.out");
+	system("$DIR/sga correct -k 31 -i 10 -t 4 -o $ec_file $WD/$outbase.pp.fastq > $WD/correct.out");
 	die "[a5] Error correcting reads with SGA\n" if( $? != 0 );
-	return "$WD/$outbase.pp.ec.fa"
+	return $ec_file;
 }
 
 #
@@ -229,7 +234,7 @@ sub fastq_to_fasta {
 	}
 	close FA;
 	# why are we removing 2 here?
-	return $maxrdlen - 2;	# -1 removes newline char
+	return ($fasta, $maxrdlen - 2); # -1 removes newline char
 }
 
 sub split_shuf {
@@ -258,7 +263,7 @@ sub split_shuf {
 sub tagdust {
 	my $outbase = shift;
 	my $readfile = shift;
-	my $tagdust_cmd = "$DIR/tagdust -o $WD/$outbase.dusted.fq $DIR/../adapter.fasta $readfile";
+	my $tagdust_cmd = "$DIR/tagdust -s -o $WD/$outbase.dusted.fq $DIR/../adapter.fasta $readfile";
 	print STDERR "[a5] $tagdust_cmd\n";
 	system($tagdust_cmd);
 	return "$WD/$outbase.dusted.fq";
@@ -588,7 +593,7 @@ sub get_genome_size {
 	return $len;
 }
 
-sub get_insert($$$$$) {
+sub get_insert($$$$) {
 	my $r1fq = shift;
 	my $r2fq = shift;
 	my $outbase = shift;
@@ -685,8 +690,8 @@ sub get_orientation {
 			$reads{$r1[0]} = \@r1;
 		}
 	}
-	$out_ins /= $out;
-	$in_ins /= $in;
+	$out_ins /= $out if ($out);
+	$in_ins /= $in if ($in);
 	my $tot = $in + $out;
 	# if majority outies 
 	if (($out_ins > 1500 && $out/$tot > 0.1) || $in < $out){
