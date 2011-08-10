@@ -28,22 +28,22 @@ public class FISHInputExporter {
 	private static int MINQUAL = 13;
 	
 	public static void main(String[] args){
-		if (args.length != 2){
-			System.err.println("Usage: java -jar GetFishInput.jar <sam_file> <output_base> <min_map_qual (optional)>");
+		if (args.length < 3){
+			System.err.println("Usage: java -jar GetFishInput.jar <sam_file> <output_base> <output_dir> <min_map_qual (optional)>");
 			System.exit(-1);
 		}
 		try{
 			NF = NumberFormat.getInstance();
 			NF.setMaximumFractionDigits(0);
 			NF.setGroupingUsed(false);
-			if (args.length == 3){
+			if (args.length == 4){
 				MINQUAL = Integer.parseInt(args[2]);
 			}
-			System.out.println("Reading "+args[0]);
-			System.out.println("Writing output to "+System.getProperty("user.dir"));
-			SAMFileParser sfp = new SAMFileParser(args[0]);
 			String base = args[1];
-			File outdir = new File(System.getProperty("user.dir"));
+			File outdir = new File(args[2]);
+			System.out.println("Reading "+args[0]);
+			System.out.println("Writing output to "+outdir.getAbsolutePath()+" with basename "+base);
+			SAMFileParser sfp = new SAMFileParser(args[0]);
 
 			System.out.println("Found "+sfp.getNumContigs()+" contigs.");
 			System.out.println("Found "+sfp.getNumReads()+" total reads and "+sfp.getNumPairs()+" read-pairs.");
@@ -456,14 +456,16 @@ public class FISHInputExporter {
 		}
 		Arrays.sort(allIns, new Comparator<double[]>(){
 			public int compare(double[] o1, double[] o2) {
-				return (int) (Math.round(o1[1]) - Math.round(o2[1]));
+				return (int) (o1[1] - o2[1]);
 			}
 		});
 		Vector<String> toRm = new Vector<String>();
 		Map<String,ReadPair> map = null;
 		ReadPair tmpRp  = null;
+		String rmClusters = "";
+		int nSd = 3;
 		for (int i = 0; i < allIns.length; i++){
-			System.out.println("cluster"+i+": mu="+NF.format(allIns[i][1])+" sd="+NF.format(allIns[i][2]));
+			System.out.println("cluster"+NF.format(allIns[i][0])+": mu="+pad(NF.format(allIns[i][1]),10)+"sd="+pad(NF.format(allIns[i][2]),10)+"n="+clusters[(int)allIns[i][0]].size());
 			// if insert size distribution is under dispersed, filter tails so we don't throw them out
 			if (allIns[i][2]/allIns[i][1] <= 1){
 				map = new HashMap<String,ReadPair>();
@@ -475,10 +477,26 @@ public class FISHInputExporter {
 				ins[1] = allIns[i][2];
 				filterOffDiagReads(map,ins,3);
 				toRm.addAll(map.keySet());
+				if (rmClusters.length()>0)
+					rmClusters = rmClusters+" "+NF.format(allIns[i][0])+"("+map.keySet().size()+")";
+				else 
+					rmClusters = NF.format(allIns[i][0])+"("+map.keySet().size()+")";
+					
 			} 
 		}
+		if (rmClusters.length()>0)
+			System.out.println("Removed clusters "+rmClusters);
+		
 		removeKeys(reads, toRm);
 		return clusters;
+	}
+	
+	private static String pad(String s, int len){
+		String ret = new String(s);
+		for (int i = 0; i < len-s.length(); i++){
+			ret = ret+" ";
+		}
+		return ret;
 	}
 	
 	private static void filterTandemConnections(Map<String,ReadPair> reads){
