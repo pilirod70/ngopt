@@ -371,31 +371,29 @@ sub preprocess_libs {
 		# round of scaffolding
 		my $curr_ins = $libs{$lib}{"ins"};
 		my $prev_ins = defined($prev_lib) ? $libs{$prev_lib}{"ins"} : -1;
-		my $prev_min = -1;
-		my $prev_min = -1;
-		my $prev_min = -1;
-		my $prev_min = -1;
 		if (defined($prev_lib)) {
-			
+			my $curr_min = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
+			my $curr_max = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
+			my $prev_min = $libs{$prev_lib}{"ins"}*(1-$libs{$prev_lib}{"err"});	
+			my $prev_max = $libs{$prev_lib}{"ins"}*(1-$libs{$prev_lib}{"err"});	
+			#print STDERR "[a5] \$prev_ins = $prev_ins, \$curr_ins = $curr_ins\n";
+			if($curr_min <= $prev_max && $prev_min <= $curr_max){
+				# scaffold with the previous insert....
+				# combine libraries if necessary, and return just one library hash
+				$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
+				$run_lib->{"libfile"} = print_libfile("library_$libraryI.txt", $run_lib);
+				for my $key (keys %$run_lib){
+					$processed{$run_lib->{"id"}}{$key} = $run_lib->{$key};
+				}
+				# now move on to the next library...
+				$libraryI++;
+				@curr_lib_file = ();
+				$curr_lib = "";
+			}
 		}
 
-		print STDERR "[a5] \$prev_ins = $prev_ins, \$curr_ins = $curr_ins\n";
-		if($prev_ins > 0 && abs(log($prev_ins)-log($curr_ins)) > 0.1){
-			print STDERR "[a5] abs(log($prev_ins)-log($curr_ins)) = ".abs(log($prev_ins)-log($curr_ins))."\n";
-			# scaffold with the previous insert....
-			# combine libraries if necessary, and return just one library hash
-			$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
-			$run_lib->{"libfile"} = print_libfile("library_$libraryI.txt", $run_lib);
-			for my $key (keys %$run_lib){
-				$processed{$run_lib->{"id"}}{$key} = $run_lib->{$key};
-			}
-			# now move on to the next library...
-			$libraryI++;
-			@curr_lib_file = ();
-			$curr_lib = "";
-		}
 		$prev_reads = $libs{$lib}{"p1"};
-		$prev_ins = $curr_ins;
+		$prev_ins = $libs{$lib}{"ins"};
 		push (@curr_lib_file,$libs{$lib});
 		$curr_lib .= $lib;
 		$prev_lib = $lib;
