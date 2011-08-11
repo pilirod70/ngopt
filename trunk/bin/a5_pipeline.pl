@@ -306,7 +306,6 @@ sub scaffold_sspace {
 	my $libraryI=1;
 	my @curr_lib_file = ();
 	my $curr_ins = -1;
-	my $prev_reads = "";
 	my %run_lib;
 	# sort library.txt to so that we scaffold with smaller insert libraries first
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
@@ -360,24 +359,24 @@ sub preprocess_libs {
 	my @curr_lib_file = ();
 	my $curr_lib = "";
 	my $prev_lib;
-	my $prev_reads = "";
 	my $libraryI = 1;
 	my %processed = ();
 	my $run_lib;
 	print STDERR "[a5] Will merge libraries if similar enough\n";
-	# sort library.txt to so that we scaffold with smaller insert libraries first
+	# sort libraries so that we scaffold with smaller insert libraries first
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
-		# if we've hit a substantially different insert size, do a separate
-		# round of scaffolding
-		my $curr_ins = $libs{$lib}{"ins"};
-		my $prev_ins = defined($prev_lib) ? $libs{$prev_lib}{"ins"} : -1;
 		if (defined($prev_lib)) {
+			my $curr_ins = $libs{$lib}{"ins"};
+			#my $prev_ins = defined($prev_lib) ? $libs{$prev_lib}{"ins"} : -1;
 			my $curr_min = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
 			my $curr_max = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
 			my $prev_min = $libs{$prev_lib}{"ins"}*(1-$libs{$prev_lib}{"err"});	
 			my $prev_max = $libs{$prev_lib}{"ins"}*(1-$libs{$prev_lib}{"err"});	
 			#print STDERR "[a5] \$prev_ins = $prev_ins, \$curr_ins = $curr_ins\n";
-			if($curr_min <= $prev_max && $prev_min <= $curr_max){
+			
+			# if we've hit a substantially different insert size (i.e. min and max 
+			# inserts don't overlap), do a separate round of scaffolding
+			if (!($curr_min <= $prev_max && $prev_min <= $curr_max)){
 				# scaffold with the previous insert....
 				# combine libraries if necessary, and return just one library hash
 				$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
@@ -392,8 +391,6 @@ sub preprocess_libs {
 			}
 		}
 
-		$prev_reads = $libs{$lib}{"p1"};
-		$prev_ins = $libs{$lib}{"ins"};
 		push (@curr_lib_file,$libs{$lib});
 		$curr_lib .= $lib;
 		$prev_lib = $lib;
@@ -658,7 +655,7 @@ sub get_insert($$$$) {
 	}
 	`rm $r1fq.sub* $r2fq.sub* $ctgs.*`;
 	if ($ins_n > $require_fraction * $estimate_pair_count) {		
-		$ins_error = $ins_sd*6 / $ins_mean;
+		$ins_error = $ins_sd*6 < $ins_mean ? $ins_sd*6 / $ins_mean : 0.95;
 		$ins_mean = sprintf("%.0f",$ins_mean);
 		$ins_error = sprintf("%.3f",$ins_error);
 		$ins_error =~ s/0+$//g;
