@@ -73,6 +73,7 @@ if ($start <= 2) {
 } 
 $WD="s3";
 mkdir($WD) if ! -d $WD;
+print STDERR "[a5] Preprocess libraries for scaffolding with SSPACE\n";
 my %PAIR_LIBS = preprocess_libs(\%RAW_LIBS,"$OUTBASE.contigs.fasta");
 if ($start <= 3) {
 	$ctgs = "$OUTBASE.contigs.fasta";
@@ -310,7 +311,7 @@ sub scaffold_sspace {
 	# sort library.txt to so that we scaffold with smaller insert libraries first
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
 		my ($exp_link, $cov) = calc_explinks( $genome_size, $libs{$lib}{"ins"}, $libs{$lib}{"p1"} ); 
-		printf *STDERR "[a5] %s\: Insert %.0f, coverage %.2f, expected links %.0f\n", $libs{$lib}{"id"}, $libs{$lib}{"ins"}, $cov, $exp_link;
+		printf STDERR "[a5] %s\: Insert %.0f, coverage %.2f, expected links %.0f\n", $libs{$lib}{"id"}, $libs{$lib}{"ins"}, $cov, $exp_link;
 		if (defined($libs{$lib}{"up"})) { # run sspace with unpaired library if we have one
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
                                                   $libs{$lib}{"libfile"}, $curr_ctgs, $libs{$lib}{"up"});
@@ -328,11 +329,15 @@ sub preprocess_libs {
 	my $libsref = shift;
 	my %libs = %$libsref;
 	my $ctgs = shift;
-	`rm $OUTBASE.unpaired.fastq` if (-f "$OUTBASE.unpaired.fastq");
+	if (-f "$OUTBASE.unpaired.fastq"){
+		print STDERR "[a5] Removing unpaired reads $OUTBASE.unpaired.fastq\n";
+		`rm $OUTBASE.unpaired.fastq`;
+	}
 #
 #       MAKE OUR INITIAL ESTIMATES OF INSERT SIZE HERE AND GET ERROR ESTIMATES.
 #       ALSO CONCATENATE UNPAIRED LIBRARIES AND REMOVE FROM HASH
 #
+	print STDERR "[a5] Making initial estimates of insert size\n";
 	for my $libid (keys %libs) {
 		if (defined($libs{$libid}{"p1"})) {
 			my $fq1 = $libs{$libid}{"p1"};
@@ -354,35 +359,52 @@ sub preprocess_libs {
 #
 	my @curr_lib_file = ();
 	my $curr_lib = "";
-	my $prev_ins = -1;
+	my $prev_lib;
 	my $prev_reads = "";
 	my $libraryI = 1;
 	my %processed = ();
 	my $run_lib;
+	print STDERR "[a5] Will merge libraries if similar enough\n";
 	# sort library.txt to so that we scaffold with smaller insert libraries first
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
 		# if we've hit a substantially different insert size, do a separate
 		# round of scaffolding
-		my $cur_ins = $libs{$lib}{"ins"};
-		if($prev_ins > 0 && abs(log($prev_ins)-log($cur_ins)) > 0.1){
+		my $curr_ins = $libs{$lib}{"ins"};
+		my $prev_ins = defined($prev_lib) ? $libs{$prev_lib}{"ins"} : -1;
+		my $prev_min = -1;
+		my $prev_min = -1;
+		my $prev_min = -1;
+		my $prev_min = -1;
+		if (defined($prev_lib)) {
+			
+		}
+
+		print STDERR "[a5] \$prev_ins = $prev_ins, \$curr_ins = $curr_ins\n";
+		if($prev_ins > 0 && abs(log($prev_ins)-log($curr_ins)) > 0.1){
+			print STDERR "[a5] abs(log($prev_ins)-log($curr_ins)) = ".abs(log($prev_ins)-log($curr_ins))."\n";
 			# scaffold with the previous insert....
 			# combine libraries if necessary, and return just one library hash
 			$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
 			$run_lib->{"libfile"} = print_libfile("library_$libraryI.txt", $run_lib);
-			$processed{$run_lib->{"id"}} = $run_lib;
+			for my $key (keys %$run_lib){
+				$processed{$run_lib->{"id"}}{$key} = $run_lib->{$key};
+			}
 			# now move on to the next library...
 			$libraryI++;
 			@curr_lib_file = ();
 			$curr_lib = "";
 		}
 		$prev_reads = $libs{$lib}{"p1"};
-		$prev_ins = $cur_ins;
+		$prev_ins = $curr_ins;
 		push (@curr_lib_file,$libs{$lib});
 		$curr_lib .= $lib;
+		$prev_lib = $lib;
 	}
 	$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
 	$run_lib->{"libfile"} = print_libfile("library_$libraryI.txt", $run_lib);
-	$processed{$run_lib->{"id"}} = $run_lib;
+	for my $key (keys %$run_lib){
+		$processed{$run_lib->{"id"}}{$key} = $run_lib->{$key};
+	}
 	return %processed;
 }
 
@@ -422,7 +444,6 @@ sub aggregate_libs {
 sub print_libfile {
 	my $file = shift;
 	my $libref = shift;
-	print STDERR "$libref\n";
 	#open( LIBRARY, ">$WD/library_$libraryI.txt" );
 	open( LIBRARY, ">$file" );
 	#print LIBRARY "$curr_lib $fq1 $fq2 $ins_mean $ins_err $outtie\n";
@@ -485,7 +506,7 @@ sub fish_break_misasms {
 	my $fq1 = shift;
 	my $fq2 = shift;
 	my $outbase = shift;
-	print STDERR "[a5] Breaking misassemblies with $outbase\n";
+	print STDERR "[a5] Identifying misassemblies in $ctgs with $outbase\n";
 	my $sai = "$WD/$outbase.sai";
 	my $sam = "$WD/$outbase.sam";
 #	print STDERR "[a5] Attempting to run bwa from $DIR\n";	
@@ -660,16 +681,20 @@ sub get_orientation {
 	my $in_ins = 0;
 	my $out = 0;
 	my $out_ins = 0;
+	my $tot = 0;
 	while(<SAM>){
 		next if ($_ =~ /^@/);
+		$tot++;
 		my @r1 = split /\t/;
 		# skip this read pair if either the mate or the query is unmapped
-		next if (get_bit($r1[4],2));
-		next if (get_bit($r1[4],3));
+		next if (get_bit($r1[1],2));
+		next if (get_bit($r1[1],3));
 		if (defined($reads{$r1[0]})){
 			my $r2 = delete($reads{$r1[0]});
 			next unless($r1[2] eq $r2->[2]);
+		#	print STDERR "[a5] found read pair $r1[0] on $r1[2]\n";
 			if ($r1[3] < $r2->[3]){
+		#		print STDERR "[a5] r1 is upstream of r2\n";
 				my $s1 = get_bit($r1[1],4);
 				my $s2 = get_bit($r2->[1],4);
 				# outie orientation if upstream read maps to reverse strand
@@ -681,6 +706,7 @@ sub get_orientation {
 					$in_ins += abs($r1[1]);
 				}
 			} else {
+		#		print STDERR "[a5] r1 is upstream of r2\n";
 				my $s1 = get_bit($r1[1],4);
 				my $s2 = get_bit($r2->[1],4);
 				# outie orientation if upstream read maps to reverse strand
@@ -696,10 +722,11 @@ sub get_orientation {
 			$reads{$r1[0]} = \@r1;
 		}
 	}
+	$tot /= 2;
 	$out_ins /= $out if ($out);
 	$in_ins /= $in if ($in);
-	my $tot = $in + $out;
-	# if majority outies 
+	print STDERR "[a5] get_orientation: $samfile n_tot = $tot n_out = $out ins_out = $out_ins n_in = $in ins_in = $in_ins\n";
+	# if majority outies or we have  
 	if (($out_ins > 1500 && $out/$tot > 0.1) || $in < $out){
 		return 1;
 	} else {
@@ -715,7 +742,8 @@ sub get_bit {
 	while($flag != 0){
 		$mod = $flag % 2;
 		$flag = int($flag/2);
-		return $mod if ($dig == $i); 
+		return $mod if ($i == $dig); 
+		$i++;
 	}
 	return 0;
 }
