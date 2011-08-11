@@ -184,7 +184,7 @@ sub read_lib_file {
 		chomp;
 		if ($_ =~ m/\[LIB\]/){
 			if ($lib_count > 0) {
-				$id = "raw$lib_count" unless (length($id)); # give a generic name unless user has specified one
+				$libs{$id}{"id"} = $id;
 				for my $key (keys %hash){
 					$libs{$id}{$key} = $hash{$key};
 					delete($hash{$key});
@@ -204,12 +204,11 @@ sub read_lib_file {
 			$hash{"ins"} = $1;
 		} elsif ($_ =~ m/id=([\w\/\-\.]+)/) { 
 			$id = $1;
-			$hash{"id"} = $1;
 		} else {
 			die "[a5] Unrecognizable line in library file: >$_<\n";
 		}
 	} 
-	$id = "raw$lib_count" unless (length($id)); # give a generic name unless user has specified one
+	$libs{$id}{"id"} = $id;
 	for my $key (keys %hash){
 		$libs{$id}{$key} = $hash{$key};
 	}
@@ -337,7 +336,7 @@ sub preprocess_libs {
 #       ALSO CONCATENATE UNPAIRED LIBRARIES AND REMOVE FROM HASH
 #
 	print STDERR "[a5] Making initial estimates of insert size\n";
-	for my $libid (keys %libs) {
+	for my $libid (sort { $libs{$a}{"id"} cmp $libs{$b}{"id"} }keys %libs) {
 		if (defined($libs{$libid}{"p1"})) {
 			my $fq1 = $libs{$libid}{"p1"};
 			my $fq2 = $libs{$libid}{"p2"};
@@ -367,7 +366,7 @@ sub preprocess_libs {
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
 		if (defined($prev_lib)) {
 			my $curr_ins = $libs{$lib}{"ins"};
-			#my $prev_ins = defined($prev_lib) ? $libs{$prev_lib}{"ins"} : -1;
+			my $prev_ins = $libs{$prev_lib}{"ins"};
 			my $curr_min = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
 			my $curr_max = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
 			my $prev_min = $libs{$prev_lib}{"ins"}*(1-$libs{$prev_lib}{"err"});	
@@ -375,8 +374,10 @@ sub preprocess_libs {
 			#print STDERR "[a5] \$prev_ins = $prev_ins, \$curr_ins = $curr_ins\n";
 			
 			# if we've hit a substantially different insert size (i.e. min and max 
-			# inserts don't overlap), do a separate round of scaffolding
-			if (!($curr_min <= $prev_max && $prev_min <= $curr_max)){
+			# inserts don't overlap or currrent insert is twice the size of the 
+			# previous insert), combine are current aggregate, and move one with
+			# the current library
+			if (!($curr_min <= $prev_max && $prev_min <= $curr_max) || $curr_ins/$prev_ins > 2){
 				# scaffold with the previous insert....
 				# combine libraries if necessary, and return just one library hash
 				$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
@@ -720,7 +721,9 @@ sub get_orientation {
 	$tot /= 2;
 	$out_ins /= $out if ($out);
 	$in_ins /= $in if ($in);
-	print STDERR "[a5] get_orientation: $samfile n_tot = $tot n_out = $out ins_out = $out_ins n_in = $in ins_in = $in_ins\n";
+	print STDERR "[a5] get_orientation $samfile: tot=$tot"."\n".
+                 "                               outties: n=$out mu=".sprintf("%.0f",$out_ins)."\n".
+                 "                               innies:  n=$in mu=".sprintf("%.0f", $in_ins)."\n";
 	# if majority outies or we have  
 	if (($out_ins > 1500 && $out/$tot > 0.1) || $in < $out){
 		return 1;
