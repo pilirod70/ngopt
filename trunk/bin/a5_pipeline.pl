@@ -87,7 +87,7 @@ if ($start <= 4) {
 	$scafs = "$OUTBASE.crude.scaffolds.fasta";
 	die "[a5_s4] Can't find starting crude scaffolds $scafs\n" unless -f $scafs;
 	print "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
-	print STDERR "[a5_s4] Detecting and breaking misassemblies in scafs with FISH\n";
+	print STDERR "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
 	$WD="s4";
 	mkdir($WD) if ! -d $WD;
 	$scafs = break_all_misasms($scafs,\%PAIR_LIBS,"$OUTBASE.fish"); 
@@ -346,7 +346,11 @@ sub preprocess_libs {
 				$libs{$libid}{"err"} = $ins_err;
 				$libs{$libid}{"rc"} = $outtie;
 			} 
-		} else {
+			if (defined($libs{$libid}{"up"})){
+				my $up = $libs{$libid}{"up"};
+				`cat $up >> $OUTBASE.unpaired.fastq`;
+			}
+		} elsif (defined($libs{$libid}{"up"})){
 			my $up = $libs{$libid}{"up"};
 			`cat $up >> $OUTBASE.unpaired.fastq`;
 			delete($libs{$libid}); # isn't paired, don't include in aggregated libraries
@@ -368,9 +372,9 @@ sub preprocess_libs {
 			my $curr_ins = $libs{$lib}{"ins"};
 			my $prev_ins = $libs{$prev_lib}{"ins"};
 			my $curr_min = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
-			my $curr_max = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
+			my $curr_max = $libs{$lib}{"ins"}*(1+$libs{$lib}{"err"});	
 			my $prev_min = $libs{$prev_lib}{"ins"}*(1-$libs{$prev_lib}{"err"});	
-			my $prev_max = $libs{$prev_lib}{"ins"}*(1-$libs{$prev_lib}{"err"});	
+			my $prev_max = $libs{$prev_lib}{"ins"}*(1+$libs{$prev_lib}{"err"});	
 			#print STDERR "[a5] \$prev_ins = $prev_ins, \$curr_ins = $curr_ins\n";
 			
 			# if we've hit a substantially different insert size (i.e. min and max 
@@ -410,6 +414,7 @@ sub aggregate_libs {
 	my $curr_ctgs = shift;
 	my ($fq1, $fq2,$up);
 	my %fin_lib = ();
+	print STDERR "[a5] aggregating libraries. n = ".scalar(@$curr_lib_file)."\n";
 	if (scalar(@$curr_lib_file) > 1) { # if this is an aggregate of libraries, combine them into one file
 		($fq1, $fq2, $up) = merge_libraries($curr_lib_file,$curr_lib);
 	} else {
@@ -459,12 +464,14 @@ sub merge_libraries {
 	open(my $fq2h,">","$fq2");
 	my $uph;
 	# merge files for scaffolding, reverse complementing as necessary
-	print STDERR "[a5] Merging libraries";
+	print STDERR "[a5] Merging libraries $curr_lib\n";
 	for my $sublib (@$curr_lib_file){
 		my @ar  = split(' ',$sublib);
-		print STDERR " ".$sublib->{"id"};
+	#	print STDERR " ".$sublib->{"id"};
+		print STDERR "[a5] Piping ".$sublib->{"p1"}."\n"; 
 		open(my $fq,"<",$sublib->{"p1"});
 		pipe_fastq($fq,$fq1h,$sublib->{"rc"});
+		print STDERR "[a5] Piping ".$sublib->{"p2"}."\n"; 
 		open($fq,"<",$sublib->{"p2"});
 		pipe_fastq($fq,$fq2h,$sublib->{"rc"});
 		if (defined($sublib->{"up"})){  # build and unpaired file if there are unpaired reads
@@ -477,7 +484,7 @@ sub merge_libraries {
 	}	
 	close $fq1h;
 	close $fq2h;
-	close $uph;
+	close $uph if defined($uph);
 	return ($fq1, $fq2, $up);
 }
 
@@ -531,21 +538,22 @@ sub pipe_fastq {
 	my $from = shift;
 	my $to = shift;
 	my $rc = shift;
-	while (my $line = <$from>) {
+	while (!eof($from)){
+		my $line = readline($from);
 		print $to $line;
-		$line = <$from>;
+		$line = readline($from);
 		if ($rc){
 			chomp $line;
 			$line =~ tr/ACGTacgt/TGCAtgca/; # complement
 			$line = reverse($line);         # reverse
 			print $to $line."\n";
 			print $to readline($from);
-			$line = <$from>;
+			$line = readline($from);
 			chomp $line;
 			$line = reverse($line);         # reverse
 			print $to $line."\n";
 		} else {
-			print $to readline($from);
+			print $to $line;
 			print $to readline($from);
 			print $to readline($from);
 		}
@@ -725,11 +733,13 @@ sub get_orientation {
                  "                               outties: n=$out mu=".sprintf("%.0f",$out_ins)."\n".
                  "                               innies:  n=$in mu=".sprintf("%.0f", $in_ins)."\n";
 	# if majority outies or we have  
+	my $ori;
 	if (($out_ins > 1500 && $out/$tot > 0.1) || $in < $out){
-		return 1;
+		$ori = 1;
 	} else {
-		return 0;
+		$ori = 0;
 	}	
+	print STDERR "                               orientation = $ori\n";
 }
 
 sub get_bit {
