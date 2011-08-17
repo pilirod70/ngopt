@@ -20,6 +20,7 @@ import java.util.Vector;
 
 import org.halophiles.assembly.Contig;
 import org.halophiles.assembly.ReadPair;
+import org.halophiles.assembly.ReadSet;
 import org.halophiles.assembly.SAMFileParser;
 import org.halophiles.tools.SummaryStats;
 
@@ -427,8 +428,7 @@ public class FISHInputExporter {
 			
 	}
 	*/
-	@SuppressWarnings("unchecked")
-	private static Collection<ReadPair>[] filteProperConnections(Map<String,ReadPair> reads){
+	private static ReadSet[] filteProperConnections(Map<String,ReadPair> reads){
 		int K = 2;
 		Vector<ReadPair> toFilt = new Vector<ReadPair>();
 		Iterator<ReadPair> rpIt = reads.values().iterator();
@@ -449,26 +449,88 @@ public class FISHInputExporter {
 		EMClusterer em = new EMClusterer(toFilt, K);
 		int iters = em.iterate(1000, 0.0001);
 		System.out.println("stopping after "+iters+" iterations.");
-		Collection<ReadPair>[] clusters = new Vector[K];
+		ReadSet[] clusters = new ReadSet[K];
 		em.getClusters().toArray(clusters);
 		double[][] allIns = new double[K][4];
 		for (int i = 0; i < clusters.length; i++){
 			allIns[i][0] = i;
-			ins = ReadPair.estimateInsertSize(clusters[i]);
-			allIns[i][1] = ins[0];
-			allIns[i][2] = ins[1];
-			allIns[i][3] = ins[2]/toFilt.size();
+			allIns[i][1] = clusters[i].mean();
+			allIns[i][2] = clusters[i].sd();
+			allIns[i][3] = ((double)clusters[i].size())/((double)toFilt.size());
 		}
-		Arrays.sort(allIns, new Comparator<double[]>(){
-			public int compare(double[] o1, double[] o2) {
-				return (int) (o1[1] - o2[1]);
+		
+		Vector<ReadSet> signal = new Vector<ReadSet>();
+		Vector<ReadSet> noise = new Vector<ReadSet>();
+		for (int i = 0; i < clusters.length; i++){
+			System.out.print("cluster"+NF.format(allIns[i][0])+": mu="+pad(NF.format(allIns[i][1]),10)+
+					"sd="+pad(NF.format(allIns[i][2]),10)+"n="+pad(NF.format(clusters[(int)allIns[i][0]].size()),10));
+			NF.setMaximumFractionDigits(2);
+			System.out.print("perc="+pad(NF.format(allIns[i][3]),10));
+			
+			// if insert size distribution is under dispersed, add all these reads to the signal pile
+			if (clusters[i].sd() <= clusters[i].mean()){
+				// if we have a small and very high variance, but not overdispersed cluster, don't discard 
+				if(clusters[i].sd()/clusters[i].mean() >= 0.90 && allIns[i][3] < 0.05){
+					noise.add(clusters[i]);
+					System.out.println("  (noise)");
+				} else {
+					signal.add(clusters[i]);
+					System.out.println("  (signal)");
+				}
+			} else {
+				noise.add(clusters[i]);
+				System.out.println("  (noise)");
 			}
-		});
+			
+		}
+		Iterator<ReadSet> noiseIt = noise.iterator();
+		Iterator<ReadSet> sigIt = null;
+		ReadSet currSet = null;
+		ReadSet sigSet = null;
+		double insert = 0.0;
+		int numEndSp = 0;
+		while(noiseIt.hasNext()){
+			// iterate over all noisy reads, and check to see if their outside insert size fits any of the other clusters
+			// do this so signal from circular molecules doesn't get mistaken for noise
+			currSet = noiseIt.next();
+			rpIt = currSet.getReads().iterator();
+			while(rpIt.hasNext()){
+				tmp = rpIt.next();
+				// outside distance
+				insert = tmp.ctg1.len-tmp.pos2+tmp.pos1+tmp.len1;
+				sigIt = signal.iterator();
+				while(sigIt.hasNext()){
+					sigSet = sigIt.next();
+					if (sigSet.p(insert) > currSet.p(tmp.getInsert())){
+						tmp.setEndSpanning(true);
+						//System.err.println(tmp.ctg1.name+"\tout="+NF.format(insert)+" "+sigSet.toString()+","+sigSet.p(insert)+
+						//                   "\tin="+NF.format(tmp.getInsert())+" "+currSet.toString()+","+currSet.p(tmp.getInsert()));
+						currSet.remove(tmp);
+						sigSet.add(tmp);
+						numEndSp++;
+					}
+				}
+			}	
+		}
+		
+		System.out.println("Removed "+numEndSp+" putatively noise reads that look like signal if we let the pair span the end of the contig.");
+		
+		String rmClusters = "";
 		Vector<String> toRm = new Vector<String>();
+		sigIt = signal.iterator();
+		while(sigIt.hasNext()){
+			sigSet = sigIt.next();
+			rmClusters += " "+sigSet.toString();
+			rpIt = sigSet.getReads().iterator();
+			while(rpIt.hasNext()){
+				toRm.add(rpIt.next().hdr);
+			}
+		}
+		
+		/*
 		Map<String,ReadPair> map = null;
 		ReadPair tmpRp  = null;
-		String rmClusters = "";
-		double alpha = 0.01;
+		double alpha = 0.000;
 		for (int i = 0; i < allIns.length; i++){
 			System.out.println("cluster"+NF.format(allIns[i][0])+": mu="+pad(NF.format(allIns[i][1]),10)+"sd="+pad(NF.format(allIns[i][2]),10)+"n="+clusters[(int)allIns[i][0]].size());
 			// if we have a small and very high variance, but not overdispersed cluster, don't discard 
@@ -477,7 +539,7 @@ public class FISHInputExporter {
 			// if insert size distribution is under dispersed, filter tails so we don't throw them out
 			if (allIns[i][2]/allIns[i][1] <= 1){
 				map = new HashMap<String,ReadPair>();
-				for (Iterator<ReadPair> it = clusters[(int)allIns[i][0]].iterator(); it.hasNext();){
+				for (Iterator<ReadPair> it = clusters[(int)allIns[i][0]].getReads().iterator(); it.hasNext();){
 					tmpRp = it.next();
 					map.put(tmpRp.hdr, tmpRp);
 				}
@@ -491,9 +553,9 @@ public class FISHInputExporter {
 					rmClusters = NF.format(allIns[i][0])+"("+map.keySet().size()+")";
 					
 			} 
-		}
+		}*/
 		if (rmClusters.length()>0)
-			System.out.println("Removed but keeping tails from clusters "+rmClusters);
+			System.out.println("Removed clusters"+rmClusters);
 		
 		removeKeys(reads, toRm);
 		return clusters;
@@ -576,7 +638,7 @@ public class FISHInputExporter {
 		while(it.hasNext())
 			reads.remove(it.next());
 	}
-
+	
 	private static class PrintStreamPair implements Comparable<PrintStreamPair>{
 		private File fishDir;
 		// a PrintStream and File for both directions
