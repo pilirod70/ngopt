@@ -15,7 +15,7 @@
   my $Bin = $ARGV[4];
   my $outdir = $ARGV[5];
 
-  my $log = $base_name . ".logfile.txt";
+  my $log = "$outdir/$base_name.logfile.txt";
   open (LOG, ">>$log") || die "Can't write to $log -- fatal\n";
   &MapReadsToContigs($base_name,$contigFile, $singlereads, $library);
   close LOG;

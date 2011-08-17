@@ -14,6 +14,21 @@
     </target>
 
     <target name="jar">
+		<delete file="bin/GetInsertSize.jar"/>
+		<jar destfile="bin/GetInsertSize.jar">
+            <manifest>
+                <attribute name="Main-Class" value="org.halophiles.assembly.InsertSizeExporter"/>
+            </manifest>
+            <fileset dir="${bin}">
+				<include name="**/org/halophiles/assembly/InsertSizeExporter*.class"/>
+				<include name="**/org/halophiles/assembly/qc/EMClusterer*.class"/>
+				<include name="**/org/halophiles/assembly/Contig.class"/>
+				<include name="**/org/halophiles/assembly/ContigTerminal.class"/>
+				<include name="**/org/halophiles/assembly/ReadPair.class"/>
+				<include name="**/org/halophiles/assembly/SAMFileParser.class"/>
+				<include name="**/org/halophiles/tools/SummaryStats.class"/>
+			</fileset>
+        </jar>
 		<delete file="bin/GetFishInput.jar"/>
         <jar destfile="bin/GetFishInput.jar">
             <manifest>
@@ -30,4 +45,5 @@
 			</fileset>
         </jar>
     </target>
+
 </project>

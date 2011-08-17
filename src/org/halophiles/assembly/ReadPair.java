@@ -4,8 +4,6 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
 import java.util.Vector;
 
 import org.halophiles.tools.SummaryStats;
@@ -29,6 +27,7 @@ public class ReadPair{
 	public boolean paired;
 	public boolean outward;
 	public boolean inward;
+	private boolean endSpanning;
 	public ReadPair(String hdr){
 		this.hdr=hdr;
 	}
@@ -103,10 +102,17 @@ public class ReadPair{
 		}
 	}
 	
+	public void setEndSpanning(boolean endSpanning){
+		this.endSpanning = endSpanning;
+	}
+	
 	public int getInsert(){
-		if (this.ctg1 != null && this.ctg2 != null && this.ctg1.equals(this.ctg2))
-			return this.pos2-this.pos1+this.len2;
-		else 
+		if (this.ctg1 != null && this.ctg2 != null && this.ctg1.equals(this.ctg2)){
+			if (endSpanning) {
+				return this.ctg1.len-this.pos2+this.pos1+this.len1;
+			} else 
+				return this.pos2-this.pos1+this.len2;
+		} else 
 			return -1;
 	}
 	
@@ -120,12 +126,15 @@ public class ReadPair{
 	}
 	
 	public String toString(){
+		/*
 		String ret = null;
 		if (pos1 != 0)
 			ret = hdr+"/1\t"+(rev1?"-1":"1")+"\t"+ctg1.name+"\t"+pos1+"\t"+cig1+"\n";
 		if (pos2 != 0)
 			ret += hdr+"/2\t"+(rev2?"-1":"1")+"\t"+ctg2.name+"\t"+pos2+"\t"+cig2;
 		return ret;
+		*/
+		return hdr;
 	}
 	
 	public static void exportInsertSize(Collection<ReadPair> reads, PrintStream out) {
