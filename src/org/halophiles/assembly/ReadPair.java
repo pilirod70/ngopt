@@ -3,7 +3,9 @@ package org.halophiles.assembly;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Vector;
 
 import org.halophiles.tools.SummaryStats;
@@ -167,5 +169,91 @@ public class ReadPair{
 		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
 		return ret;
 	}
+	/**
+	 * 
+	 * @param reads
+	 * @param ins
+	 * @param nSd
+	 * @return a reference to the Map that was filtered
+	 */
+	public static Map<String,ReadPair> filterTailPairs(Map<String,ReadPair> reads, double alpha){
+		ReadPair[] ar = new ReadPair[reads.size()];
+		reads.values().toArray(ar);
+		Arrays.sort(ar,new Comparator<ReadPair>() {
+			public int compare(ReadPair o1, ReadPair o2) {
+				return o1.getInsert() - o2.getInsert();
+			}
+		});
+		
+		Vector<String> rm = new Vector<String>();
+		int l = (int) ((alpha/2) * ar.length);
+		int r = (int) ((1-(alpha/2)) * ar.length);
+		for (int i = 0; i < l; i++)
+			rm.add(ar[i].hdr);
+		for (int i = r; i < ar.length; i++)
+			rm.add(ar[i].hdr);
+		removeKeys(reads,rm);
+		return reads;
+	}
 	
+
+	public static double[] estimateInsertSizeIQR(Map<String,ReadPair> reads){
+		Iterator<ReadPair> it = reads.values().iterator();
+		ReadPair tmp = null;
+		Vector<Double> vals = new Vector<Double>();
+		while(it.hasNext()){
+			tmp = it.next();
+			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
+				vals.add(new Double(tmp.getInsert()));
+		}
+		Double[] arD = vals.toArray(new Double[vals.size()]);
+		Arrays.sort(arD);
+		// discard the upper and lower quartiles to prevent any outliers from distorting our estimate
+		double[] dat = new double[(arD.length*8)/10];
+		int j = arD.length/10;
+		for (int i = 0; i < dat.length; i++)
+			dat[i] = arD[j++];
+		double mean = SummaryStats.mean(dat);
+		double stdev = Math.sqrt(SummaryStats.variance(dat,mean));
+		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
+		return ret;
+	}
+
+	
+	/**
+	 * 
+	 * @param reads
+	 * @param ins
+	 * @param nSd
+	 * @return a reference to the Map that was filtered
+	 */
+	public static Map<String,ReadPair> filterDiagReads(Map<String,ReadPair> reads, double[] ins, int nSd){
+		Iterator<String> it = reads.keySet().iterator();
+		Vector<String> rm = new Vector<String>();
+		String key = null;
+		ReadPair r = null;
+		while(it.hasNext()){
+			key = it.next();
+			r = reads.get(key);
+			if (isDiag(r, ins, nSd)){
+				rm.add(key);
+			}
+		}
+		removeKeys(reads,rm);
+		return reads;
+	}
+	
+	private static boolean isDiag(ReadPair r, double[] ins, int nSd){
+		double dist = Math.abs(r.pos1 - r.pos2 );
+		if (r.ctg2 == null){
+			System.out.print("");
+		}
+		return (dist < ins[0]+nSd*ins[1] && dist > ins[0]-nSd*ins[1]) && r.ctg1.equals(r.ctg2);
+	}
+	
+	private static <V> void removeKeys(Map<String,V> reads, Collection<String> torm){
+		Iterator<String> it = torm.iterator();
+		while(it.hasNext())
+			reads.remove(it.next());
+	}
 }

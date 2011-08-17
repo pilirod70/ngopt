@@ -42,15 +42,15 @@ public class FISHInputExporter {
 			}
 			String base = args[1];
 			File outdir = new File(args[2]);
-			System.out.println("Reading "+args[0]);
-			System.out.println("Writing output to "+outdir.getAbsolutePath()+" with basename "+base);
+			System.out.println("[a5_fie] Reading "+args[0]);
+			System.out.println("[a5_fie] Writing output to "+outdir.getAbsolutePath()+" with basename "+base);
 			SAMFileParser sfp = new SAMFileParser(args[0]);
 
-			System.out.println("Found "+sfp.getNumContigs()+" contigs.");
-			System.out.println("Found "+sfp.getNumReads()+" total reads and "+sfp.getNumPairs()+" read-pairs.");
+			System.out.println("[a5_fie] Found "+sfp.getNumContigs()+" contigs.");
+			System.out.println("[a5_fie] Found "+sfp.getNumReads()+" total reads and "+sfp.getNumPairs()+" read-pairs.");
 			
 			Map<String,ReadPair> reads = new HashMap<String,ReadPair>();
-			System.out.println("Filtering duplicate connections...");
+			System.out.println("[a5_fie] Filtering duplicate connections...");
 			Set<ReadPair> uniq = new TreeSet<ReadPair>(new Comparator<ReadPair>(){
 				public int compare(ReadPair arg0, ReadPair arg1) {
 					if (arg0.ctg1.equals(arg1.ctg1)){
@@ -80,7 +80,7 @@ public class FISHInputExporter {
 					reads.put(tmp.hdr, tmp);
 			}
 			if (reads.size() <= 0) {
-				System.err.println("No paired reads found. Cannot generate match files for running FISH misassembly detection.");
+				System.err.println("[a5_fie] No paired reads found. Cannot generate match files for running FISH misassembly detection.");
 				System.exit(-1);
 			}
 			File insFile = new File(outdir, base+".ins_size_unfilt.txt");
@@ -88,30 +88,19 @@ public class FISHInputExporter {
 			PrintStream insOut = new PrintStream(insFile);
 			ReadPair.exportInsertSize(reads.values(), insOut);
 			insOut.close();
-	/*		
-			filterShadowLibrary(reads);
-			System.out.print("Estimating insert size... ");
-			int nSd = 3;
-			double[] ins = ReadPair.estimateInsertSize(reads.values());
-			System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));
-			if (ins[1] > ins[0]){
-				System.out.print("Insert sizes are overdispersed. Discarding upper and lower 10 percent and recomputing mean... ");
-				double[] tmpIns = estimateInsertSizeIQR(reads);
-				ins = tmpIns;
-				System.out.println("mean insert: " + NF.format(ins[0])+"    stdev: " + NF.format(ins[1]));				
-			}
-			System.out.print("Filtering diagonal self-links. Discarding pairs with inserts between "+NF.format(ins[0]-nSd*ins[1])+" - "+NF.format(ins[0]+nSd*ins[1])+"... ");			
+
+			System.out.println("[a5_fie] Filtering proper connections... ");
 			int before = reads.size();
-			filterDiagReads(reads,ins,nSd);
-			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
+			Collection<ReadPair> filtered = filteProperConnections(reads);
+			System.out.println("[a5_fie] removed "+(before - reads.size())+" of "+before +" read pairs.");
 			
-	*/
-			System.out.println("Filtering proper connections... ");
-			int before = reads.size();
-			filteProperConnections(reads);
-			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
+			insFile = new File(outdir,base+".ins_size_rm.txt");
+			insFile.createNewFile();
+			insOut = new PrintStream(insFile);
+			ReadPair.exportInsertSize(filtered, insOut);
+			insOut.close();
 			
-			System.out.print("Filtering tandem connections... ");
+			System.out.print("[a5_fie] Filtering tandem connections... ");
 			before = reads.size();
 			filterTandemConnections(reads);
 			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
@@ -275,80 +264,7 @@ public class FISHInputExporter {
 		ctrlOut.close();
 	}
 	
-	
 
-	
-	public static double[] estimateInsertSizeIQR(Map<String,ReadPair> reads){
-		Iterator<ReadPair> it = reads.values().iterator();
-		ReadPair tmp = null;
-		Vector<Double> vals = new Vector<Double>();
-		while(it.hasNext()){
-			tmp = it.next();
-			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
-				vals.add(new Double(tmp.getInsert()));
-		}
-		Double[] arD = vals.toArray(new Double[vals.size()]);
-		Arrays.sort(arD);
-		// discard the upper and lower quartiles to prevent any outliers from distorting our estimate
-		double[] dat = new double[(arD.length*8)/10];
-		int j = arD.length/10;
-		for (int i = 0; i < dat.length; i++)
-			dat[i] = arD[j++];
-		double mean = SummaryStats.mean(dat);
-		double stdev = Math.sqrt(SummaryStats.variance(dat,mean));
-		double[] ret = {Math.round(mean),Math.round(stdev),dat.length};
-		return ret;
-	}
-	
-	/**
-	 * 
-	 * @param reads
-	 * @param ins
-	 * @param nSd
-	 * @return a reference to the Map that was filtered
-	 */
-	public static Map<String,ReadPair> filterDiagReads(Map<String,ReadPair> reads, double[] ins, int nSd){
-		Iterator<String> it = reads.keySet().iterator();
-		Vector<String> rm = new Vector<String>();
-		String key = null;
-		ReadPair r = null;
-		while(it.hasNext()){
-			key = it.next();
-			r = reads.get(key);
-			if (isDiag(r, ins, nSd)){
-				rm.add(key);
-			}
-		}
-		removeKeys(reads,rm);
-		return reads;
-	}
-	
-	/**
-	 * 
-	 * @param reads
-	 * @param ins
-	 * @param nSd
-	 * @return a reference to the Map that was filtered
-	 */
-	public static Map<String,ReadPair> filterTailPairs(Map<String,ReadPair> reads, double alpha){
-		ReadPair[] ar = new ReadPair[reads.size()];
-		reads.values().toArray(ar);
-		Arrays.sort(ar,new Comparator<ReadPair>() {
-			public int compare(ReadPair o1, ReadPair o2) {
-				return o1.getInsert() - o2.getInsert();
-			}
-		});
-		
-		Vector<String> rm = new Vector<String>();
-		int l = (int) ((alpha/2) * ar.length);
-		int r = (int) ((1-(alpha/2)) * ar.length);
-		for (int i = 0; i < l; i++)
-			rm.add(ar[i].hdr);
-		for (int i = r; i < ar.length; i++)
-			rm.add(ar[i].hdr);
-		removeKeys(reads,rm);
-		return reads;
-	}
 	/*
 	public static void filterShadowLibrary(Map<String,ReadPair> reads){
 		Map<String,ReadPair> outies = new HashMap<String, ReadPair>();
@@ -428,7 +344,11 @@ public class FISHInputExporter {
 			
 	}
 	*/
-	private static ReadSet[] filteProperConnections(Map<String,ReadPair> reads){
+	/**
+	 * 
+	 * @return a collection of ReadPairs that were removed
+	 */
+	private static Collection<ReadPair> filteProperConnections(Map<String,ReadPair> reads){
 		int K = 2;
 		Vector<ReadPair> toFilt = new Vector<ReadPair>();
 		Iterator<ReadPair> rpIt = reads.values().iterator();
@@ -441,10 +361,10 @@ public class FISHInputExporter {
 		// estimate initial insert size to determine if we should look for shadow library.
 		double[] ins = ReadPair.estimateInsertSize(reads.values());
 		if (ins[0] > 1500){
-			System.out.print("EM-clustering insert sizes with K=3 (mean ins > 1500bp)... ");
+			System.out.print("[a5_fie] EM-clustering insert sizes with K=3 (mean ins > 1500bp)... ");
 			K = 3;
 		} else {
-			System.out.print("EM-clustering insert sizes with K=2... ");
+			System.out.print("[a5_fie] EM-clustering insert sizes with K=2... ");
 		}
 		EMClusterer em = new EMClusterer(toFilt, K);
 		int iters = em.iterate(1000, 0.0001);
@@ -462,7 +382,7 @@ public class FISHInputExporter {
 		Vector<ReadSet> signal = new Vector<ReadSet>();
 		Vector<ReadSet> noise = new Vector<ReadSet>();
 		for (int i = 0; i < clusters.length; i++){
-			System.out.print("cluster"+NF.format(allIns[i][0])+": mu="+pad(NF.format(allIns[i][1]),10)+
+			System.out.print("[a5_fie] cluster"+NF.format(allIns[i][0])+": mu="+pad(NF.format(allIns[i][1]),10)+
 					"sd="+pad(NF.format(allIns[i][2]),10)+"n="+pad(NF.format(clusters[(int)allIns[i][0]].size()),10));
 			NF.setMaximumFractionDigits(2);
 			System.out.print("perc="+pad(NF.format(allIns[i][3]),10));
@@ -513,52 +433,25 @@ public class FISHInputExporter {
 			}	
 		}
 		
-		System.out.println("Removed "+numEndSp+" putatively noise reads that look like signal if we let the pair span the end of the contig.");
-		
+		System.out.println("[a5_fie] Removed "+numEndSp+" putatively noise reads that look like signal if we let the pair span the end of the contig.");
 		String rmClusters = "";
 		Vector<String> toRm = new Vector<String>();
 		sigIt = signal.iterator();
+		Collection<ReadPair> ret = new Vector<ReadPair>();
 		while(sigIt.hasNext()){
 			sigSet = sigIt.next();
 			rmClusters += " "+sigSet.toString();
+			ret.addAll(sigSet.getReads());
 			rpIt = sigSet.getReads().iterator();
 			while(rpIt.hasNext()){
 				toRm.add(rpIt.next().hdr);
 			}
 		}
-		
-		/*
-		Map<String,ReadPair> map = null;
-		ReadPair tmpRp  = null;
-		double alpha = 0.000;
-		for (int i = 0; i < allIns.length; i++){
-			System.out.println("cluster"+NF.format(allIns[i][0])+": mu="+pad(NF.format(allIns[i][1]),10)+"sd="+pad(NF.format(allIns[i][2]),10)+"n="+clusters[(int)allIns[i][0]].size());
-			// if we have a small and very high variance, but not overdispersed cluster, don't discard 
-			if(allIns[i][2]/allIns[i][1] >= 0.90 && allIns[i][3] < 0.05)
-				continue;
-			// if insert size distribution is under dispersed, filter tails so we don't throw them out
-			if (allIns[i][2]/allIns[i][1] <= 1){
-				map = new HashMap<String,ReadPair>();
-				for (Iterator<ReadPair> it = clusters[(int)allIns[i][0]].getReads().iterator(); it.hasNext();){
-					tmpRp = it.next();
-					map.put(tmpRp.hdr, tmpRp);
-				}
-				ins[0] = allIns[i][1];
-				ins[1] = allIns[i][2];
-				filterTailPairs(map,alpha);
-				toRm.addAll(map.keySet());
-				if (rmClusters.length()>0)
-					rmClusters = rmClusters+" "+NF.format(allIns[i][0])+"("+map.keySet().size()+")";
-				else 
-					rmClusters = NF.format(allIns[i][0])+"("+map.keySet().size()+")";
-					
-			} 
-		}*/
 		if (rmClusters.length()>0)
-			System.out.println("Removed clusters"+rmClusters);
+			System.out.println("[a5_fie] Removed clusters"+rmClusters);
 		
 		removeKeys(reads, toRm);
-		return clusters;
+		return ret;
 	}
 	
 	private static String pad(String s, int len){
@@ -622,15 +515,6 @@ public class FISHInputExporter {
 				ret.add(pair);
 		}
 		return ret;
-	}
-	
-	
-	private static boolean isDiag(ReadPair r, double[] ins, int nSd){
-		double dist = Math.abs(r.pos1 - r.pos2 );
-		if (r.ctg2 == null){
-			System.out.print("");
-		}
-		return (dist < ins[0]+nSd*ins[1] && dist > ins[0]-nSd*ins[1]) && r.ctg1.equals(r.ctg2);
 	}
 	
 	private static <V> void removeKeys(Map<String,V> reads, Collection<String> torm){
