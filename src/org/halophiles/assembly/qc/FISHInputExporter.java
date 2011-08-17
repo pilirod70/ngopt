@@ -91,7 +91,7 @@ public class FISHInputExporter {
 
 			System.out.println("[a5_fie] Filtering proper connections... ");
 			int before = reads.size();
-			Collection<ReadPair> filtered = filteProperConnections(reads);
+			Collection<ReadPair> filtered = filterProperConnections(reads);
 			System.out.println("[a5_fie] removed "+(before - reads.size())+" of "+before +" read pairs.");
 			
 			insFile = new File(outdir,base+".ins_size_rm.txt");
@@ -348,7 +348,7 @@ public class FISHInputExporter {
 	 * 
 	 * @return a collection of ReadPairs that were removed
 	 */
-	private static Collection<ReadPair> filteProperConnections(Map<String,ReadPair> reads){
+	private static Collection<ReadPair> filterProperConnections(Map<String,ReadPair> reads){
 		int K = 2;
 		Vector<ReadPair> toFilt = new Vector<ReadPair>();
 		Iterator<ReadPair> rpIt = reads.values().iterator();
@@ -367,8 +367,9 @@ public class FISHInputExporter {
 			System.out.print("[a5_fie] EM-clustering insert sizes with K=2... ");
 		}
 		EMClusterer em = new EMClusterer(toFilt, K);
-		int iters = em.iterate(1000, 0.0001);
-		System.out.println("stopping after "+iters+" iterations.");
+		double delta = 0.0001;
+        int iters = em.iterate(1000, delta);
+        System.out.println("stopping after "+iters+" iterations with delta="+delta);
 		ReadSet[] clusters = new ReadSet[K];
 		em.getClusters().toArray(clusters);
 		double[][] allIns = new double[K][4];
@@ -382,10 +383,10 @@ public class FISHInputExporter {
 		Vector<ReadSet> signal = new Vector<ReadSet>();
 		Vector<ReadSet> noise = new Vector<ReadSet>();
 		for (int i = 0; i < clusters.length; i++){
-			System.out.print("[a5_fie] cluster"+NF.format(allIns[i][0])+": mu="+pad(NF.format(allIns[i][1]),10)+
+			System.out.print("[a5_fie] cluster"+NF.format(clusters[i].getId())+": mu="+pad(NF.format(allIns[i][1]),10)+
 					"sd="+pad(NF.format(allIns[i][2]),10)+"n="+pad(NF.format(clusters[(int)allIns[i][0]].size()),10));
 			NF.setMaximumFractionDigits(2);
-			System.out.print("perc="+pad(NF.format(allIns[i][3]),10));
+			System.out.print("perc="+pad(NF.format(100*allIns[i][3]),10));
 			
 			// if insert size distribution is under dispersed, add all these reads to the signal pile
 			if (clusters[i].sd() <= clusters[i].mean()){
@@ -423,12 +424,10 @@ public class FISHInputExporter {
 					sigSet = sigIt.next();
 					if (sigSet.p(insert) > currSet.p(tmp.getInsert())){
 						tmp.setEndSpanning(true);
-						//System.err.println(tmp.ctg1.name+"\tout="+NF.format(insert)+" "+sigSet.toString()+","+sigSet.p(insert)+
-						//                   "\tin="+NF.format(tmp.getInsert())+" "+currSet.toString()+","+currSet.p(tmp.getInsert()));
 						currSet.remove(tmp);
 						sigSet.add(tmp);
 						numEndSp++;
-					}
+					} 
 				}
 			}	
 		}
@@ -438,19 +437,22 @@ public class FISHInputExporter {
 		Vector<String> toRm = new Vector<String>();
 		sigIt = signal.iterator();
 		Collection<ReadPair> ret = new Vector<ReadPair>();
+		int nSd = 6;
 		while(sigIt.hasNext()){
 			sigSet = sigIt.next();
+			double[] ar = {sigSet.mean(),sigSet.sd()};
 			rmClusters += " "+sigSet.toString();
 			ret.addAll(sigSet.getReads());
-			rpIt = sigSet.getReads().iterator();
+		/*	rpIt = sigSet.getReads().iterator();
 			while(rpIt.hasNext()){
 				toRm.add(rpIt.next().hdr);
-			}
+			}*/
+			ReadPair.filterDiagReads(reads, ar, nSd);
 		}
 		if (rmClusters.length()>0)
 			System.out.println("[a5_fie] Removed clusters"+rmClusters);
 		
-		removeKeys(reads, toRm);
+		//removeKeys(reads, toRm);
 		return ret;
 	}
 	
