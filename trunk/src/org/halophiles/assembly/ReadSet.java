@@ -63,6 +63,10 @@ public class ReadSet {
 		return reads.size();
 	}
 	
+	public int getId(){
+		return ID;
+	}
+	
 	private void update(){
 		if (mod){
 			double[] ins = ReadPair.estimateInsertSize(reads);
