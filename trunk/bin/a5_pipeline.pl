@@ -646,22 +646,27 @@ sub get_insert($$$$) {
 	my $cmd = "$DIR/bwa sampe -P $ctgs $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub ".
 												"> $WD/$outbase.sub.pe.sam 2> $WD/$outbase.sampe.out";
 	`$cmd`;
-	open(SAMPE, "<","$WD/$outbase.sampe.out");
-	my $ins_mean = 0;
-	my $ins_error = 0;
-	my $min;
-	my $ins_sd;
-	my $ins_n;
-	my $found = 0;
-	while( my $line = <SAMPE> ){
-		if(!$found  && $line =~ m/^\[infer_isize\] inferred external isize from (\d+) pairs: ([\d\.]+) \+\/\- ([\d\.]+)$/){
-			$ins_n = $1;
-			$ins_mean = $2;
-			$ins_sd = $3;
-			close SAMPE;
-			last;
-		} 
-	}
+	$cmd = "GetInsertSize.jar $WD/$outbase.sampe.out";
+	print STDERR "[a5] java -jar $cmd\n"; 
+	my $cmdout = `java -jar $DIR/$cmd`;
+	chomp $cmdout;
+	my ($ins_mean,$ins_sd,$ins_n) = split(/,/,$cmdout);
+#	open(SAMPE, "<","$WD/$outbase.sampe.out");
+#	my $ins_mean = 0;
+#	my $ins_error = 0;
+#	my $min;
+#	my $ins_sd;
+#	my $ins_n;
+#	my $found = 0;	
+#	while( my $line = <SAMPE> ){
+#		if(!$found  && $line =~ m/^\[infer_isize\] inferred external isize from (\d+) pairs: ([\d\.]+) \+\/\- ([\d\.]+)$/){
+#			$ins_n = $1;
+#			$ins_mean = $2;
+#			$ins_sd = $3;
+#			close SAMPE;
+#			last;
+#		} 
+#	}
 	`rm $r1fq.sub* $r2fq.sub* $ctgs.*`;
 	if ($ins_n > $require_fraction * $estimate_pair_count) {		
 		$ins_error = $ins_sd*6 < $ins_mean ? $ins_sd*6 / $ins_mean : 0.95;
