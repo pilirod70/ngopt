@@ -93,7 +93,7 @@ public class FISHInputExporter {
 			int before = reads.size();
 			Collection<ReadPair> filtered = filterProperConnections(reads);
 			System.out.println("[a5_fie] removed "+(before - reads.size())+" of "+before +" read pairs.");
-			
+
 			insFile = new File(outdir,base+".ins_size_rm.txt");
 			insFile.createNewFile();
 			insOut = new PrintStream(insFile);
@@ -366,6 +366,7 @@ public class FISHInputExporter {
 		} else {
 			System.out.print("[a5_fie] EM-clustering insert sizes with K=2... ");
 		}
+	//	K=4;
 		EMClusterer em = new EMClusterer(toFilt, K);
 		double delta = 0.0001;
         int iters = em.iterate(1000, delta);
@@ -422,7 +423,8 @@ public class FISHInputExporter {
 				sigIt = signal.iterator();
 				while(sigIt.hasNext()){
 					sigSet = sigIt.next();
-					if (sigSet.p(insert) > currSet.p(tmp.getInsert())){
+					if (sigSet.p(insert) > currSet.p(tmp.getInsert()) ||
+							sigSet.p(tmp.getInsert()) > currSet.p(tmp.getInsert())){
 						tmp.setEndSpanning(true);
 						currSet.remove(tmp);
 						sigSet.add(tmp);
