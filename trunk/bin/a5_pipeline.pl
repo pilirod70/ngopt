@@ -10,13 +10,19 @@ use strict;
 use warnings;
 use File::Basename;
 use Cwd 'abs_path';
+use Getopt::Long;
 
-die "Usage: ".basename($0)." [--begin=1-5] <library file> <output base>\n" if(@ARGV!=2 && @ARGV!=3 || (@ARGV==3 && $ARGV[0] !~ m/--begin=([1-5])/));
+
+die "Usage: ".basename($0)." [--begin=1-5] [--preprocessed] <library file> <output base>\n" if (@ARGV == 0);
+
+Getopt::Long::Configure(qw{no_auto_abbrev no_ignore_case_always pass_through});
 my $start = 1;
-if (@ARGV==3) {
-	$start = $1;
-	shift;
-}
+my $preproc = 1;
+GetOptions( 'begin=i' => \$start,
+			'preprocessed' => \$preproc);
+
+die "Usage: ".basename($0)." [--begin=1-5] [--preprocessed]  <library file> <output base>\n" if (@ARGV < 2);
+
 
 my $libfile = $ARGV[0];
 my $OUTBASE = $ARGV[1];
@@ -73,8 +79,12 @@ if ($start <= 2) {
 } 
 $WD="s3";
 mkdir($WD) if ! -d $WD;
-print STDERR "[a5] Preprocess libraries for scaffolding with SSPACE\n";
-my %PAIR_LIBS = preprocess_libs(\%RAW_LIBS,"$OUTBASE.contigs.fasta");
+my %PAIR_LIBS; 
+unless ($preproc){
+	print STDERR "[a5] Preprocess libraries for scaffolding with SSPACE\n";
+	%PAIR_LIBS = preprocess_libs(\%RAW_LIBS,"$OUTBASE.contigs.fasta");
+}
+print STDERR "[a5] Libraries already preprocessed\n" if ($preproc);
 if ($start <= 3) {
 	$ctgs = "$OUTBASE.contigs.fasta";
 	die "[a5_s3] Can't find starting contigs $ctgs.\n" unless -f $ctgs;
@@ -193,17 +203,15 @@ sub read_lib_file {
 			$lib_count++;
 			$id = "raw$lib_count";
 		} elsif ($_ =~ m/shuf=([\w\/\-\.]+)/) { 
-			my ($fq1, $fq2) = split_shuf($1,"$OUTBASE.lib$lib_count");
+			my ($fq1, $fq2) = split_shuf($1,"$OUTBASE.raw$lib_count");
 			$hash{"p1"} = $fq1;
 			$hash{"p2"} = $fq2;
 		} elsif ($_ =~ m/(p[1,2])=([\w\/\-\.]+)/) { 
 			$hash{$1} = $2;
-		} elsif ($_ =~ m/up=([\w\/\-\.]+)/) { 
-			$hash{"up"} = $1;
-		} elsif ($_ =~ m/ins=([\w\/\-\.]+)/) { 
-			$hash{"ins"} = $1;
 		} elsif ($_ =~ m/id=([\w\/\-\.]+)/) { 
 			$id = $1;
+		} elsif ($_ =~ m/(\w+)=([\w\/\-\.]+)/) { 
+			$hash{$1} = $2;
 		} else {
 			die "[a5] Unrecognizable line in library file: >$_<\n";
 		}
@@ -310,9 +318,9 @@ sub scaffold_sspace {
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
 		my ($exp_link, $cov) = calc_explinks( $genome_size, $libs{$lib}{"ins"}, $libs{$lib}{"p1"} ); 
 		printf STDERR "[a5] %s\: Insert %.0f, coverage %.2f, expected links %.0f\n", $libs{$lib}{"id"}, $libs{$lib}{"ins"}, $cov, $exp_link;
-		if (defined($libs{$lib}{"up"})) { # run sspace with unpaired library if we have one
+		if (-f "$OUTBASE.unpaired.fastq") { # run sspace with unpaired library if we have one
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
-                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $libs{$lib}{"up"});
+                                                  $libs{$lib}{"libfile"}, $curr_ctgs, "$OUTBASE.unpaired.fastq");
 		} else {
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
                                                   $libs{$lib}{"libfile"}, $curr_ctgs);
@@ -335,6 +343,7 @@ sub preprocess_libs {
 #       MAKE OUR INITIAL ESTIMATES OF INSERT SIZE HERE AND GET ERROR ESTIMATES.
 #       ALSO CONCATENATE UNPAIRED LIBRARIES AND REMOVE FROM HASH
 #
+	my $have_up = 0;
 	print STDERR "[a5] Making initial estimates of insert size\n";
 	for my $libid (sort { $libs{$a}{"id"} cmp $libs{$b}{"id"} }keys %libs) {
 		if (defined($libs{$libid}{"p1"})) {
@@ -349,11 +358,14 @@ sub preprocess_libs {
 			if (defined($libs{$libid}{"up"})){
 				my $up = $libs{$libid}{"up"};
 				`cat $up >> $OUTBASE.unpaired.fastq`;
+				delete($libs{$libid}{"up"}); # don't aggregate unpaired along with paired reads, just dump them all into one file 
+				$have_up = 1;
 			}
 		} elsif (defined($libs{$libid}{"up"})){
 			my $up = $libs{$libid}{"up"};
 			`cat $up >> $OUTBASE.unpaired.fastq`;
 			delete($libs{$libid}); # isn't paired, don't include in aggregated libraries
+			$have_up = 1;
 		}
 	}
 #
@@ -402,9 +414,19 @@ sub preprocess_libs {
 	}
 	$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
 	$run_lib->{"libfile"} = print_libfile("$OUTBASE.library_$libraryI.txt", $run_lib);
+	open(LIB,">$OUTBASE.preproc.libs");
+	print STDERR "[a5] Printing preprocessed library file to $OUTBASE.preproc.libs\n";
 	for my $key (keys %$run_lib){
 		$processed{$run_lib->{"id"}}{$key} = $run_lib->{$key};
 	}
+	for my $lib (keys %processed){
+		print LIB "[LIB]\n";
+		for my $att (keys %{$processed{$lib}}) {
+			print LIB "$att=".$processed{$lib}{$att}."\n";
+		}
+	}
+	print LIB "[LIB]\nup=$OUTBASE.unpaired.fastq\n" if $have_up;
+	close LIB;
 	return %processed;
 }
 
@@ -424,15 +446,15 @@ sub aggregate_libs {
 	$fin_lib{"id"} = $curr_lib;
 	$fin_lib{"p1"} = $fq1;
 	$fin_lib{"p2"} = $fq2;
-	if (defined($up)){
-		$fin_lib{"up"} = $up;
-		# add unpaired libraries to unpaired reads from this library aggregate
-		`cat $OUTBASE.unpaired.fastq >> $fin_lib{"up"}` if -f "$OUTBASE.unpaired.fastq";
-	} elsif (-f "$OUTBASE.unpaired.fastq") {
-		$up = $fin_lib{"id"}.".up.fastq";	
-		`cat $OUTBASE.unpaired.fastq > $up`;
-		$fin_lib{"up"} = $up;
-	}
+#	if (defined($up)){
+#		$fin_lib{"up"} = $up;
+#		# add unpaired libraries to unpaired reads from this library aggregate
+#		`cat $OUTBASE.unpaired.fastq >> $fin_lib{"up"}` if -f "$OUTBASE.unpaired.fastq";
+#	} elsif (-f "$OUTBASE.unpaired.fastq") {
+#		$up = $fin_lib{"id"}.".up.fastq";	
+#		`cat $OUTBASE.unpaired.fastq > $up`;
+#		$fin_lib{"up"} = $up;
+#	}
 	$fin_lib{"rc"} = 0;
 	# re-estimate insert sizes
 	my ($ins_mean, $ins_err, $outtie) = get_insert($fq1,$fq2,"$OUTBASE.$curr_lib",$curr_ctgs);
