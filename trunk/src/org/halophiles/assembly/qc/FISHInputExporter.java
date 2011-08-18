@@ -384,6 +384,7 @@ public class FISHInputExporter {
 		Vector<ReadSet> signal = new Vector<ReadSet>();
 		Vector<ReadSet> noise = new Vector<ReadSet>();
 		for (int i = 0; i < clusters.length; i++){
+			NF.setMaximumFractionDigits(0);
 			System.out.print("[a5_fie] cluster"+NF.format(clusters[i].getId())+": mu="+pad(NF.format(allIns[i][1]),10)+
 					"sd="+pad(NF.format(allIns[i][2]),10)+"n="+pad(NF.format(clusters[(int)allIns[i][0]].size()),10));
 			NF.setMaximumFractionDigits(2);
@@ -409,7 +410,7 @@ public class FISHInputExporter {
 		Iterator<ReadSet> sigIt = null;
 		ReadSet currSet = null;
 		ReadSet sigSet = null;
-		double insert = 0.0;
+		double outInsert = 0.0;
 		int numEndSp = 0;
 		while(noiseIt.hasNext()){
 			// iterate over all noisy reads, and check to see if their outside insert size fits any of the other clusters
@@ -419,11 +420,11 @@ public class FISHInputExporter {
 			while(rpIt.hasNext()){
 				tmp = rpIt.next();
 				// outside distance
-				insert = tmp.ctg1.len-tmp.pos2+tmp.pos1+tmp.len1;
+				outInsert = tmp.ctg1.len-tmp.pos2+tmp.pos1+tmp.len1;
 				sigIt = signal.iterator();
 				while(sigIt.hasNext()){
 					sigSet = sigIt.next();
-					if (sigSet.p(insert) > currSet.p(tmp.getInsert())){
+					if (sigSet.p(outInsert) > currSet.p(tmp.getInsert())){
 						tmp.setEndSpanning(true);
 						currSet.remove(tmp);
 						sigSet.add(tmp);
@@ -443,11 +444,15 @@ public class FISHInputExporter {
 			sigSet = sigIt.next();
 			rmClusters += " "+sigSet.toString();
 			ret.addAll(sigSet.getReads());
+			NF.setMaximumFractionDigits(0);
+			System.out.print("[a5_fie] cluster"+NF.format(sigSet.getId())+": mu="+pad(NF.format(sigSet.mean()),10)+
+					"sd="+pad(NF.format(sigSet.sd(),10)+"n="+pad(NF.format(sigSet.size()),10));
+			NF.setMaximumFractionDigits(2);
+			System.out.print("perc="+pad(NF.format(100*allIns[i][3]),10));
 		/*	rpIt = sigSet.getReads().iterator();
 			while(rpIt.hasNext()){
 				toRm.add(rpIt.next().hdr);
 			}*/
-			
 			while(nSd*sigSet.sd()>sigSet.mean())
 				nSd--;
 			System.out.println("[a5_fie] Removing reads with inserts between ("+
