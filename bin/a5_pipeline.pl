@@ -401,7 +401,7 @@ sub preprocess_libs {
 		$prev_lib = $lib;
 	}
 	$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
-	$run_lib->{"libfile"} = print_libfile("library_$libraryI.txt", $run_lib);
+	$run_lib->{"libfile"} = print_libfile($OUTBASE.".library_$libraryI.txt", $run_lib);
 	for my $key (keys %$run_lib){
 		$processed{$run_lib->{"id"}}{$key} = $run_lib->{$key};
 	}
@@ -416,7 +416,7 @@ sub aggregate_libs {
 	my %fin_lib = ();
 	print STDERR "[a5] aggregating libraries. n = ".scalar(@$curr_lib_file)."\n";
 	if (scalar(@$curr_lib_file) > 1) { # if this is an aggregate of libraries, combine them into one file
-		($fq1, $fq2, $up) = merge_libraries($curr_lib_file,$curr_lib);
+		($fq1, $fq2, $up) = merge_libraries($curr_lib_file,$OUTBASE.".".$curr_lib);
 	} else {
 		($fq1, $fq2) = ($curr_lib_file->[0]{"p1"}, $curr_lib_file->[0]{"p2"});
 		$up = $curr_lib_file->[0]{"up"} if (defined($curr_lib_file->[0]{"up"}));
