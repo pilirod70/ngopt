@@ -436,20 +436,24 @@ public class FISHInputExporter {
 		
 		System.out.println("[a5_fie] Removed "+numEndSp+" putatively noise reads that look like signal if we let the pair span the end of the contig.");
 		String rmClusters = "";
-		Vector<String> toRm = new Vector<String>();
 		sigIt = signal.iterator();
 		Collection<ReadPair> ret = new Vector<ReadPair>();
 		int nSd = 6;
 		while(sigIt.hasNext()){
+			nSd=6;
 			sigSet = sigIt.next();
-			double[] ar = {sigSet.mean(),sigSet.sd()};
 			rmClusters += " "+sigSet.toString();
 			ret.addAll(sigSet.getReads());
 		/*	rpIt = sigSet.getReads().iterator();
 			while(rpIt.hasNext()){
 				toRm.add(rpIt.next().hdr);
 			}*/
-			ReadPair.filterDiagReads(reads, ar, nSd);
+			while(nSd*sigSet.sd()>sigSet.mean())
+				nSd--;
+			System.out.println("[a5_fie] Removing reads with inserts between ("+
+			                        NF.format(sigSet.mean()-nSd*sigSet.sd())+","+
+			                        NF.format(sigSet.mean()+nSd*sigSet.sd())+")   nSd="+nSd);
+			ReadPair.filterRange(reads, sigSet.mean()-nSd*sigSet.sd(), sigSet.mean()+nSd*sigSet.sd());
 		}
 		if (rmClusters.length()>0)
 			System.out.println("[a5_fie] Removed clusters"+rmClusters);

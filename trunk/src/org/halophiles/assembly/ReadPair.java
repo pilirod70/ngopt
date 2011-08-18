@@ -242,12 +242,33 @@ public class ReadPair{
 		removeKeys(reads,rm);
 		return reads;
 	}
+	/**
+	 * 
+	 * @param reads
+	 * @param ins
+	 * @param nSd
+	 * @return a reference to the Map that was filtered
+	 */
+	public static Map<String,ReadPair> filterRange(Map<String,ReadPair> reads, double min, double max){
+		Iterator<String> it = reads.keySet().iterator();
+		Vector<String> rm = new Vector<String>();
+		String key = null;
+		ReadPair r = null;
+		double ins = 0.0;
+		while(it.hasNext()){
+			key = it.next();
+			r = reads.get(key);
+			ins = r.getInsert();
+			if (ins > min && ins < max){
+				rm.add(key);
+			}
+		}
+		removeKeys(reads,rm);
+		return reads;
+	}
 	
 	private static boolean isDiag(ReadPair r, double[] ins, int nSd){
 		double dist = Math.abs(r.pos1 - r.pos2 );
-		if (r.ctg2 == null){
-			System.out.print("");
-		}
 		return (dist < ins[0]+nSd*ins[1] && dist > ins[0]-nSd*ins[1]) && r.ctg1.equals(r.ctg2);
 	}
 	
