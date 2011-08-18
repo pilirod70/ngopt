@@ -385,7 +385,7 @@ sub preprocess_libs {
 				# scaffold with the previous insert....
 				# combine libraries if necessary, and return just one library hash
 				$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
-				$run_lib->{"libfile"} = print_libfile("library_$libraryI.txt", $run_lib);
+				$run_lib->{"libfile"} = print_libfile("$OUTBASE.library_$libraryI.txt", $run_lib);
 				for my $key (keys %$run_lib){
 					$processed{$run_lib->{"id"}}{$key} = $run_lib->{$key};
 				}
@@ -401,7 +401,7 @@ sub preprocess_libs {
 		$prev_lib = $lib;
 	}
 	$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
-	$run_lib->{"libfile"} = print_libfile($OUTBASE.".library_$libraryI.txt", $run_lib);
+	$run_lib->{"libfile"} = print_libfile("$OUTBASE.library_$libraryI.txt", $run_lib);
 	for my $key (keys %$run_lib){
 		$processed{$run_lib->{"id"}}{$key} = $run_lib->{$key};
 	}

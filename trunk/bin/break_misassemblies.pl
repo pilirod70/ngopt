@@ -9,7 +9,6 @@ if (scalar(@ARGV)!=3){
 }
 
 
-my $min_blocks = 10;
 
 my $blocks_file = shift;
 my $ctgLbl_file = shift;
@@ -28,7 +27,27 @@ while(!($line =~ m/^-by size/)){
 	push(@{$blocks{$block}},\@ar);
 	$line = <IN>;
 }
-
+$line = <IN>;
+my @count = ();
+my @tmp = ();
+my $total = 0;
+while($line = <IN>){
+	chomp $line;
+	@tmp = (split(' ',$line))[0..1];
+	push(@count,[ @tmp ]);
+	$total += $tmp[1];
+}
+my $p = 0;
+my $min_pts = 15;
+for (my $i = 0; $i < scalar(@count); $i++){
+	$count[$i][1] /= $total;
+	$p+=$count[$i][1];
+	if ($p > 0.99){
+		$min_pts = $count[$i][0];
+		last;
+	}
+}
+print STDERR "[a5_break] Breaking contings on blocks with $min_pts or more points\n";
 
 
 my %blkbnds = ();
@@ -41,7 +60,7 @@ my %cncts = ();
 for my $block ( sort {$a <=> $b} (keys %blocks) ) {
 	my @ar = @{$blocks{$block}};
 	#print STDERR "block $block has ".scalar(@ar)." points\n";
-	if (scalar(@ar) < $min_blocks) {
+	if (scalar(@ar) < $min_pts) {
 		delete($blocks{$block});
 	} else {
 		$sigblks++;
@@ -141,7 +160,7 @@ $seqs{$ctg} = $seq;
 print STDERR "Found $nbases total bases\n";
 my $currbases = 0;
 for $ctg (keys %seqs) {
-	if (!defined ($contigs{$ctg})){
+	if (!defined ($contigs{$ctg}) || !defined($blkbnds{$contigs{$ctg}})){
 		print ">$ctg\n".$seqs{$ctg}."\n";
 		$currbases += length($seqs{$ctg});
 		next;
