@@ -172,6 +172,7 @@ public class FISHInputExporter {
 				singles.add(tmpCtg.name);
 		}
 		removeKeys(contigs, singles);
+		removeKeys(mapPoints, singles);
 		
 		Contig[] ctgRef = new Contig[contigs.values().size()];
 		contigs.values().toArray(ctgRef);
