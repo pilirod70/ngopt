@@ -31,22 +31,28 @@ $line = <IN>;
 my @count = ();
 my @tmp = ();
 my $total = 0;
+my $min_pts = 0;
 while($line = <IN>){
 	chomp $line;
-	@tmp = (split(' ',$line))[0..1];
+	@tmp = split(' ',$line);
 	push(@count,[ @tmp ]);
 	$total += $tmp[1];
-}
-my $p = 0;
-my $min_pts = 15;
-for (my $i = 0; $i < scalar(@count); $i++){
-	$count[$i][1] /= $total;
-	$p+=$count[$i][1];
-	if ($p > 0.99){
-		$min_pts = $count[$i][0];
-		last;
+	if ($tmp[3] == 0 && !$min_pts){
+		$min_pts = $tmp[0];
 	}
 }
+
+
+#my $p = 0;
+#my $alpha = 1 - $tail_prob;
+#for (my $i = 0; $i < scalar(@count); $i++){
+#	$count[$i][1] /= $total;
+#	$p+=$count[$i][1];
+#	if ($p > $alpha){
+#		$min_pts = $count[$i][0];
+#		last;
+#	}
+#}
 print STDERR "[a5_break] Breaking contings on blocks with $min_pts or more points\n";
 
 
