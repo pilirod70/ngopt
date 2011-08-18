@@ -423,8 +423,7 @@ public class FISHInputExporter {
 				sigIt = signal.iterator();
 				while(sigIt.hasNext()){
 					sigSet = sigIt.next();
-					if (sigSet.p(insert) > currSet.p(tmp.getInsert()) ||
-							sigSet.p(tmp.getInsert()) > currSet.p(tmp.getInsert())){
+					if (sigSet.p(insert) > currSet.p(tmp.getInsert())){
 						tmp.setEndSpanning(true);
 						currSet.remove(tmp);
 						sigSet.add(tmp);
@@ -448,6 +447,7 @@ public class FISHInputExporter {
 			while(rpIt.hasNext()){
 				toRm.add(rpIt.next().hdr);
 			}*/
+			
 			while(nSd*sigSet.sd()>sigSet.mean())
 				nSd--;
 			System.out.println("[a5_fie] Removing reads with inserts between ("+
