@@ -9,16 +9,22 @@ import java.util.Vector;
 
 public class ReadSet {
 	private static NumberFormat NF = NumberFormat.getInstance();
+	private static int COUNT = 0;
 	
 	private Set<ReadPair> reads;
 	private double sd;
 	private double mu;
-	final int ID;
+	private final int ID;
 	private boolean mod;
-	
 	
 	public ReadSet(int id){
 		this.ID = id;
+		reads = new HashSet<ReadPair>();
+		mod = false;
+	}
+	
+	public ReadSet(){
+		this.ID = COUNT++	;
 		reads = new HashSet<ReadPair>();
 		mod = false;
 	}
