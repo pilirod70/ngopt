@@ -165,12 +165,13 @@ public class FISHInputExporter {
 			tmpPts.add(new Double(left));
 		}
 		Iterator<Contig> ctgIt = contigs.values().iterator();
-		Set<Contig> singles = new TreeSet<Contig>();
+		Set<String> singles = new HashSet<String>();
 		while(ctgIt.hasNext()){
 			tmpCtg = ctgIt.next();
-			if (tmpCtg.numReads() <= 1)
-				singles.add(tmpCtg);
+			if (tmpCtg.numReads() <= 2)
+				singles.add(tmpCtg.name);
 		}
+		removeKeys(contigs, singles);
 		
 		Contig[] ctgRef = new Contig[contigs.values().size()];
 		contigs.values().toArray(ctgRef);
@@ -245,7 +246,7 @@ public class FISHInputExporter {
 		while(it.hasNext()){
 			ctgStr = it.next();
 			tmpPSP = psPairs.get(ctgStr);
-			if (tmpPSP.reads.size() <= 1)
+			if (tmpPSP.reads.size() <= 2)
 				mfToRm.add(ctgStr);
 		}
 		removeKeys(psPairs, mfToRm);
