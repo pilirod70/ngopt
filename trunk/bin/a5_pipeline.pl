@@ -646,14 +646,15 @@ sub get_insert($$$$) {
 	my $cmd = "$DIR/bwa sampe -P $ctgs $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub ".
 												"> $WD/$outbase.sub.pe.sam 2> $WD/$outbase.sampe.out";
 	`$cmd`;
-	$cmd = "GetInsertSize.jar $WD/$outbase.sampe.out";
+	$cmd = "GetInsertSize.jar $WD/$outbase.sub.pe.sam";
 	print STDERR "[a5] java -jar $cmd\n"; 
 	my $cmdout = `java -jar $DIR/$cmd`;
 	chomp $cmdout;
+#	print STDERR "[a5]: \$cmdout = >$cmdout<\n";
 	my ($ins_mean,$ins_sd,$ins_n) = split(/,/,$cmdout);
 #	open(SAMPE, "<","$WD/$outbase.sampe.out");
 #	my $ins_mean = 0;
-#	my $ins_error = 0;
+	my $ins_error = 0;
 #	my $min;
 #	my $ins_sd;
 #	my $ins_n;
@@ -668,8 +669,9 @@ sub get_insert($$$$) {
 #		} 
 #	}
 	`rm $r1fq.sub* $r2fq.sub* $ctgs.*`;
+	my $n_sd = 3;
 	if ($ins_n > $require_fraction * $estimate_pair_count) {		
-		$ins_error = $ins_sd*6 < $ins_mean ? $ins_sd*6 / $ins_mean : 0.95;
+		$ins_error = $ins_sd*$n_sd < $ins_mean ? $ins_sd*$n_sd / $ins_mean : 0.95;
 		$ins_mean = sprintf("%.0f",$ins_mean);
 		$ins_error = sprintf("%.3f",$ins_error);
 		$ins_error =~ s/0+$//g;
@@ -734,9 +736,9 @@ sub get_orientation {
 	$tot /= 2;
 	$out_ins /= $out if ($out);
 	$in_ins /= $in if ($in);
-	print STDERR "[a5] get_orientation $samfile: tot=$tot"."\n".
-                 "                               outties: n=$out mu=".sprintf("%.0f",$out_ins)."\n".
-                 "                               innies:  n=$in mu=".sprintf("%.0f", $in_ins)."\n";
+#	print STDERR "[a5] get_orientation $samfile: tot=$tot"."\n".
+#	             "                               outties: n=$out mu=".sprintf("%.0f",$out_ins)."\n".
+#	             "                               innies:  n=$in mu=".sprintf("%.0f", $in_ins)."\n";
 	# if majority outies or we have  
 	my $ori;
 	if (($out_ins > 1500 && $out/$tot > 0.1) || $in < $out){
@@ -744,7 +746,8 @@ sub get_orientation {
 	} else {
 		$ori = 0;
 	}	
-	print STDERR "                               orientation = $ori\n";
+#	print STDERR "                               orientation = $ori\n";
+	return $ori;
 }
 
 sub get_bit {
