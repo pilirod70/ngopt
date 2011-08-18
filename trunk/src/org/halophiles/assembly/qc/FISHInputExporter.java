@@ -446,9 +446,9 @@ public class FISHInputExporter {
 			ret.addAll(sigSet.getReads());
 			NF.setMaximumFractionDigits(0);
 			System.out.print("[a5_fie] cluster"+NF.format(sigSet.getId())+": mu="+pad(NF.format(sigSet.mean()),10)+
-					"sd="+pad(NF.format(sigSet.sd(),10)+"n="+pad(NF.format(sigSet.size()),10));
+					"sd="+pad(NF.format(sigSet.sd()),10)+"n="+pad(NF.format(sigSet.size()),10));
 			NF.setMaximumFractionDigits(2);
-			System.out.print("perc="+pad(NF.format(100*allIns[i][3]),10));
+			System.out.print("perc="+pad(NF.format(100*sigSet.size()),10));
 		/*	rpIt = sigSet.getReads().iterator();
 			while(rpIt.hasNext()){
 				toRm.add(rpIt.next().hdr);
