@@ -17,7 +17,7 @@ die "Usage: ".basename($0)." [--begin=1-5] [--preprocessed] <library file> <outp
 
 Getopt::Long::Configure(qw{no_auto_abbrev no_ignore_case_always pass_through});
 my $start = 1;
-my $preproc = 1;
+my $preproc = 0;
 GetOptions( 'begin=i' => \$start,
 			'preprocessed' => \$preproc);
 
@@ -206,8 +206,6 @@ sub read_lib_file {
 			my ($fq1, $fq2) = split_shuf($1,"$OUTBASE.raw$lib_count");
 			$hash{"p1"} = $fq1;
 			$hash{"p2"} = $fq2;
-		} elsif ($_ =~ m/(p[1,2])=([\w\/\-\.]+)/) { 
-			$hash{$1} = $2;
 		} elsif ($_ =~ m/id=([\w\/\-\.]+)/) { 
 			$id = $1;
 		} elsif ($_ =~ m/(\w+)=([\w\/\-\.]+)/) { 
@@ -358,13 +356,15 @@ sub preprocess_libs {
 			if (defined($libs{$libid}{"up"})){
 				my $up = $libs{$libid}{"up"};
 				`cat $up >> $OUTBASE.unpaired.fastq`;
-				delete($libs{$libid}{"up"}); # don't aggregate unpaired along with paired reads, just dump them all into one file 
+				 # don't aggregate unpaired along with paired reads, just dump them all into one file 
+				delete($libs{$libid}{"up"});
 				$have_up = 1;
 			}
 		} elsif (defined($libs{$libid}{"up"})){
 			my $up = $libs{$libid}{"up"};
 			`cat $up >> $OUTBASE.unpaired.fastq`;
-			delete($libs{$libid}); # isn't paired, don't include in aggregated libraries
+			 # isn't paired, don't include in aggregated libraries because we'll just dump these into one file
+			delete($libs{$libid});
 			$have_up = 1;
 		}
 	}
