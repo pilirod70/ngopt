@@ -517,7 +517,7 @@ sub break_all_misasms {
 	my $outbase = shift;
 	my @lib_files;
 	# sort libraries by insert so we break with larger inserts first.
-	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
+	for my $lib (sort { $libs{$b}{"ins"} <=> $libs{$a}{"ins"} } keys %libs) {
 		my $ins = $libs{$lib}{"ins"};
 		my $fq1 = $libs{$lib}{"p1"};
 		my $fq2 = $libs{$lib}{"p2"};
@@ -543,6 +543,7 @@ sub fish_break_misasms {
 	my $cmd = "GetFishInput.jar $sam $outbase $WD > $WD/$outbase.fie.out\n";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
 	`java -Xmx$mem -jar $DIR/$cmd`;
+	die "[a5] Error getting FISH input for $outbase\n" if ($? != 0);
 	`gzip -f $sam`;
 	$cmd = "fish -off -f $WD/$outbase.control.txt -b $WD/$outbase.blocks.txt > $WD/$outbase.fish.out";
 	print STDERR "[a5] $cmd\n"; 
