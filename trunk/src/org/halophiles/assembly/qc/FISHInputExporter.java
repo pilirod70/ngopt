@@ -164,12 +164,13 @@ public class FISHInputExporter {
 			contigs.put(tmpCtg.name, tmpCtg);
 			tmpPts.add(new Double(left));
 		}
-		Iterator<Contig> ctgIt = contigs.values().iterator();
+		Iterator<String> ctgIt = mapPoints.keySet().iterator();
 		Set<String> singles = new HashSet<String>();
+		String tmpStr = null;
 		while(ctgIt.hasNext()){
-			tmpCtg = ctgIt.next();
-			if (tmpCtg.numReads() <= 2)
-				singles.add(tmpCtg.name);
+			tmpStr = ctgIt.next();
+			if (mapPoints.get(tmpStr).size() <= 2)
+				singles.add(tmpStr);
 		}
 		removeKeys(contigs, singles);
 		removeKeys(mapPoints, singles);
@@ -267,85 +268,6 @@ public class FISHInputExporter {
 	}
 	
 
-	/*
-	public static void filterShadowLibrary(Map<String,ReadPair> reads){
-		Map<String,ReadPair> outies = new HashMap<String, ReadPair>();
-		Map<String,ReadPair> inies = new HashMap<String, ReadPair>();
-		Iterator<String> it = reads.keySet().iterator();
-		String tmp = null;
-		ReadPair read = null;
-		int nsyn = 0;
-		System.out.print("Checking for shadow library... ");
-		while(it.hasNext()){
-			tmp = it.next();
-			read = reads.get(tmp);
-			if (!read.paired) continue;
-			if (!read.ctg1.equals(read.ctg2)) continue;
-			if (!read.inward && !read.outward)
-				continue;
-			nsyn++;
-			if (read.outward){
-				outies.put(tmp, reads.get(tmp));
-			} else {
-				inies.put(tmp, reads.get(tmp));
-			}
-		}
-		double nOut = outies.size();
-		double nIn = inies.size();
-		System.out.println(inies.size()+" innies "+outies.size()+" outies");
-		nOut = nOut/nsyn;
-		nIn = nIn/nsyn;
-		double[] inDat = new double[inies.size()];
-		double[] outDat = new double[outies.size()];
-		it = inies.keySet().iterator();
-		for (int i = 0; i < inDat.length; i++)
-			inDat[i] = reads.get(it.next()).getInsert();
-		it = outies.keySet().iterator();
-		for (int i = 0; i < outDat.length; i++)
-			outDat[i] = reads.get(it.next()).getInsert();
-		double[] inIQR = estimateInsertSizeIQR(inies);
-		double[] outIQR = estimateInsertSizeIQR(outies);
-		double inMean = SummaryStats.mean(inDat);
-		double inSd = Math.sqrt(SummaryStats.variance(inDat, inMean));
-		double outMean = SummaryStats.mean(outDat);
-		double outSd = Math.sqrt(SummaryStats.variance(outDat, outMean));
-		System.out.println("innies: mu="+NF.format(inMean)+" sd="+NF.format(inSd));
-		System.out.println("outies: mu="+NF.format(outMean)+" sd="+NF.format(outSd));
-		System.out.println("IQR:");
-		System.out.println("innies: mu="+NF.format(inIQR[0])+" sd="+NF.format(Math.sqrt(inIQR[1])));
-		System.out.println("outies: mu="+NF.format(outIQR[0])+" sd="+NF.format(Math.sqrt(outIQR[1])));
-		
-		if (nOut > 0.1 && nIn > 0.1){ // we have a shadow library
-			System.out.print("Found shadow library. Filtering shadow reads... ");
-			int nRemoved = -1;
-			//double inSd = Math.sqrt(SummaryStats.variance(inDat, inIQR[0]));
-			inSd = Math.sqrt(SummaryStats.variance(inDat, inIQR[0]));
-			//double outSd = Math.sqrt(SummaryStats.variance(outDat, outIQR[0]));
-			outSd = Math.sqrt(SummaryStats.variance(outDat, outIQR[0]));
-			double inCv = inSd/inIQR[0];
-			double outCv = outSd/outIQR[0];
-			if (inIQR[0] > outIQR[0]){
-				if (inIQR[0] > 2*outIQR[0] || outCv > inCv) { // remove outies
-					filterOffDiagReads(outies, outIQR, 3);
-					nRemoved = outies.size();
-					removeKeys(reads,outies.keySet());
-				}
-			} else if (outIQR[0] > inIQR[0]) { 
-				if (outIQR[0] > 2*inIQR[0] || inCv > outCv){ // remove innies
-					filterOffDiagReads(inies, inIQR, 3);
-					nRemoved = inies.size();
-					removeKeys(reads,inies.keySet());
-				}
-			} else {
-				System.out.println("Found innie and outie libraries with same insert.");
-			}
-			System.out.println(" removed "+nRemoved+" reads");
-		} else {
-			System.out.println(" unable to detect a shadow library.");
-		}
-			
-	}
-	*/
 	/**
 	 * 
 	 * @return a collection of ReadPairs that were removed
@@ -362,6 +284,7 @@ public class FISHInputExporter {
 		}
 		// estimate initial insert size to determine if we should look for shadow library.
 		double[] ins = ReadPair.estimateInsertSize(reads.values());
+		System.out.println("[a5_fie] Initial read set stats: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
 		if (ins[0] > 1500){
 			System.out.print("[a5_fie] EM-clustering insert sizes with K=3 (mean ins > 1500bp)... ");
 			K = 3;
@@ -450,7 +373,7 @@ public class FISHInputExporter {
 			System.out.print("[a5_fie] cluster"+NF.format(sigSet.getId())+": mu="+pad(NF.format(sigSet.mean()),10)+
 					"sd="+pad(NF.format(sigSet.sd()),10)+"n="+pad(NF.format(sigSet.size()),10));
 			NF.setMaximumFractionDigits(2);
-			System.out.print("perc="+pad(NF.format(100*sigSet.size()),10));
+			System.out.print("perc="+pad(NF.format(100*((double)sigSet.size()/(double)toFilt.size())),10));
 		/*	rpIt = sigSet.getReads().iterator();
 			while(rpIt.hasNext()){
 				toRm.add(rpIt.next().hdr);
@@ -464,8 +387,8 @@ public class FISHInputExporter {
 		}
 		if (rmClusters.length()>0)
 			System.out.println("[a5_fie] Removed clusters"+rmClusters);
-		
-		//removeKeys(reads, toRm);
+		ins = ReadPair.estimateInsertSize(reads.values());
+		System.out.println("[a5_fie] Final read set stats: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
 		return ret;
 	}
 	
@@ -539,6 +462,23 @@ public class FISHInputExporter {
 	}
 	
 	private static class PrintStreamPair implements Comparable<PrintStreamPair>{
+		// a comparator for sorting reads by position
+		private static final Comparator<ReadPair> COMP = new Comparator<ReadPair>(){
+			public int compare(ReadPair arg0, ReadPair arg1) {
+				if (arg0.pos1 == arg1.pos1){
+					if (arg0.pos2 == arg1.pos2)
+						return 0;
+					else if (arg0.pos2 < arg1.pos2)
+						return -1;
+					else
+						return 1;
+				} else if (arg0.pos1 < arg1.pos1)
+					return -1;
+				else 
+					return 1;
+			} 
+			
+		};
 		private File fishDir;
 		// a PrintStream and File for both directions
 		private PrintStream out1; 
@@ -551,32 +491,14 @@ public class FISHInputExporter {
 		
 		public PrintStreamPair(Contig ctg1, Contig ctg2, File outdir) throws IOException{
 			fishDir = outdir;
-			reads = new TreeSet<ReadPair>(new Comparator<ReadPair>(){
-				public int compare(ReadPair arg0, ReadPair arg1) {
-					if (arg0.pos1 == arg1.pos1){
-						if (arg0.pos2 == arg1.pos2)
-							return 0;
-						else if (arg0.pos2 < arg1.pos2)
-							return -1;
-						else
-							return 1;
-					} else if (arg0.pos1 < arg1.pos1)
-						return -1;
-					else 
-						return 1;
-				} 
-				
-			});
+			reads = new TreeSet<ReadPair>(COMP);
 			if (ctg1==ctg2){
 				file1 = new File(fishDir,"match."+ctg1.getRank()+"v"+ctg2.getRank()+".txt");
-				//file1.createNewFile();
 				this.ctg1 = ctg1;
 				this.ctg2 = ctg2;
 			} else { 
 				file1 = new File(fishDir,"match."+ctg1.getRank()+"v"+ctg2.getRank()+".txt");
 				file2 = new File(fishDir,"match."+ctg2.getRank()+"v"+ctg1.getRank()+".txt");
-				//file1.createNewFile();
-				//file2.createNewFile();
 				this.ctg1 = ctg1;
 				this.ctg2 = ctg2;
 			}
@@ -602,6 +524,8 @@ public class FISHInputExporter {
 		}
 		
 		public void close() throws IOException{
+			if (reads.size() == 0)
+				return;
 			if (ctg1 == ctg2){
 				file1.createNewFile();
 				out1 = new PrintStream(file1);
