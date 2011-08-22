@@ -3,8 +3,8 @@ use strict;
 use warnings;
 use File::Basename;
 
-if (scalar(@ARGV)!=3){
-	print "Usage: ".basename($0)." <blocks_file> <contig_label_file> <fasta_file>\n";
+if (scalar(@ARGV)!=4){
+	print "Usage: ".basename($0)." <blocks_file> <contig_label_file> <fasta_file> <min_pts>\n";
 	exit;
 }
 
@@ -13,6 +13,8 @@ if (scalar(@ARGV)!=3){
 my $blocks_file = shift;
 my $ctgLbl_file = shift;
 my $fasta_file = shift;
+#my $min_pts = 0;
+my $min_pts = shift;
 
 my %blocks = ();
 
@@ -27,20 +29,19 @@ while(!($line =~ m/^-by size/)){
 	push(@{$blocks{$block}},\@ar);
 	$line = <IN>;
 }
-$line = <IN>;
-my @count = ();
-my @tmp = ();
-my $total = 0;
-my $min_pts = 0;
-while($line = <IN>){
-	chomp $line;
-	@tmp = split(' ',$line);
-	push(@count,[ @tmp ]);
-	$total += $tmp[1];
-	if ($tmp[3] == 0 && !$min_pts){
-		$min_pts = $tmp[0];
-	}
-}
+#$line = <IN>;
+#my @count = ();
+#my @tmp = ();
+#my $total = 0;
+#while($line = <IN>){
+#	chomp $line;
+#	@tmp = split(' ',$line);
+#	push(@count,[ @tmp ]);
+#	$total += $tmp[1];
+#	if ($tmp[3] == 0 && !$min_pts){
+#		$min_pts = $tmp[0];
+#	}
+#}
 
 
 #my $p = 0;
