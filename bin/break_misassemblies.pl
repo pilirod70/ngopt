@@ -72,11 +72,15 @@ for my $blk ( sort {$a <=> $b} (keys %blocks) ) {
 		push(@y,$pt->[9]);
 	}
 	my ($k,$z_k) = kendall(\@x,\@y);
-	my $len = ($ctg1_r-$ctg1_l + $ctg2_r-$ctg2_l)/2;
+	my $ctg1_len = ($ctg1_r-$ctg1_l);
+	my $ctg2_len = ($ctg2_r-$ctg2_l);
 	# skip block if stretch is too short, points aren't orderly enough (z_k), or not enough points
-	next unless (abs($z_k) >= 2 && ($len<=$max_len && $len>=$min_len) && scalar(@x) < $min_pts); 
+	next unless ( abs($z_k) >= 2 &&
+                  ($ctg1_len<=$max_len && $ctg1_len>=$min_len) && 
+                  ($ctg2_len<=$max_len && $ctg2_len>=$min_len) && 
+                  scalar(@x) >= $min_pts ); 
 
-	print STDERR "Block $blk: $ctg1|$ctg1_l-$ctg1_r  $ctg2|$ctg2_l-$ctg2_r\n";
+	printf STDERR "Block $blk: $ctg1|$ctg1_l-$ctg1_r  $ctg2|$ctg2_l-$ctg2_r t=%.4f Z_t=%.4f n=$min_pts\n",$k,$z_k;
 	my @tmp1 = ($ctg1_l,$ctg1_r);
 	push(@{$blkbnds{$ctg1}},@tmp1);
 
