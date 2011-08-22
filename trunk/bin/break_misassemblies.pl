@@ -3,8 +3,8 @@ use strict;
 use warnings;
 use File::Basename;
 
-if (scalar(@ARGV)!=4){
-	print "Usage: ".basename($0)." <blocks_file> <contig_label_file> <fasta_file> <min_pts>\n";
+if (scalar(@ARGV)!=6){
+	print "Usage: ".basename($0)." <blocks_file> <contig_label_file> <fasta_file> <min_pts> <min_len> <max_len>\n";
 	exit;
 }
 
@@ -13,8 +13,9 @@ if (scalar(@ARGV)!=4){
 my $blocks_file = shift;
 my $ctgLbl_file = shift;
 my $fasta_file = shift;
-#my $min_pts = 0;
 my $min_pts = shift;
+my $min_len = shift;
+my $max_len = shift;
 
 my %blocks = ();
 
@@ -26,34 +27,15 @@ while(!($line =~ m/^-by size/)){
 	chomp $line;
 	my @ar = split(/\t/,$line);
 	my $block = $ar[2];
+	if ($ar[5] =~ m/c(\d+)p(\d+)/){
+		$ar[5] = $2;
+	}
+	if ($ar[6] =~ m/c(\d+)p(\d+)/){
+		$ar[6] = $2;
+	}
 	push(@{$blocks{$block}},\@ar);
 	$line = <IN>;
 }
-#$line = <IN>;
-#my @count = ();
-#my @tmp = ();
-#my $total = 0;
-#while($line = <IN>){
-#	chomp $line;
-#	@tmp = split(' ',$line);
-#	push(@count,[ @tmp ]);
-#	$total += $tmp[1];
-#	if ($tmp[3] == 0 && !$min_pts){
-#		$min_pts = $tmp[0];
-#	}
-#}
-
-
-#my $p = 0;
-#my $alpha = 1 - $tail_prob;
-#for (my $i = 0; $i < scalar(@count); $i++){
-#	$count[$i][1] /= $total;
-#	$p+=$count[$i][1];
-#	if ($p > $alpha){
-#		$min_pts = $count[$i][0];
-#		last;
-#	}
-#}
 print STDERR "[a5_break] Breaking contings on blocks with $min_pts or more points\n";
 
 
@@ -61,66 +43,45 @@ my %blkbnds = ();
 my $totblks = scalar(keys %blocks); 
 my $sigblks=0;
 
-my %cncts = ();
 
-# filter out short blocks
-for my $block ( sort {$a <=> $b} (keys %blocks) ) {
-	my @ar = @{$blocks{$block}};
-	#print STDERR "block $block has ".scalar(@ar)." points\n";
-	if (scalar(@ar) < $min_pts) {
-		delete($blocks{$block});
-	} else {
-		$sigblks++;
-		# calcate the boundaries of the segment we need to remove	
-		my $ctg1;
-		my $ctg2;
-		my $ctg1_l = 9**9**9;
-		my $ctg1_r = 0;
-		my $ctg2_l = 9**9**9;
-		my $ctg2_r = 0;
-		my $first =  1;
-		for my $point (@ar) {
-			$ctg1 = $point->[0];
-			$ctg2 = $point->[1];
-			if ($first) {
-				$cncts{$ctg1} = () unless defined($cncts{$ctg1});
-				$cncts{$ctg1}{$ctg2} = 0 unless defined($cncts{$ctg1}{$ctg2});
-				$cncts{$ctg1}{$ctg2}++;	
-				$first = 0;
-			}
-			my @pt1 = split(/,/,$point->[5]);
-			for my $pt (@pt1){
-				if ($pt =~ m/c(\d+)p(\d+)/) {
-					$pt = $2;
-				} 
-				# find the left-most and right-most boundaries in the first contig
-				$ctg1_l = $pt if ($pt < $ctg1_l);
-				$ctg1_r = $pt if ($pt > $ctg1_r);
-			}
-			my @pt2 = split(/,/,$point->[6]);
-			for my $pt (@pt2){
-				if ($pt =~ m/c(\d+)p(\d+)/) {
-					$pt = $2;
-				} 
-				# find the left-most and right-most boundaries in the second contig
-				$ctg2_l = $pt if ($pt < $ctg2_l);
-				$ctg2_r = $pt if ($pt > $ctg2_r);
-			}
-		}
-		print STDERR "Block $block: $ctg1|$ctg1_l-$ctg1_r  $ctg2|$ctg2_l-$ctg2_r\n";
-		my @tmp1 = ($ctg1_l,$ctg1_r);
-		push(@{$blkbnds{$ctg1}},@tmp1);
-
-		my @tmp2 = ($ctg2_l,$ctg2_r);
-		push(@{$blkbnds{$ctg2}},@tmp2);
+for my $blk ( sort {$a <=> $b} (keys %blocks) ) {
+	my $ctg1 = $blocks{$blk}[0][0];
+	my $ctg2 = $blocks{$blk}[0][1];
+	my $ctg1_r = 0;
+	my $ctg1_l = 9**9**9;
+	my $ctg2_r = 0;
+	my $ctg2_l = 9**9**9;
+	my $i = 0; 
+	for my $pt (sort { $a->[4] <=> $b->[4]  } @{$blocks{$blk}}) {
+		$i++;
+		push (@$pt,$i);
+		$ctg1_r = $pt->[5] if $pt->[5] > $ctg1_r;
+		$ctg1_l = $pt->[5] if $pt->[5] < $ctg1_l;
 	}
-}
-
-for my $c1 (sort keys %cncts){
-	for my $c2 (sort keys %{$cncts{$c1}}) {
-		print STDERR "$c1\t$c2\t".$cncts{$c1}{$c2}."\n";
+	$i = 0; 
+	for my $pt (sort { $a->[5] <=> $b->[5]  } @{$blocks{$blk}}) {
+		$i++;
+		push (@$pt,$i);
+		$ctg2_r = $pt->[6] if $pt->[6] > $ctg2_r;
+		$ctg2_l = $pt->[6] if $pt->[6] < $ctg2_l;
 	}
+	my @x = ();
+	my @y = ();
+	for my $pt (@{$blocks{$blk}}){
+		push(@x,$pt->[8]);
+		push(@y,$pt->[9]);
+	}
+	my ($k,$z_k) = kendall(\@x,\@y);
+	my $len = ($ctg1_r-$ctg1_l + $ctg2_r-$ctg2_l)/2;
+	# skip block if stretch is too short, points aren't orderly enough (z_k), or not enough points
+	next unless (abs($z_k) >= 2 && ($len<=$max_len && $len>=$min_len) && scalar(@x) < $min_pts); 
 
+	print STDERR "Block $blk: $ctg1|$ctg1_l-$ctg1_r  $ctg2|$ctg2_l-$ctg2_r\n";
+	my @tmp1 = ($ctg1_l,$ctg1_r);
+	push(@{$blkbnds{$ctg1}},@tmp1);
+
+	my @tmp2 = ($ctg2_l,$ctg2_r);
+	push(@{$blkbnds{$ctg2}},@tmp2);
 }
 
 for my $ctg (keys %blkbnds){
@@ -214,3 +175,17 @@ for $ctg (keys %seqs) {
 }
 print STDERR "Printed $currbases total bases \n";
 
+sub kendall {
+	my $x = shift;
+	my $y = shift;
+	my $n = scalar(@$x);
+	my $numer = 0;
+
+	for (my $i = 0; $i < $n; $i++){
+		for (my $j = 0; $j < $i; $j++){
+			$numer += ($x->[$i]-$x->[$j])*($y->[$i]-$y->[$j]) > 0 ? 1 : -1;
+		}
+	}
+	my $z_A = 3*($numer)/(($n*($n-1)*(2*$n+5)/2)**(1/2));
+	return (2*($numer)/($n*($n-1)), $z_A);
+}

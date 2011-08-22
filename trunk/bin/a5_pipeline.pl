@@ -523,8 +523,10 @@ sub break_all_misasms {
 		my $fq1 = $libs{$lib}{"p1"};
 		my $fq2 = $libs{$lib}{"p2"};
 		my ($exp_link, $cov) = calc_explinks( $genome_size, $libs{$lib}{"ins"}, $libs{$lib}{"p1"} ); 
+		my $min_len = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
+		my $max_len = $libs{$lib}{"ins"}*(1+$libs{$lib}{"err"});	
 		my $sspace_k = int(log($exp_link)/log(1.4)-9.5);
-		$ctgs = fish_break_misasms($ctgs,$fq1,$fq2,"$outbase.lib$lib",$sspace_k);
+		$ctgs = fish_break_misasms($ctgs,$fq1,$fq2,"$outbase.lib$lib",$sspace_k,$min_len,$max_len);
 		last;
 	}	
 	return $ctgs;
@@ -536,6 +538,8 @@ sub fish_break_misasms {
 	my $fq2 = shift;
 	my $outbase = shift;
 	my $min_pts = shift;
+	my $min_len = shift;
+	my $max_len = shift;
 	print STDERR "[a5] Identifying misassemblies in $ctgs with $outbase\n";
 	my $sai = "$WD/$outbase.sai";
 	my $sam = "$WD/$outbase.sam";
@@ -555,7 +559,7 @@ sub fish_break_misasms {
 	`$DIR/$cmd`;
 	die "[a5] Error getting blocks with FISH for $outbase\n" if ($? != 0);
 
-	$cmd = "break_misassemblies.pl $WD/$outbase.blocks.txt $WD/$outbase.contig_labels.txt $ctgs $min_pts > $WD/$outbase.broken.fasta 2> $WD/$outbase.break.out";
+	$cmd = "break_misassemblies.pl $WD/$outbase.blocks.txt $WD/$outbase.contig_labels.txt $ctgs $min_pts $min_len $max_len > $WD/$outbase.broken.fasta 2> $WD/$outbase.break.out";
 	print STDERR "[a5] $cmd\n"; 
 	`$DIR/$cmd`;
 	die "[a5] Error getting breaking contigs after running FISH\n" if ($? != 0);
