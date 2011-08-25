@@ -22,29 +22,30 @@ import org.halophiles.assembly.Contig;
 import org.halophiles.assembly.ReadPair;
 import org.halophiles.assembly.ReadSet;
 import org.halophiles.assembly.SAMFileParser;
-import org.halophiles.tools.SummaryStats;
 
 public class FISHInputExporter {
 	private static NumberFormat NF;
 	private static int MINQUAL = 13;
 	
 	public static void main(String[] args){
-		if (args.length < 3){
-			System.err.println("Usage: java -jar GetFishInput.jar <sam_file> <output_base> <output_dir> <min_map_qual (optional)>");
+		if (args.length != 3 && args.length != 4){
+			System.err.println("Usage: java -jar GetFishInput.jar <sam_file> <output_base> <output_dir> <num_libs>");
 			System.exit(-1);
 		}
 		try{
 			NF = NumberFormat.getInstance();
 			NF.setMaximumFractionDigits(0);
 			NF.setGroupingUsed(false);
-			if (args.length == 4){
-				MINQUAL = Integer.parseInt(args[2]);
-			}
+			String samPath = args[0];
 			String base = args[1];
 			File outdir = new File(args[2]);
-			System.out.println("[a5_fie] Reading "+args[0]);
+			int numLibs = 1;
+			if (args.length == 4){
+				numLibs = Integer.parseInt(args[3]);
+			}
+			System.out.println("[a5_fie] Reading "+samPath);
 			System.out.println("[a5_fie] Writing output to "+outdir.getAbsolutePath()+" with basename "+base);
-			SAMFileParser sfp = new SAMFileParser(args[0]);
+			SAMFileParser sfp = new SAMFileParser(samPath);
 
 			System.out.println("[a5_fie] Found "+sfp.getNumContigs()+" contigs.");
 			System.out.println("[a5_fie] Found "+sfp.getNumReads()+" total reads and "+sfp.getNumPairs()+" read-pairs.");
@@ -91,7 +92,7 @@ public class FISHInputExporter {
 
 			System.out.println("[a5_fie] Filtering proper connections... ");
 			int before = reads.size();
-			Collection<ReadPair> filtered = filterProperConnections(reads);
+			Collection<ReadPair> filtered = filterProperConnections(reads, numLibs);
 			System.out.println("[a5_fie] removed "+(before - reads.size())+" of "+before +" read pairs.");
 
 			insFile = new File(outdir,base+".ins_size_rm.txt");
@@ -214,7 +215,7 @@ public class FISHInputExporter {
 				ctgMapOut.println("c"+contigs.get(ctg).getRank()+"p"+Math.abs(d.intValue())+"\t"+(d < 0 ? -1 : 1));
 			
 			ctgMapOut.close();
-			maps.put(contigs.get(ctg).getRank(),ctgMapFile.getAbsolutePath());
+			maps.put(contigs.get(ctg).getRank(),fishDir.getName()+"/"+mapMatchDir.getName()+"/"+ctgMapFile.getName());
 		}
 		ctgLblOut.close();
 		Iterator<Integer> it2 = maps.keySet().iterator();
@@ -260,8 +261,11 @@ public class FISHInputExporter {
 			psPairs.get(ctgStr).close();
 		}
 		Iterator<MatchFile> mfIt = matchFiles.iterator();
-		while(mfIt.hasNext())
-			ctrlOut.println(mfIt.next().toString());
+		MatchFile tmpMF = null;
+		while(mfIt.hasNext()){
+			tmpMF = mfIt.next();
+			ctrlOut.println(tmpMF.toString()+"\t"+fishDir.getName()+"/"+mapMatchDir.getName()+"/"+tmpMF.getName());
+		}
 		
 		ctrlOut.println("end");
 		ctrlOut.close();
@@ -272,8 +276,8 @@ public class FISHInputExporter {
 	 * 
 	 * @return a collection of ReadPairs that were removed
 	 */
-	private static Collection<ReadPair> filterProperConnections(Map<String,ReadPair> reads){
-		int K = 2;
+	private static Collection<ReadPair> filterProperConnections(Map<String,ReadPair> reads, int numLibs){
+		int K = numLibs+1;
 		Vector<ReadPair> toFilt = new Vector<ReadPair>();
 		Iterator<ReadPair> rpIt = reads.values().iterator();
 		ReadPair tmp = null;
@@ -285,13 +289,8 @@ public class FISHInputExporter {
 		// estimate initial insert size to determine if we should look for shadow library.
 		double[] ins = ReadPair.estimateInsertSize(reads.values());
 		System.out.println("[a5_fie] Initial read set stats: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
-		if (ins[0] > 1500){
-			System.out.print("[a5_fie] EM-clustering insert sizes with K=3 (mean ins > 1500bp)... ");
-			K = 3;
-		} else {
-			System.out.print("[a5_fie] EM-clustering insert sizes with K=2... ");
-		}
-	//	K=4;
+		System.out.print("[a5_fie] EM-clustering insert sizes with K="+K);
+		
 		EMClusterer em = new EMClusterer(toFilt, K);
 		double delta = 0.0001;
         int iters = em.iterate(1000, delta);
@@ -575,7 +574,11 @@ public class FISHInputExporter {
 		}
 		
 		public String toString(){ 
-			return ctg1.getRank()+"\t"+ctg2.getRank()+"\t"+file.getAbsolutePath();
+			return ctg1.getRank()+"\t"+ctg2.getRank();
+		}
+		
+		public String getName(){
+			return file.getName();
 		}
 		
 		public int compareTo(MatchFile arg0) {
