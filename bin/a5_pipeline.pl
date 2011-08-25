@@ -356,11 +356,22 @@ sub preprocess_libs {
 			my $fq1 = $libs{$libid}{"p1"};
 			my $fq2 = $libs{$libid}{"p2"};
 			my ($ins_mean, $ins_err, $outtie) = get_insert($fq1,$fq2,"$OUTBASE.$libid",$ctgs);
+			$libs{$libid}{"rc"} = $outtie;
 			if ($ins_mean > 0) {
 				$libs{$libid}{"ins"} = $ins_mean;
 				$libs{$libid}{"err"} = $ins_err;
 				$libs{$libid}{"rc"} = $outtie;
-			} 
+			} else {
+				print STDERR "[a5_preproc] Insert estimate for $libid not reliable.";
+				if (defined($libs{$libid}{"ins"}) {
+					print STDERR "[a5_preproc] Using given insert estimate instead.\n";
+					$libs{$libid}{"err"} = 0.95;
+				} else {
+					print STDERR "[a5_preproc] No insert estimate for $libid. Exiting\n";
+					exit -1;
+				}
+		
+			}
 			if (defined($libs{$libid}{"up"})){
 				my $up = $libs{$libid}{"up"};
 				`cat $up >> $OUTBASE.unpaired.fastq`;
@@ -569,7 +580,7 @@ sub fish_break_misasms {
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
 	`rm $ctgs.* $sai`;
 	my $mem = "2000m";
-	my $cmd = "GetFishInput.jar $sam $outbase $WD $nlibs > $WD/$outbase.fie.out\n";
+	my $cmd = "GetFishInput.jar $sam $outbase $WD $nlibs > $WD/$outbase.fie.out";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
 	`java -Xmx$mem -jar $DIR/$cmd`;
 	die "[a5] Error getting FISH input for $outbase\n" if ($? != 0);
