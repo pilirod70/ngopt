@@ -13,7 +13,7 @@ use Cwd 'abs_path';
 use Getopt::Long;
 
 my $def_up_id="upReads";
-my @KEYS = {"id","p1","p2","rc","ins","err","nlibs","libfile"};
+my @KEYS = ("id","p1","p2","rc","ins","err","nlibs","libfile");
 
 die "Usage: ".basename($0)." [--begin=1-5] [--preprocessed] <library file> <output base>\n" if (@ARGV == 0);
 
@@ -66,8 +66,8 @@ if ($start <= 2) {
 	($reads, $maxrdlen) = fastq_to_fasta($reads,"$WD/$OUTBASE.ec.fasta");
 #	`gzip -f $fq_reads`;
 
-	print STDERR "$reads exists\n" if -f $reads;
-	print STDERR "$reads does not exist\n" if ! -f $reads;
+	#print STDERR "$reads exists\n" if -f $reads;
+	#print STDERR "$reads does not exist\n" if ! -f $reads;
 	$ctgs = idba_assemble($OUTBASE, $reads, $maxrdlen); 
 	`rm $reads`;
 	`mv $ctgs $OUTBASE.contigs.fasta`;
@@ -94,17 +94,24 @@ if ($start <= 3) {
 	$scafs = scaffold_sspace($libfile, $OUTBASE, \%PAIR_LIBS, $ctgs);
 	`mv $scafs $OUTBASE.crude.scaffolds.fasta`; 
 } 
+my $need_qc = 1;
 if ($start <= 4) {
-	$scafs = "$OUTBASE.crude.scaffolds.fasta";
+	my $prev_scafs = "$OUTBASE.crude.scaffolds.fasta";
+	$scafs = $prev_scafs;
 	die "[a5_s4] Can't find starting crude scaffolds $scafs\n" unless -f $scafs;
 	print "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
 	print STDERR "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
 	$WD="s4";
 	mkdir($WD) if ! -d $WD;
-	$scafs = break_all_misasms($scafs,\%PAIR_LIBS,"$OUTBASE.fish"); 
-	`mv $scafs $OUTBASE.broken.scaffolds.fasta`; 
+	$scafs = break_all_misasms($prev_scafs,\%PAIR_LIBS,"$OUTBASE.fish"); 
+	if ($scafs eq $prev_scafs){
+		$need_qc = 0;
+		`cp $scafs $OUTBASE.final.scaffolds.fasta`;
+	} else {
+		`mv $scafs $OUTBASE.broken.scaffolds.fasta`; 
+	}
 } 
-if ($start <= 5) {
+if ($start <= 5 && $need_qc) {
 	$scafs = "$OUTBASE.broken.scaffolds.fasta";
 	if (-z $scafs) {
 		print "[a5_s5] No misassemblies found.\n";
@@ -118,8 +125,8 @@ if ($start <= 5) {
 		$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs);
 		`mv $scafs $OUTBASE.final.scaffolds.fasta`;
 	}
-	print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
 } 
+print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
 
 sub sga_assemble {
 	my $r1fq = shift;
@@ -475,6 +482,7 @@ sub print_lib_info {
 	for my $lib (sort keys %$LIBS) {
 		print STDERR "     $lib:\n";
 		for my $att (@KEYS){
+			#print STDERR "$att is undefined for $lib\n" if !defined($LIBS->{$lib}{$att});
 			next if !defined($LIBS->{$lib}{$att});
 			print STDERR "      $att=".$LIBS->{$lib}{$att}."\n";
 		}
@@ -528,13 +536,17 @@ sub break_all_misasms {
 		my $fq1 = $libs{$lib}{"p1"};
 		my $fq2 = $libs{$lib}{"p2"};
 		my ($exp_link, $cov) = calc_explinks( $genome_size, $libs{$lib}{"ins"}, $libs{$lib}{"p1"} ); 
-		my $min_len = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
-		my $max_len = $libs{$lib}{"ins"}*(1+$libs{$lib}{"err"});	
+		my $min_len = int($libs{$lib}{"ins"}*(1-$libs{$lib}{"err"}));	
+		my $max_len = int($libs{$lib}{"ins"}*(1+$libs{$lib}{"err"}));	
 		my $sspace_k = int(log($exp_link)/log(1.4)-9.5);
 		my $nlibs = $libs{$lib}{"nlibs"};
-		$nlibs++ if ($libs{$lib}{"ins"} > 1500);
-		print STDERR "[a5_break_misasm] Expecting shadow library in library $lib\n"; 
+		if ($libs{$lib}{"ins"} > 1500) {
+			$nlibs++;
+			print STDERR "[a5_break_misasm] Expecting shadow library in library $lib\n"; 
+		}
+		my $prev_ctgs = $ctgs;
 		$ctgs = fish_break_misasms($ctgs,$fq1,$fq2,"$outbase.lib$lib",$nlibs,$sspace_k,$min_len,$max_len);
+		#print STDERR "\$prev_ctgs = $prev_ctgs     \$ctgs = $ctgs\n";
 	}	
 	return $ctgs;
 }
@@ -556,7 +568,7 @@ sub fish_break_misasms {
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
 	`rm $ctgs.* $sai`;
-	my $mem = "7000m";
+	my $mem = "2000m";
 	my $cmd = "GetFishInput.jar $sam $outbase $WD $nlibs > $WD/$outbase.fie.out\n";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
 	`java -Xmx$mem -jar $DIR/$cmd`;
@@ -567,11 +579,17 @@ sub fish_break_misasms {
 	`$DIR/$cmd`;
 	die "[a5] Error getting blocks with FISH for $outbase\n" if ($? != 0);
 
-	$cmd = "break_misassemblies.pl $WD/$outbase.blocks.txt $WD/$outbase.contig_labels.txt $ctgs $min_pts $min_len $max_len > $WD/$outbase.broken.fasta 2> $WD/$outbase.break.out";
+	$cmd = "break_misassemblies.pl $WD/$outbase.blocks.txt $WD/$outbase.contig_labels.txt $ctgs $WD/$outbase.broken.fasta $min_pts $min_len $max_len";
 	print STDERR "[a5] $cmd\n"; 
-	`$DIR/$cmd`;
-	die "[a5] Error getting breaking contigs after running FISH\n" if ($? != 0);
-	return "$WD/$outbase.broken.fasta";
+	my $nblks = `$DIR/$cmd`;
+	chomp $nblks;
+#	print STDERR "\$nblks = $nblks\n";
+	die "[a5] Error breaking contigs after running FISH\n" if ($? != 0);
+	if ($nblks) {
+		return "$WD/$outbase.broken.fasta";
+	} else {
+		return $ctgs;
+	}
 }
 
 sub pipe_fastq {
@@ -669,8 +687,10 @@ sub get_insert($$$$) {
 	my $r2fq = shift;
 	my $outbase = shift;
 	my $ctgs = shift;
-
+	my $npairs = (split(' ', `wc -l $r1fq`))[0]; 
+	$npairs /= 4;
 	my $estimate_pair_count = 20000;
+	$estimate_pair_count = $npairs < $estimate_pair_count ? $npairs : $estimate_pair_count;
 	my $require_fraction = 0.25;
 	my $fq_linecount = $estimate_pair_count*2;
 	# estimate the library insert size with bwa

@@ -3,8 +3,8 @@ use strict;
 use warnings;
 use File::Basename;
 
-if (scalar(@ARGV)!=6){
-	print "Usage: ".basename($0)." <blocks_file> <contig_label_file> <fasta_file> <min_pts> <min_len> <max_len>\n";
+if (scalar(@ARGV)!=7){
+	print "Usage: ".basename($0)." <blocks_file> <contig_label_file> <fasta_file> <out_file> <min_pts> <min_len> <max_len>\n";
 	exit;
 }
 
@@ -13,6 +13,7 @@ if (scalar(@ARGV)!=6){
 my $blocks_file = shift;
 my $ctgLbl_file = shift;
 my $fasta_file = shift;
+my $out_file = shift;
 my $min_pts = shift;
 my $min_len = shift;
 my $max_len = shift;
@@ -80,7 +81,7 @@ for my $blk ( sort {$a <=> $b} (keys %blocks) ) {
                   ($ctg2_len<=$max_len && $ctg2_len>=$min_len) && 
                   scalar(@x) >= $min_pts ); 
 
-	printf STDERR "Block $blk: $ctg1|$ctg1_l-$ctg1_r  $ctg2|$ctg2_l-$ctg2_r t=%.4f Z_t=%.4f n=$min_pts\n",$k,$z_k;
+	#printf STDERR "[a5_break] Block $blk: $ctg1|$ctg1_l-$ctg1_r  $ctg2|$ctg2_l-$ctg2_r t=%.4f Z_t=%.4f n=$min_pts\n",$k,$z_k;
 	my @tmp1 = ($ctg1_l,$ctg1_r);
 	push(@{$blkbnds{$ctg1}},@tmp1);
 
@@ -96,8 +97,13 @@ for my $ctg (keys %blkbnds){
 }
 
 
-print STDERR "Using $sigblks of $totblks blocks to break contigs\n";
-print STDERR scalar(keys %blkbnds)." contigs have blocks\n";
+print STDERR "[a5_break] Using $sigblks of $totblks blocks to break contigs\n";
+if ($sigblks == 0) {
+	print STDERR "[a5_break] No significant blocks found. Exiting and not breaking contigs.\n"; 
+	print "$sigblks\n";
+	exit;
+}
+print STDERR "[a5_break] ".scalar(keys %blkbnds)." contigs have blocks\n";
 
 # make a map of contig-names to contig-ids
 open(IN,"<",$ctgLbl_file);
@@ -129,11 +135,12 @@ while (<IN>){
 }
 $seqs{$ctg} = $seq;
 
-print STDERR "Found $nbases total bases\n";
+print STDERR "[a5_break] Found $nbases total bases\n";
 my $currbases = 0;
+open(OUT,"<",$out_file);
 for $ctg (keys %seqs) {
 	if (!defined ($contigs{$ctg}) || !defined($blkbnds{$contigs{$ctg}})){
-		print ">$ctg\n".$seqs{$ctg}."\n";
+		print OUT ">$ctg\n".$seqs{$ctg}."\n";
 		$currbases += length($seqs{$ctg});
 		next;
 	}
@@ -143,41 +150,45 @@ for $ctg (keys %seqs) {
 		$seq = $seqs{$ctg};
 		if ($ar[0] >= 100) {
 			$sub_seq++;
-			print STDERR "Breaking $ctg at $ar[0]\n";
-			print ">$ctg|$sub_seq|1-$ar[0]\n";
-			print substr($seq,0,$ar[0])."\n";
+			print STDERR "[a5_break] Breaking $ctg at $ar[0]\n";
+			print OUT ">$ctg|$sub_seq|1-$ar[0]\n";
+			print OUT substr($seq,0,$ar[0])."\n";
 			$currbases += $ar[0];
 		} else {
-			print STDERR "Discarding region >$ctg|1-$ar[0]\n";
+			print STDERR "[a5_break] Discarding region >$ctg|1-$ar[0]\n";
 		}	
 		for (my $i = 1; $i < scalar(@ar); $i++){
 			my $l = $ar[$i-1]+1;
 			my $r = $ar[$i];
 			if ($r - $l + 1 >= 100){
 				$sub_seq++;
-				print STDERR "Breaking $ctg at $r\n";
-				print ">$ctg|$sub_seq|$l-$r\n";
-				print substr($seq,$l-1,$r-$l+1)."\n";
+				print STDERR "[a5_break] Breaking $ctg at $r\n";
+				print OUT ">$ctg|$sub_seq|$l-$r\n";
+				print OUT substr($seq,$l-1,$r-$l+1)."\n";
 				$currbases += $r-$l+1;
 			} else {
-				print STDERR "Discarding region >$ctg|$l-$r\n";
+				print STDERR "[a5_break] Discarding region >$ctg|$l-$r\n";
 			}
 		}
 		my $l = $ar[scalar(@ar)-1]+1;
 		my $r = length($seq);
 		if ($r - $l + 1 >= 100){
 			$sub_seq++;
-			print STDERR "Breaking $ctg at $l\n";
-			print ">$ctg|$sub_seq|$l-$r\n";
-			print substr($seq,$l-1,$r-$l+1)."\n";
+			print STDERR "[a5_break] Breaking $ctg at $l\n";
+			print OUT ">$ctg|$sub_seq|$l-$r\n";
+			print OUT substr($seq,$l-1,$r-$l+1)."\n";
 			$currbases += $r-$l+1;
 		} else {
-			print STDERR "Discarding region >$ctg|$l-$r\n";
+			print STDERR "[a5_break] Discarding region >$ctg|$l-$r\n";
 		}
 		
 	}
 }
-print STDERR "Printed $currbases total bases \n";
+
+close OUT;
+
+print STDERR "[a5_break] Printed $currbases total bases \n";
+print "$sigblks\n";
 
 sub kendall {
 	my $x = shift;
