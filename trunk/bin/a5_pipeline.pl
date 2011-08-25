@@ -531,7 +531,10 @@ sub break_all_misasms {
 		my $min_len = $libs{$lib}{"ins"}*(1-$libs{$lib}{"err"});	
 		my $max_len = $libs{$lib}{"ins"}*(1+$libs{$lib}{"err"});	
 		my $sspace_k = int(log($exp_link)/log(1.4)-9.5);
-		$ctgs = fish_break_misasms($ctgs,$fq1,$fq2,"$outbase.lib$lib",$sspace_k,$min_len,$max_len);
+		my $nlibs = $libs{$lib}{"nlibs"};
+		$nlibs++ if ($libs{$lib}{"ins"} > 1500);
+		print STDERR "[a5_break_misasm] Expecting shadow library in library $lib\n"; 
+		$ctgs = fish_break_misasms($ctgs,$fq1,$fq2,"$outbase.lib$lib",$nlibs,$sspace_k,$min_len,$max_len);
 	}	
 	return $ctgs;
 }
@@ -541,6 +544,7 @@ sub fish_break_misasms {
 	my $fq1 = shift;
 	my $fq2 = shift;
 	my $outbase = shift;
+	my $nlibs = shift;
 	my $min_pts = shift;
 	my $min_len = shift;
 	my $max_len = shift;
@@ -553,7 +557,7 @@ sub fish_break_misasms {
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
 	`rm $ctgs.* $sai`;
 	my $mem = "7000m";
-	my $cmd = "GetFishInput.jar $sam $outbase $WD > $WD/$outbase.fie.out\n";
+	my $cmd = "GetFishInput.jar $sam $outbase $WD $nlibs > $WD/$outbase.fie.out\n";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
 	`java -Xmx$mem -jar $DIR/$cmd`;
 	die "[a5] Error getting FISH input for $outbase\n" if ($? != 0);

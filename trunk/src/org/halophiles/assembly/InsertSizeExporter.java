@@ -31,7 +31,7 @@ public class InsertSizeExporter {
 		try {
 			for (int i = 0; i < args.length; i++){
 				File samFile = new File(args[i]);
-				System.err.println("[a5_ise] Getting insert stats for " + samFile.getAbsolutePath());
+				System.out.println("[a5_ise] Getting insert stats for " + samFile.getAbsolutePath());
 				//String base = samFile.getName().substring(0,samFile.getName().lastIndexOf("."));
 				SAMFileParser sfp = new SAMFileParser(samFile.getAbsolutePath());
 				ReadPair tmp = null;
@@ -76,7 +76,7 @@ public class InsertSizeExporter {
 				
 				double insTot[] = ReadPair.estimateInsertSize(reads.values());
 				if (insTot[0]>1500){
-					System.err.println("[a5_ise] EM Clustering with K = 2 to remove noisy reads and shadow library");			
+					System.out.println("[a5_ise] EM Clustering with K = 2 to remove noisy reads and shadow library");			
 					EMClusterer em = new EMClusterer(reads.values(), 2);
 					em.iterate(1000,0.0001);
 					//System.out.println(" converged in "+numIt+" iterations");
