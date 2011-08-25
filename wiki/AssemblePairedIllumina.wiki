@@ -1,0 +1,13 @@
+#summary A tutorial for assembling paired short reads generated on the Illumina platform
+
+= Introduction =
+
+Assembling genomes if fun
+
+
+= Details =
+
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
