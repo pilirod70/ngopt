@@ -289,7 +289,7 @@ public class FISHInputExporter {
 		// estimate initial insert size to determine if we should look for shadow library.
 		double[] ins = ReadPair.estimateInsertSize(reads.values());
 		System.out.println("[a5_fie] Initial read set stats: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
-		System.out.print("[a5_fie] EM-clustering insert sizes with K="+K);
+		System.out.print("[a5_fie] EM-clustering insert sizes with K="+K+"... ");
 		
 		EMClusterer em = new EMClusterer(toFilt, K);
 		double delta = 0.0001;
@@ -379,15 +379,17 @@ public class FISHInputExporter {
 			}*/
 			while(nSd*sigSet.sd()>sigSet.mean())
 				nSd--;
+			removeKeys(reads,sigSet.getReadHdrs());
 			System.out.println("[a5_fie] Removing reads with inserts between ("+
 			                        NF.format(sigSet.mean()-nSd*sigSet.sd())+","+
 			                        NF.format(sigSet.mean()+nSd*sigSet.sd())+")   nSd="+nSd);
+			// EM-clustering sometimes puts proper connections with noise
 			ReadPair.filterRange(reads, sigSet.mean()-nSd*sigSet.sd(), sigSet.mean()+nSd*sigSet.sd());
 		}
 		if (rmClusters.length()>0)
 			System.out.println("[a5_fie] Removed clusters"+rmClusters);
 		ins = ReadPair.estimateInsertSize(reads.values());
-		System.out.println("[a5_fie] Final read set stats: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
+		System.out.println("[a5_fie] Final stats (for syntenic read pairs): mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
 		return ret;
 	}
 	

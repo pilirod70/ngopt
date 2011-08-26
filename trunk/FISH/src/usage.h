@@ -143,7 +143,7 @@ void process_arguments(int argc, char* argv[])
 	i++;
 
    }
-
+  Max_Distance=-1;
 }
 
 void check(int j, char* argv[],int argc)
