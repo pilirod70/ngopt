@@ -2,8 +2,8 @@ package org.halophiles.assembly;
 
 import java.text.NumberFormat;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 
 
@@ -11,7 +11,7 @@ public class ReadSet {
 	private static NumberFormat NF = NumberFormat.getInstance();
 	private static int COUNT = 0;
 	
-	private Set<ReadPair> reads;
+	private Map<String,ReadPair> reads;
 	private double sd;
 	private double mu;
 	private final int ID;
@@ -19,33 +19,32 @@ public class ReadSet {
 	
 	public ReadSet(int id){
 		this.ID = id;
-		reads = new HashSet<ReadPair>();
+		reads = new HashMap<String,ReadPair>();
 		mod = false;
 	}
 	
 	public ReadSet(){
-		this.ID = COUNT++	;
-		reads = new HashSet<ReadPair>();
+		this.ID = COUNT++;
+		reads = new HashMap<String,ReadPair>();
 		mod = false;
 	}
 	
 	public void add(ReadPair read){
-		reads.add(read);
+		reads.put(read.hdr,read);
 		mod = true;
 	}
-	
-	public void addAll(Set<ReadPair> toAdd){
-		reads.addAll(toAdd);
-		mod = true;
-	}
-	
+		
 	public void remove(ReadPair read){
-		reads.remove(read);
+		reads.remove(read.hdr);
 		mod = true;
 	}
 	
 	public Collection<ReadPair> getReads(){
-		return new Vector<ReadPair>(reads);
+		return new Vector<ReadPair>(reads.values());
+	}
+	
+	public Collection<String> getReadHdrs() {
+		return new Vector<String>(reads.keySet());	
 	}
 	
 	public String toString(){
@@ -75,7 +74,7 @@ public class ReadSet {
 	
 	private void update(){
 		if (mod){
-			double[] ins = ReadPair.estimateInsertSize(reads);
+			double[] ins = ReadPair.estimateInsertSize(reads.values());
 			mu = ins[0];
 			sd = ins[1];
 			mod = false;
