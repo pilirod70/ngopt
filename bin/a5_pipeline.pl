@@ -363,7 +363,7 @@ sub preprocess_libs {
 				$libs{$libid}{"rc"} = $outtie;
 			} else {
 				print STDERR "[a5_preproc] Insert estimate for $libid not reliable.";
-				if (defined($libs{$libid}{"ins"}) {
+				if (defined($libs{$libid}{"ins"})) {
 					print STDERR "[a5_preproc] Using given insert estimate instead.\n";
 					$libs{$libid}{"err"} = 0.95;
 				} else {
