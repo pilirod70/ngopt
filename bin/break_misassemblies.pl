@@ -76,11 +76,11 @@ for my $blk ( sort {$a <=> $b} (keys %blocks) ) {
 	my $ctg1_len = ($ctg1_r-$ctg1_l);
 	my $ctg2_len = ($ctg2_r-$ctg2_l);
 	# skip block if stretch is too short, points aren't orderly enough (z_k), or not enough points
-	next unless ( abs($z_k) >= 2 &&
+	next unless ( #abs($z_k) >= 2 &&
                   ($ctg1_len<=$max_len && $ctg1_len>=$min_len) && 
                   ($ctg2_len<=$max_len && $ctg2_len>=$min_len) && 
                   scalar(@x) >= $min_pts ); 
-
+	$sigblks++;
 	#printf STDERR "[a5_break] Block $blk: $ctg1|$ctg1_l-$ctg1_r  $ctg2|$ctg2_l-$ctg2_r t=%.4f Z_t=%.4f n=$min_pts\n",$k,$z_k;
 	my @tmp1 = ($ctg1_l,$ctg1_r);
 	push(@{$blkbnds{$ctg1}},@tmp1);
@@ -137,7 +137,7 @@ $seqs{$ctg} = $seq;
 
 print STDERR "[a5_break] Found $nbases total bases\n";
 my $currbases = 0;
-open(OUT,"<",$out_file);
+open(OUT,">",$out_file);
 for $ctg (keys %seqs) {
 	if (!defined ($contigs{$ctg}) || !defined($blkbnds{$contigs{$ctg}})){
 		print OUT ">$ctg\n".$seqs{$ctg}."\n";
