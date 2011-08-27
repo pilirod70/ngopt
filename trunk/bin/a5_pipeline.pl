@@ -13,9 +13,13 @@ use Cwd 'abs_path';
 use Getopt::Long;
 
 my $def_up_id="upReads";
-my @KEYS = ("id","p1","p2","rc","ins","err","nlibs","libfile");
+my @KEYS = ("id","p1","p2","up","rc","ins","err","nlibs","libfile");
 
-die "Usage: ".basename($0)." [--begin=1-5] [--preprocessed] <library file> <output base>\n" if (@ARGV == 0);
+die "Usage: ".basename($0)." [--begin=1-5] [--preprocessed] <lib_file> <out_base>\n".
+    "\n".
+    "If --preprocessed is used, <lib_file> is expected to be the library file\n".
+    "created before step 3, named <out_base>.preproc.libs. Note that this flag\n".
+    "only applies if beginning pipeline after step 2.\n" if (@ARGV == 0);
 
 Getopt::Long::Configure(qw{no_auto_abbrev no_ignore_case_always pass_through});
 my $start = 1;
@@ -579,7 +583,7 @@ sub fish_break_misasms {
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
 	`rm $ctgs.* $sai`;
-	my $mem = "2000m";
+	my $mem = "7000m";
 	my $cmd = "GetFishInput.jar $sam $outbase $WD $nlibs > $WD/$outbase.fie.out";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
 	`java -Xmx$mem -jar $DIR/$cmd`;
