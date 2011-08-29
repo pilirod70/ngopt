@@ -45,14 +45,14 @@ my $maxrdlen = -1;
 my $scafs;
 my $ctgs;
 my $reads;
-my $WD="";
+my $WD="$OUTBASE";
 
 print "[a5] Starting pipeline at step $start\n";
 
 if ($start <= 1) {
 	print "[a5] Cleaning reads with SGA\n";
 	print STDERR "[a5] Cleaning reads with SGA\n";
-	$WD = "s1";
+	$WD="$OUTBASE.s1";
 	mkdir($WD) if ! -d $WD;
 	$reads = sga_clean($OUTBASE, \%RAW_LIBS);
 	$reads = tagdust($OUTBASE, $reads);
@@ -65,7 +65,7 @@ if ($start <= 2) {
 	die "[a5_s2] Can't find error corrected reads $reads" unless -f $reads;
 	print "[a5_s2] Building contigs from $reads with IDBA\n";
 	print STDERR "[a5_s2] Building contigs from $reads with IDBA\n";
-	$WD="s2";
+	$WD="$OUTBASE.s2";
 	mkdir($WD) if ! -d $WD;
 	($reads, $maxrdlen) = fastq_to_fasta($reads,"$WD/$OUTBASE.ec.fasta");
 #	`gzip -f $fq_reads`;
@@ -77,7 +77,7 @@ if ($start <= 2) {
 	`mv $ctgs $OUTBASE.contigs.fasta`;
 	
 } 
-$WD="s3";
+$WD="$OUTBASE.s3";
 mkdir($WD) if ! -d $WD;
 my %PAIR_LIBS; 
 if (!$preproc){
@@ -105,7 +105,7 @@ if ($start <= 4) {
 	die "[a5_s4] Can't find starting crude scaffolds $scafs\n" unless -f $scafs;
 	print "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
 	print STDERR "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
-	$WD="s4";
+	$WD="$OUTBASE.s4";
 	mkdir($WD) if ! -d $WD;
 	$scafs = break_all_misasms($prev_scafs,\%PAIR_LIBS,"$OUTBASE.fish"); 
 	if ($scafs eq $prev_scafs){
@@ -124,7 +124,7 @@ if ($start <= 5 && $need_qc) {
 		die "[a5_s5] Can't find starting broken scaffolds $scafs\n" unless -f $scafs;
 		print "[a5_s5] Scaffolding broken contigs with SSPACE\n";
 		print STDERR "[a5_s5] Scaffolding broken contigs with SSPACE\n";
-		$WD="s5";
+		$WD="$OUTBASE.s5";
 		mkdir($WD) if ! -d $WD;
 		$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs);
 		`mv $scafs $OUTBASE.final.scaffolds.fasta`;
@@ -265,18 +265,20 @@ sub split_shuf {
 	my $outbase = shift;
 	my $fq1 = "$outbase\_p1.fastq";
 	my $fq2 = "$outbase\_p2.fastq";
+	print STDERR "[a5] Splitting shuffled file $shuf into $fq1 and $fq2\n"; 
 	open(FQ1,">$fq1");
 	open(FQ2,">$fq2");
 	open(IN,"<$shuf");
-	while(<IN>){
-		print FQ1 $_;
-		print FQ1 <IN>;
-		print FQ1 <IN>;
-		print FQ1 <IN>;
-		print FQ2 <IN>;
-		print FQ2 <IN>;
-		print FQ2 <IN>;
-		print FQ2 <IN>;
+	while(my $hdr = <IN>){
+		my $seq = <IN>;
+		my $qhdr = <IN>;
+		my $qual = <IN>;
+		print FQ1 "$hdr"."$seq"."$qhdr"."$qual";
+		$hdr = <IN>;
+		$seq = <IN>;
+		$qhdr = <IN>;
+		$qual = <IN>;
+		print FQ2 "$hdr"."$seq"."$qhdr"."$qual";
 	}
 	close FQ1;
 	close FQ2;
@@ -583,7 +585,7 @@ sub fish_break_misasms {
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
 	`rm $ctgs.* $sai`;
-	my $mem = "7000m";
+	my $mem = "3000m";
 	my $cmd = "GetFishInput.jar $sam $outbase $WD $nlibs > $WD/$outbase.fie.out";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
 	`java -Xmx$mem -jar $DIR/$cmd`;
