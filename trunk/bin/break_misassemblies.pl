@@ -83,17 +83,25 @@ for my $blk ( sort {$a <=> $b} (keys %blocks) ) {
 	$sigblks++;
 	#printf STDERR "[a5_break] Block $blk: $ctg1|$ctg1_l-$ctg1_r  $ctg2|$ctg2_l-$ctg2_r t=%.4f Z_t=%.4f n=$min_pts\n",$k,$z_k;
 	my @tmp1 = ($ctg1_l,$ctg1_r);
-	push(@{$blkbnds{$ctg1}},@tmp1);
+	push(@{$blkbnds{$ctg1}},[ @tmp1 ]);
 
 	my @tmp2 = ($ctg2_l,$ctg2_r);
-	push(@{$blkbnds{$ctg2}},@tmp2);
+	push(@{$blkbnds{$ctg2}},[ @tmp2 ]);
 }
-
+my $max_gap_len = ($max_len-$min_len)/2;
+print STDERR "[a5_break] Breaking contigs at interblock gaps of length $max_gap_len or shorter\n";
+my %remove = ();
 for my $ctg (keys %blkbnds){
 	my $aref = $blkbnds{$ctg};
-	my @sorted = sort {$a <=> $b} @$aref;
+	my @sorted = sort {$a->[1] <=> $b->[1]} @$aref;
 	delete($blkbnds{$ctg});
 	push(@{$blkbnds{$ctg}},@sorted);
+	for (my $i = 1; $i < scalar(@sorted); $i++){
+		if ($sorted[$i][0] - $sorted[$i-1][1] < $max_gap_len){
+			my @tmp = ($sorted[$i-1][0],$sorted[$i][1]);
+			push(@{$remove{$ctg}},[ @tmp ]);
+		}
+	}
 }
 
 
@@ -113,7 +121,7 @@ while(<IN>) {
 	my ($id,$name) = split(/\t/,$_);
 	$contigs{$name} = $id;
 }
-
+# read in our sequences
 my %seqs = ();
 open(IN,"<",$fasta_file);
 my $ctg = "";
@@ -122,20 +130,44 @@ my $nbases = 0;
 while (<IN>){
 	chomp;
 	if ($_ =~ m/^>(.*)/){
-		unless (length($ctg) == 0) {
-			$seqs{$ctg} = $seq;
-			$seq = "";
-		}
 		$ctg = $1;
 	} else {
+		$seqs{$ctg} .= $_; 
 		$nbases += length($_);
-		$seq .= $_; 
+	}
+}
+
+print STDERR "[a5_break] Found $nbases total bases\n";
+
+my $currbases = 0;
+open(OUT,">",$out_file);
+for $ctg (keys %seqs) {
+	if (!defined ($contigs{$ctg}) || !defined($remove{$contigs{$ctg}})){
+		print OUT ">$ctg\n".$seqs{$ctg}."\n";
+		$currbases += length($seqs{$ctg});
+		next;
+	} else {
+		my $left = 0;
+		my $right = -1;
+		my $sub_seq = 0;
+		for (my $i = 0; $i < scalar(@{$remove{$contigs{$ctg}}}); $i++) {
+			$right = $remove{$contigs{$ctg}}[$i][0];
+			print STDERR "\$left=>$left<    \$right=>$right<\n";
+			$sub_seq++;
+			print OUT ">$ctg|$sub_seq|".($left+1)."-".$right."\n".substr($seqs{$ctg},$left, $right-$left-1)."\n";
+			$currbases += $right-$left-1;
+			$left = $remove{$contigs{$ctg}}[$i][1];
+		}
+		$right = length($seqs{$ctg});
+		$sub_seq++;
+		print OUT ">$ctg|$sub_seq|".($left+1)."-".$right."\n".substr($seqs{$ctg},$left, $right-$left-1)."\n";
+		$currbases += $right-$left-1;
+		print STDERR "[a5_break] Split $ctg into $sub_seq subcontigs.\n";
 	}
 	
 }
-$seqs{$ctg} = $seq;
 
-print STDERR "[a5_break] Found $nbases total bases\n";
+=begin OLD
 my $currbases = 0;
 open(OUT,">",$out_file);
 for $ctg (keys %seqs) {
@@ -184,6 +216,9 @@ for $ctg (keys %seqs) {
 		
 	}
 }
+=end OLD
+
+=cut 
 
 close OUT;
 
