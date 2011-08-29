@@ -13,7 +13,7 @@ use Cwd 'abs_path';
 use Getopt::Long;
 
 my $def_up_id="upReads";
-my @KEYS = ("id","p1","p2","up","rc","ins","err","nlibs","libfile");
+my @KEYS = ("id","p1","p2","shuf","up","rc","ins","err","nlibs","libfile");
 
 die "Usage: ".basename($0)." [--begin=1-5] [--preprocessed] <lib_file> <out_base>\n".
     "\n".
@@ -37,6 +37,17 @@ my $DIR = dirname(abs_path($0));
 my %RAW_LIBS = read_lib_file($libfile);
 print STDERR "[a5] Found the following libraries:\n";
 print_lib_info(\%RAW_LIBS);
+for my $lib (keys %RAW_LIBS){
+	for my $att (keys %{$RAW_LIBS{$lib}}){
+		if ($att eq "shuf"){
+			my ($fq1, $fq2) = split_shuf($RAW_LIBS{$lib}{$att},"$OUTBASE.".$RAW_LIBS{$lib}{"id"});
+			$RAW_LIBS{$lib}{"p1"} = $fq1;
+			$RAW_LIBS{$lib}{"p2"} = $fq2;
+		}
+	}
+}
+
+
 
 
 die "[a5] No libraries found in $libfile\n" unless(keys %RAW_LIBS);
@@ -214,10 +225,6 @@ sub read_lib_file {
 			} 
 			$lib_count++;
 			$id = "raw$lib_count";
-		} elsif ($_ =~ m/shuf=([\w\/\-\.]+)/) { 
-			my ($fq1, $fq2) = split_shuf($1,"$OUTBASE.raw$lib_count");
-			$hash{"p1"} = $fq1;
-			$hash{"p2"} = $fq2;
 		} elsif ($_ =~ m/id=([\w\/\-\.]+)/) { 
 			$id = $1;
 		} elsif ($_ =~ m/(\w+)=([\w\/\-\.]+)/) { 
