@@ -57,16 +57,16 @@ while [ ! `mktemp -q $LOCKFILE` ]; do
 	sleep 10s	
 done
 echo "Fetching data"
-n=`ls $fq* 2> /dev/null | wc -l`
+n=`ls $fq.* 2> /dev/null | wc -l`
 if [ "$n" -ne "0" ]; then
-	for gz in $fq*.gz; do
+	for gz in $fq.*.gz; do
 		zcat $gz > `basename $gz .gz`
 	done
 fi
 
-n=`ls $fq2* 2> /dev/null | wc -l`
+n=`ls $fq2.* 2> /dev/null | wc -l`
 if [ "$n" -ne "0" ]; then
-	for gz in $fq2*.gz; do
+	for gz in $fq2.*.gz; do
 		echo "basename $gz .gz  ==" `basename $gz .gz`
 		zcat $gz > `basename $gz .gz`
 	done
