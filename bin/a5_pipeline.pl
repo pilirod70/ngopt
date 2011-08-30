@@ -601,8 +601,11 @@ sub fish_break_misasms {
 	$cmd = "fish -off -f $WD/$outbase.control.txt -b $WD/$outbase.blocks.txt > $WD/$outbase.fish.out";
 	print STDERR "[a5] $cmd\n"; 
 	`$DIR/$cmd`;
-	die "[a5] Error getting blocks with FISH for $outbase\n" if ($? != 0);
-
+	if ($? != 0) {
+		my $complete = `grep -c  \"\\-by size\" $WD/$outbase.blocks.txt`;
+		chomp $complete;
+		die "[a5] Error getting blocks with FISH for $outbase\n" unless ($complete);
+	}
 	$cmd = "break_misassemblies.pl $WD/$outbase.blocks.txt $WD/$outbase.contig_labels.txt $ctgs $WD/$outbase.broken.fasta $min_pts $min_len $max_len";
 	print STDERR "[a5] $cmd\n"; 
 	my $nblks = `$DIR/$cmd`;

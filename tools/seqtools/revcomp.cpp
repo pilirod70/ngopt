@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstring>
 #include <list>
 #include <fstream>
 #include <iostream>
