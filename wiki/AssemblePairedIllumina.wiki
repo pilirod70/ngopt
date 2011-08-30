@@ -65,7 +65,7 @@ cd ngopt_a5pipeline_macOS-x86_64
 #
 # Get data
 #
-wget http://edhar.genomecenter.ucdavis.edu/~andrew/ngopt_pipeline/GECO.tgz
+curl -o GECO.tgz http://edhar.genomecenter.ucdavis.edu/~andrew/ngopt_pipeline/GECO.tgz
 tar -xzvf GECO.tgz
 
 #
