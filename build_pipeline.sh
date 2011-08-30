@@ -58,9 +58,9 @@ findir_base="ngopt_a5pipeline"
 
 ############################# Linux Build #############################
 
-echo "Building pipeline for Linux x86"
+echo "Building pipeline for Linux x64"
 
-findir="${findir_base}_linux-x86_64"
+findir="${findir_base}_linux-x64"
 
 reset
 echo "Copying Linux binaries to $findir"
@@ -80,7 +80,7 @@ bundle_clean
 
 echo -e "\nBuilding pipeline for Mac OSX"
 
-findir="${findir_base}_macOS-x86_64"
+findir="${findir_base}_macOS-x64"
 
 reset
 echo "Copying Mac binaries to $findir"
