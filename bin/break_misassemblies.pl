@@ -123,9 +123,6 @@ while(<IN>) {
 	my ($id,$name) = split(/\t/,$_);
 	$contig_labels{$name} = $id;
 }
-for my $key (keys %contig_labels){
-	print STDERR ">$key<\t".$contig_labels{$key}."\n";	
-}
 # read in our sequences
 my %seqs = ();
 open(IN,"<",$fasta_file);
