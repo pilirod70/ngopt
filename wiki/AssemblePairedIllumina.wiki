@@ -39,7 +39,7 @@ wget http://ngopt.googlecode.com/files/ngopt_a5pipeline_linux-x64.tar.gz
 tar -xzvf ngopt_a5pipeline_linux-x64.tar.gz
 
 #
-# Make a temp directory for organizational purposes, as many output files will be generate
+# Make a temp directory for organizational purposes, as many output files will be generated
 #
 mkdir ngopt_a5pipeline_macOS-x64/ngopt_tutorial
 cd ngopt_a5pipeline_macOS-x64/ngopt_tutorial
@@ -67,7 +67,7 @@ curl -o ngopt_a5pipeline_macOS-x64.tar.gz http://ngopt.googlecode.com/files/ngop
 tar -xzvf ngopt_a5pipeline_macOS-x64.tar.gz
 
 #
-# Make a temp directory for organizational purposes, as many output files will be generate
+# Make a temp directory for organizational purposes, as many output files will be generated
 #
 mkdir ngopt_a5pipeline_macOS-x64/ngopt_tutorial
 cd ngopt_a5pipeline_macOS-x64/ngopt_tutorial
