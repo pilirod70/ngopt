@@ -2,7 +2,7 @@
 
 = Introduction =
 
-Assembling genomes if fun
+Assembling genomes is fun
 
 
 = Software Requirements = 
@@ -11,7 +11,7 @@ Assembling genomes if fun
   * [http://code.google.com/p/ngopt/downloads/detail?name=ngopt_a5pipeline_linux-x86_64.tar.gz&can=2&q=#makechanges NGOpt pipeline]
 
 = Data Requirements = 
-  * One or more paired-end dataset in FastQ format in Illumina 1.3+ format
+  * One or more paired-end dataset in FastQ format in Illumina 1.3+ format. For the tutorial, we will use [http://edhar.genomecenter.ucdavis.edu/~andrew/ngopt_pipeline/GECO.tgz GECO.tgz] 
     * Single-end datasets may be included in addition to paired-end datasets
 
 = Installing NGOpt pipeline =
@@ -20,3 +20,35 @@ After you download the archive from the link given above, extract the archive.
 $ tar -xzf ngopt_pipeline_PLATFORM.tar.gz 
 }}}
 Now add `ngopt_pipeline_PLATFORM/bin/a5_pipeline.pl` to your executable path. You can also call the pipeline directly without adding it to your executable path.
+
+= Running NGOpt pipeline =
+The following instructions will assume you have downloaded and are using the test data from the tarball [http://edhar.genomecenter.ucdavis.edu/~andrew/ngopt_pipeline/GECO.tgz GECO.tgz] and that these files are located in the current working directory.
+{{{
+cd ngopt_a5pipeline_linux-x86_64
+bin/a5_pipeline.pl GECO.libs test
+}}}
+When complete, the current working directory will contain the final product of each step in the pipeline.
+
+= A complete example on the Linux command line =
+The following commands can be copied and pasted into a linux terminal
+{{{
+#
+# Get software
+#
+wget http://ngopt.googlecode.com/files/ngopt_a5pipeline_linux-x86_64.tar.gz
+tar -xzvf ngopt_a5pipeline_linux-x86_64.tar.gz
+cd ngopt_a5pipeline_linux-x86_64
+
+#
+# Get data
+#
+wget http://edhar.genomecenter.ucdavis.edu/~andrew/ngopt_pipeline/GECO.tgz
+tar -xzvf GECO.tgz
+
+#
+# Run pipeline
+#
+bin/a5_pipeline.pl GECO.libs test
+
+}}}
+
