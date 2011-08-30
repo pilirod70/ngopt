@@ -24,7 +24,7 @@ Now add `ngopt_pipeline_PLATFORM-x64/bin/a5_pipeline.pl` to your executable path
 = Running NGOpt pipeline =
 The following instructions will assume you have downloaded and are using the test data from the tarball [http://edhar.genomecenter.ucdavis.edu/~andrew/ngopt_pipeline/GECO.tgz GECO.tgz] and that these files are located in the current working directory.
 {{{
-cd ngopt_a5pipeline_linux-x64
+cd ngopt_a5pipeline_PLATFORM-x64
 bin/a5_pipeline.pl GECO.libs test
 }}}
 When complete, the current working directory will contain the final product of each step in the pipeline.
