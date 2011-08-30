@@ -30,7 +30,7 @@ bin/a5_pipeline.pl GECO.libs test
 When complete, the current working directory will contain the final product of each step in the pipeline.
 
 = A complete example on the Linux command line =
-The following commands can be copied and pasted into a linux terminal
+The following commands can be copied and pasted into a Linux Terminal
 {{{
 #
 # Get software
@@ -58,7 +58,7 @@ bin/a5_pipeline.pl GECO.libs test
 }}}
 
 = A complete example on the MacOS command line =
-The following commands can be copied and pasted into a linux terminal
+The following commands can be copied and pasted into the MacOS Terminal
 {{{
 #
 # Get software
