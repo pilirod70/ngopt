@@ -110,7 +110,7 @@ public class Contig implements Comparable<Contig> {
 				SAMFileParser.cigarLength(pair.cig1);
 			mappedReadCount++;
 		}
-		reads.put(pair.hdr, pair);
+		//reads.put(pair.hdr, pair);
 	}
 	public void removeReadPair(String readHdr){
 		reads.remove(readHdr);
