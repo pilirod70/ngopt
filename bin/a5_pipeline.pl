@@ -47,9 +47,6 @@ for my $lib (keys %RAW_LIBS){
 	}
 }
 
-
-
-
 die "[a5] No libraries found in $libfile\n" unless(keys %RAW_LIBS);
 print "[a5] Found ".scalar(keys %RAW_LIBS)." libraries\n";
 my $maxrdlen = -1;
@@ -162,6 +159,7 @@ sub sga_clean {
 	my $outbase = shift;
 	my $libsref = shift;
 	my %libs = %$libsref;
+	my $t = $^O =~ m/darwin/ ? 1 : 4;
 	# figure out which files we need to pass to SGA
 	my $files = "";
 	for my $lib (keys %libs) {
@@ -183,7 +181,7 @@ sub sga_clean {
 	my $sga_ind_kb = 4000000;
 	my $err_file = "$WD/index.err";
 	do{
-		$cmd = "sga index -d $sga_ind_kb -t 4 $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
+		$cmd = "sga index -d $sga_ind_kb -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
 		print STDERR "[a5] $cmd\n";
 		$sga_ind = `$DIR/$cmd`;
 		$sga_ind = read_file($err_file);
