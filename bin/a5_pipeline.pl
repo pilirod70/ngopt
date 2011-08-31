@@ -586,7 +586,9 @@ sub fish_break_misasms {
 	`$DIR/bwa index -a is $ctgs > $WD/$outbase.index.out`;
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
-	`rm $ctgs.* $sai`;
+	`samtools view -bhS $sam | samtools sort -o -n - $outbase.sort | samtools view -h - > $outbase.sorted.sam`;
+	`mv $outbase.sorted.sam $sam`
+	`rm $ctgs.* $sai $outbase.sort*`;
 	my $mem = "7000m";
 	my $cmd = "GetFishInput.jar $sam $outbase $WD $nlibs > $WD/$outbase.fie.out";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
