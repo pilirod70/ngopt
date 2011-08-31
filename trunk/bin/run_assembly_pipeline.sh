@@ -1,6 +1,6 @@
 #!/bin/bash
 ##
-#$ -l mem_free=5G
+#$ -l mem_free=16G
 #$ -pe threaded 3
 #$ -V
 #$ -cwd
