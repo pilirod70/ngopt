@@ -77,7 +77,7 @@ if ($start <= 2) {
 	$WD="$OUTBASE.s2";
 	mkdir($WD) if ! -d $WD;
 	($reads, $maxrdlen) = fastq_to_fasta($reads,"$WD/$OUTBASE.ec.fasta");
-#	`gzip -f $fq_reads`;
+	`gzip -f $fq_reads`;
 
 	#print STDERR "$reads exists\n" if -f $reads;
 	#print STDERR "$reads does not exist\n" if ! -f $reads;
