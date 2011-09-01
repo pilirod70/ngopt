@@ -16,6 +16,8 @@ public class SAMFileParser {
 	private HashMap<String,Contig> contigs;
 	private HashMap<String,ReadPair> reads;
 	
+	private BufferedReader br;
+	
 	private int nreads;
 	
 	private int npairs;
@@ -25,9 +27,13 @@ public class SAMFileParser {
 	private File samFile;
 	
 	public SAMFileParser(String samPath) throws IOException{
+		this(samPath,Integer.MAX_VALUE);
+	}
+	
+	public SAMFileParser (String samPath, int maxPairs) throws IOException{
 		contigs = new HashMap<String, Contig>();
 		reads = new HashMap<String, ReadPair>();
-		BufferedReader br = null;
+		br = null;
 		String ctgStr = null;
 		
 		nreads = 0;
@@ -65,9 +71,10 @@ public class SAMFileParser {
 		String[] line = null;
 		Contig tmpCtg = null;
 		int val = -1;
-		while(br.ready()){
+		while(br.ready() && npairs < maxPairs){
 			line = br.readLine().split("\t");
 			int left = Integer.parseInt(line[3]);
+			if (left == 0) continue;
 			boolean rev = isReverse(line[1]);
 			int len = 0;
 			if (line[5].contains("M"))
@@ -93,11 +100,20 @@ public class SAMFileParser {
 			} else if (val == -1){
 				System.err.println("ambiguous mapping for read " + line[0]);
 			}
-			tmpCtg.addReadPair(tmp);
+			tmpCtg.addRead(len);
 			nreads++;
 			line = null;
 		}
 	}
+	
+	public boolean hasMoreReads(){
+		try {
+			return br.ready();
+		} catch (IOException e) {
+			return false;
+		}
+	}
+	
 	
 	public String getBasename(){
 		if (samFile.getName().endsWith(".sam"))
@@ -134,7 +150,7 @@ public class SAMFileParser {
 		return npairs;
 	}
 	
-	public static boolean nextCharIs(BufferedReader br, char c) throws IOException{
+	private static boolean nextCharIs(BufferedReader br, char c) throws IOException{
 		if (!br.ready()){ return false; }
 		boolean ret = false;
 		br.mark(1);
