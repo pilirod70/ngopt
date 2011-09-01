@@ -101,16 +101,9 @@ public class Contig implements Comparable<Contig> {
 	public int compareTo(Contig arg0) {
 		return this.name.compareTo(arg0.name);
 	}
-	public void addReadPair(ReadPair pair){
-		if (reads.containsKey(pair.hdr)){
-			mappedBasesCount += SAMFileParser.cigarLength(pair.cig2);
-			mappedReadCount++;
-		} else {
-			mappedBasesCount += 
-				SAMFileParser.cigarLength(pair.cig1);
-			mappedReadCount++;
-		}
-		//reads.put(pair.hdr, pair);
+	public void addRead(int len){
+		mappedBasesCount += len;
+		mappedReadCount++;
 	}
 	public void removeReadPair(String readHdr){
 		reads.remove(readHdr);
