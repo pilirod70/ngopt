@@ -3,6 +3,7 @@ package org.halophiles.assembly.qc;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -30,6 +31,9 @@ import org.halophiles.assembly.ReadSet;
 import org.halophiles.assembly.SAMFileParser;
 
 public class FISHInputExporter {
+	private static final int HANDFUL_SIZE = 100;
+	private static final int SAM_LINE_LEN = 215;
+	private static final int MIN_PTS = 3;
 	private static NumberFormat NF;
 	private static int N_ESTREADPAIRS = 100000;
 	private static int MINQUAL = 13;
@@ -56,13 +60,24 @@ public class FISHInputExporter {
 			Map<String,Contig> contigs = readContigs(raf);
 			System.out.println("[a5_fie] Found "+contigs.size()+" contigs");
 			System.out.println("[a5_fie] Reading in a subset of reads for insert size estimation");
+			System.out.println("[a5_fie] Reading in pairs "+HANDFUL_SIZE+" at a time.");
 			long before = System.currentTimeMillis();
-			Map<String,ReadPair> reads = readSubset(raf, contigs);
+			//Map<String,ReadPair> reads = readSubset(raf, contigs);
+			Map<String,ReadPair> reads = readSubsetByByte(raf, contigs);
+			raf.close();
 			long after = System.currentTimeMillis();
 			System.out.println("[a5_fie] Took "+((after-before)/1000)+" seconds.");
+			System.out.println("[a5_fie] Read in "+reads.size()+" read pairs.");
 			
-			double[][] ranges = getFilterRanges(reads, numLibs);
+			double[][] ranges = getRangesToFilter(reads, numLibs);
 			
+			for (int i = 0; i < ranges.length; i++){
+				System.out.println("[a5_fie] Filtering read pairs with inserts between "+
+						NF.format(ranges[i][0]-ranges[i][1]*ranges[i][3])+"-"+
+						NF.format(ranges[i][0]+ranges[i][1]*ranges[i][3]));
+				double[] tmp = {ranges[i][0]-ranges[i][1]*ranges[i][3],ranges[i][0]+ranges[i][1]*ranges[i][3]};
+				ranges[i] = tmp;
+			}
 			
 			/*
 			SAMFileParser sfp = new SAMFileParser(samPath,N_ESTREADPAIRS);
@@ -72,7 +87,7 @@ public class FISHInputExporter {
 			
 			Map<String,ReadPair> reads = new HashMap<String,ReadPair>();
 			System.out.println("[a5_fie] Filtering duplicate connections...");
-			Set<ReadPair> uniq = new TreeSet<ReadPair>(new Comparator<ReadPair>(){
+		Set<ReadPair> uniq = new TreeSet<ReadPair>(new Comparator<ReadPair>(){
 				public int compare(ReadPair arg0, ReadPair arg1) {
 					if (arg0.ctg1.equals(arg1.ctg1)){
 						if (arg0.ctg2.equals(arg1.ctg2)){
@@ -137,7 +152,8 @@ public class FISHInputExporter {
 			ReadPair.exportInsertSize(reads.values(), insOut);
 			insOut.close();
 		*/
-			export(reads,outdir,base);
+			//export(reads,outdir,base);
+			export2(samPath, outdir, base, contigs, ranges);
 			
 		} catch(IOException e){
 			e.printStackTrace();
@@ -162,6 +178,9 @@ public class FISHInputExporter {
 		while(rpIt.hasNext()){
 			tmpRp = rpIt.next();
 			tmpCtg = tmpRp.ctg1;
+			if(tmpRp.pos2==17690 || tmpRp.pos1==17690){
+				System.out.print("");
+			}
 			boolean rev = tmpRp.rev1;
 			int left = tmpRp.pos1;
 			if (mapPoints.containsKey(tmpCtg.name)){
@@ -237,8 +256,10 @@ public class FISHInputExporter {
 					else return 0;
 				}	
 			});
-			for (Double d: ar)
-				ctgMapOut.println("c"+contigs.get(ctg).getRank()+"p"+Math.abs(d.intValue())+"\t"+(d < 0 ? -1 : 1));
+			for (Double d: ar){
+				//ctgMapOut.println("c"+contigs.get(ctg).getRank()+"p"+Math.abs(d.intValue())+"\t"+(d < 0 ? -1 : 1));
+				ctgMapOut.println("c"+contigs.get(ctg).getRank()+"p"+Math.abs(d.intValue())+"\t0");
+			}
 			
 			ctgMapOut.close();
 			maps.put(contigs.get(ctg).getRank(),fishDir.getName()+"/"+mapMatchDir.getName()+"/"+ctgMapFile.getName());
@@ -275,7 +296,7 @@ public class FISHInputExporter {
 		while(it.hasNext()){
 			ctgStr = it.next();
 			tmpPSP = psPairs.get(ctgStr);
-			if (tmpPSP.reads.size() <= 2)
+			if (tmpPSP.nPairs <= 2)
 				mfToRm.add(ctgStr);
 		}
 		removeKeys(psPairs, mfToRm);
@@ -296,12 +317,26 @@ public class FISHInputExporter {
 		ctrlOut.println("end");
 		ctrlOut.close();
 	}
-	
+	/**
+	 * 
+	 * @param samPath
+	 * @param fishDir
+	 * @param base
+	 * @param ctgs
+	 * @param ranges an array of arrays of max and min insert sizes
+	 * @throws IOException
+	 */
 	public static void export2(String samPath, File fishDir, String base, Map<String,Contig> ctgs, double[][] ranges) throws IOException{
 		Map<String,Vector<Double>> mapPoints = new HashMap<String,Vector<Double>>();
-		Map<String,PrintStreamPair> psPairs = new TreeMap<String,PrintStreamPair>();
+		Map<String,PrintStreamPair> psPairs = new HashMap<String,PrintStreamPair>();
 		Vector<Double> tmpPts = null;
-
+		Comparator<Double> posComp = new Comparator<Double>(){
+			public int compare(Double arg0, Double arg1) {
+				if (Math.abs(arg0) < Math.abs(arg1)) return -1;
+				else if (Math.abs(arg0) > Math.abs(arg1)) return 1;
+				else return 0;
+			}
+		};
 		BufferedReader br = new BufferedReader (new FileReader(new File(samPath)));
 		while(nextCharIs(br, '@')) 
 			br.readLine();
@@ -312,13 +347,14 @@ public class FISHInputExporter {
 		int left2 = 0;
 		String ctgStr = null;
 		Map<String,ReadPair> reads = new HashMap<String, ReadPair>();
-		ReadPair tmp = null;
+		String tmp = null;
 		PrintStreamPair psPair = null;
 		Contig ctg1 = null;
 		Contig ctg2 = null;
 		int qual = -1;
 		File mapMatchDir = new File(fishDir,base+".dat");
-		int comp = -10;
+		mapMatchDir.mkdir();
+		int ctgNameComp = -10;
 		int dist = 0;
 		while (br.ready()){
 			line1 = br.readLine().split("\t");
@@ -338,8 +374,8 @@ public class FISHInputExporter {
 			ctg2 = ctgs.get(line2[2]);
 			
 			qual = ((Integer.parseInt(line1[4]) % 255) + (Integer.parseInt(line2[4]) % 255))/2;
-			comp = line1[2].compareTo(line2[2]); // order for consistency
-			if (comp < 0){
+			ctgNameComp = line1[2].compareTo(line2[2]); // order for consistency
+			if (ctgNameComp < 0){
 				ctgStr = line1[2]+"-"+line2[2];
 				if (psPairs.containsKey(ctgStr))
 					psPair = psPairs.get(ctgStr);
@@ -348,7 +384,7 @@ public class FISHInputExporter {
 					psPairs.put(ctgStr, psPair);
 				}
 				psPair.print(left1, left2, qual);
-			} else if (comp > 0) {
+			} else if (ctgNameComp > 0) {
 				ctgStr = line2[2]+"-"+line1[2];
 				if (psPairs.containsKey(ctgStr))
 					psPair = psPairs.get(ctgStr);
@@ -375,6 +411,8 @@ public class FISHInputExporter {
 				else 
 					psPair.print(left1, left2, qual);				
 			}
+			
+			// add points for our map files
 			if (mapPoints.containsKey(ctg1.name))
 				tmpPts = mapPoints.get(ctg1.name);
 			else {
@@ -390,15 +428,109 @@ public class FISHInputExporter {
 			}
 			tmpPts.add(new Double(left2));
 		}
+		Iterator<String> ctgIt = mapPoints.keySet().iterator();
+		Set<String> ctgToRm = new HashSet<String>();
+		while(ctgIt.hasNext()){
+			tmp = ctgIt.next();
+			tmpPts = mapPoints.get(tmp);
+			if (tmpPts.size() < MIN_PTS)
+				ctgToRm.add(tmp);
+			else 
+				Collections.sort(tmpPts, posComp);
+		}
+		//removeKeys(mapPoints, ctgToRm);
+		removeKeys(ctgs, ctgToRm);
+		removeKeys(mapPoints, ctgToRm);
+		
+		Contig[] ctgRef = new Contig[ctgs.values().size()];
+		ctgs.values().toArray(ctgRef);
+		Arrays.sort(ctgRef,new Comparator<Contig>(){
+			public int compare(Contig o1, Contig o2) {
+				return o1.getId() - o2.getId();
+			}
+		});
+		// Rank contigs so FISH doesn't freak out about non-consecutive ids
+		for (int i = 0; i < ctgRef.length; i++){
+			ctgRef[i].setRank(i+1);
+		}
+		
+		File ctgLblFile = new File(fishDir,base+".contig_labels.txt");
+		ctgLblFile.createNewFile();
+		PrintStream ctgLblOut = new PrintStream(ctgLblFile);
+		
+		Iterator<String> it = mapPoints.keySet().iterator();
+		TreeMap<Integer,String> maps = new TreeMap<Integer, String>();
+		while(it.hasNext()){
+			String ctg = it.next();
+			tmpPts = mapPoints.get(ctg);
+			Double[] ar = new Double[tmpPts.size()];
+			tmpPts.toArray(ar);
+			File ctgMapFile = new File(mapMatchDir,"map."+ctgs.get(ctg).getRank()+".txt");
+			ctgLblOut.println(ctgs.get(ctg).getRank()+"\t"+ctgs.get(ctg).name);
+			PrintStream ctgMapOut = new PrintStream(ctgMapFile);
+			Arrays.sort(ar, posComp);
+			for (Double d: ar){
+				//ctgMapOut.println("c"+contigs.get(ctg).getRank()+"p"+Math.abs(d.intValue())+"\t"+(d < 0 ? -1 : 1));
+				ctgMapOut.println("c"+ctgs.get(ctg).getRank()+"p"+Math.abs(d.intValue())+"\t0");
+			}
+			
+			ctgMapOut.close();
+			maps.put(ctgs.get(ctg).getRank(),fishDir.getName()+"/"+mapMatchDir.getName()+"/"+ctgMapFile.getName());
+		}
+		ctgLblOut.close();
+		File controlFile = new File(fishDir,base+".control.txt");
+		PrintStream ctrlOut = new PrintStream(controlFile);
+		Iterator<Integer> it2 = maps.keySet().iterator();
+		ctrlOut.println("-maps");
+		while(it2.hasNext()){
+			Integer tmpInt = it2.next();
+			ctrlOut.println(tmpInt+"\t"+maps.get(tmpInt));
+		}
+		
+		it = reads.keySet().iterator();
+		PrintStreamPair tmpPSP = null;
+		ctrlOut.println("-matches");
+		while(it.hasNext()) {
+			
+		}
+		
+		it = psPairs.keySet().iterator();
+		Vector<String> mfToRm = new Vector<String>();
+		
+		while(it.hasNext()){
+			ctgStr = it.next();
+			tmpPSP = psPairs.get(ctgStr);
+			if (tmpPSP.nPairs <= 2)
+				mfToRm.add(ctgStr);
+		}
+		removeKeys(psPairs, mfToRm);
+		Set<MatchFile> matchFiles = new TreeSet<MatchFile>();
+		it = psPairs.keySet().iterator();
+		while(it.hasNext()) {
+			ctgStr = it.next();
+			matchFiles.addAll(psPairs.get(ctgStr).getMatchFiles());
+			psPairs.get(ctgStr).close();
+		}
+		Iterator<MatchFile> mfIt = matchFiles.iterator();
+		MatchFile tmpMF = null;
+		while(mfIt.hasNext()){
+			tmpMF = mfIt.next();
+			ctrlOut.println(tmpMF.toString()+"\t"+fishDir.getName()+"/"+mapMatchDir.getName()+"/"+tmpMF.getName());
+		}
+		
+		ctrlOut.println("end");
+		ctrlOut.close();
 		
 	}
 	
 
 	/**
+	 * Returns an array of arrays with each array having the following information:	<br><br>
+	 * <code>[ mean, sd, n, nSd ]</code>
 	 * 
-	 * @return a collection of ReadPairs that were removed
+	 * @return an array or arrays, where individual arrays contain cluster stats
 	 */
-	private static double[][] getFilterRanges(Map<String,ReadPair> reads, int numLibs){
+	private static double[][] getRangesToFilter(Map<String,ReadPair> reads, int numLibs){
 		int K = numLibs+1;
 		Vector<ReadPair> toFilt = new Vector<ReadPair>();
 		Iterator<ReadPair> rpIt = reads.values().iterator();
@@ -410,7 +542,7 @@ public class FISHInputExporter {
 		}
 		// estimate initial insert size to determine if we should look for shadow library.
 		double[] ins = ReadPair.estimateInsertSize(reads.values());
-		System.out.println("[a5_fie] Initial read set stats: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
+		System.out.println("[a5_fie] Initial stats for sample: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
 		System.out.print("[a5_fie] EM-clustering insert sizes with K="+K+"... ");
 		
 		EMClusterer em = new EMClusterer(toFilt, K);
@@ -426,6 +558,9 @@ public class FISHInputExporter {
 			allIns[i][2] = clusters[i].sd();
 			allIns[i][3] = ((double)clusters[i].size())/((double)toFilt.size());
 		}
+		
+		
+		System.out.println("[a5_fie] Found the following clusters:");	
 		
 		Vector<ReadSet> signal = new Vector<ReadSet>();
 		Vector<ReadSet> noise = new Vector<ReadSet>();
@@ -488,40 +623,26 @@ public class FISHInputExporter {
 		double[][] ret = new double[signal.size()][];
 		int i = 0;
 		while(sigIt.hasNext()){
-			nSd=6;
 			sigSet = sigIt.next();
 			rmClusters += " cluster"+sigSet.getId();
-			//ret.addAll(sigSet.getReads());
-			NF.setMaximumFractionDigits(0);
-			System.out.print("[a5_fie] cluster"+NF.format(sigSet.getId())+": mu="+pad(NF.format(sigSet.mean()),10)+
-					"sd="+pad(NF.format(sigSet.sd()),10)+"n="+pad(NF.format(sigSet.size()),10));
-			NF.setMaximumFractionDigits(2);
-			System.out.print("perc="+pad(NF.format(100*((double)sigSet.size()/(double)toFilt.size())),10));
-			/*	rpIt = sigSet.getReads().iterator();
-			while(rpIt.hasNext()){
-				toRm.add(rpIt.next().hdr);
-			}*/
-			while(nSd*sigSet.sd()>sigSet.mean())
-				nSd--;
+			nSd = Math.min(((int)sigSet.mean())/((int)sigSet.sd()),6);
 			ret[i] = new double[4];
 			ret[i][0] = sigSet.mean();
 			ret[i][1] = sigSet.sd();
 			ret[i][2] = sigSet.size();
 			ret[i][3] = nSd;
 			removeKeys(reads,sigSet.getReadHdrs());
-		/*
-			System.out.println("[a5_fie] Removing reads with inserts between ("+
-					NF.format(sigSet.mean()-nSd*sigSet.sd())+","+
-					NF.format(sigSet.mean()+nSd*sigSet.sd())+")   nSd="+nSd);
-		*/
-			// EM-clustering sometimes puts proper connections with noise
-		//	ReadPair.filterRange(reads, sigSet.mean()-nSd*sigSet.sd(), sigSet.mean()+nSd*sigSet.sd());
+			NF.setMaximumFractionDigits(0);
+			System.out.print("[a5_fie] cluster"+NF.format(sigSet.getId())+": mu="+pad(NF.format(sigSet.mean()),10)+
+					"sd="+pad(NF.format(sigSet.sd()),10)+"n="+pad(NF.format(sigSet.size()),10));
+			NF.setMaximumFractionDigits(2);
+			System.out.println("perc="+pad(NF.format(100*((double)sigSet.size()/(double)toFilt.size())),10)+"nSd="+nSd);
 			i++;
 		}
 		if (rmClusters.length()>0)
-			System.out.println("[a5_fie] Removed clusters"+rmClusters);
+			System.out.println("[a5_fie] Removing "+rmClusters);
 		ins = ReadPair.estimateInsertSize(reads.values());
-		System.out.println("[a5_fie] Final stats (for syntenic read pairs): mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
+		System.out.println("[a5_fie] Final stats for sample after filtering: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
 		return ret;
 	}
 	
@@ -715,10 +836,10 @@ public class FISHInputExporter {
 	 * @throws IOException 
 	 */
 	private static Map<String,ReadPair> readSubset(RandomAccessFile raf, Map<String,Contig> contigs) throws IOException{
-		int HANDFUL_SIZE = 1000;
 		long pos = raf.getFilePointer();
 		long len = raf.length();
-		long step = (len-pos)/(N_ESTREADPAIRS*HANDFUL_SIZE);
+		
+		long step = (len-pos)*HANDFUL_SIZE/N_ESTREADPAIRS;
 		int i = 0;
 		String[] line1 = null;
 		String[] line2 = null;
@@ -729,7 +850,8 @@ public class FISHInputExporter {
 		int j = 0;
 		while (i < N_ESTREADPAIRS && pos < raf.length()){
 			raf.readLine(); // make sure we're at the beginning of a line
-			
+			if (raf.getFilePointer() >= raf.length())
+				break;
 			line1 = raf.readLine().split("\t");
 			line2 = raf.readLine().split("\t");
 			// get to the first read in a pair
@@ -799,62 +921,163 @@ public class FISHInputExporter {
 		return contigs;
 	}
 	
+	/**
+	 * This method assumes that the contig header has been read in, and 
+	 * the file pointer is at the beginning of the first read's line.
+	 * 
+	 * @param raf
+	 * @throws IOException 
+	 */
+	private static Map<String,ReadPair> readSubsetByByte(RandomAccessFile raf, Map<String,Contig> contigs) throws IOException{
+		long pos = raf.getFilePointer();
+		long len = raf.length();
+		
+		long step = (len-pos)*HANDFUL_SIZE/N_ESTREADPAIRS;
+		int i = 0;
+		String[] line1 = null;
+		String[] line2 = null;
+		int left1 = 0;
+		int left2 = 0;
+		Map<String,ReadPair> reads = new HashMap<String, ReadPair>();
+		ReadPair tmp = null;
+		EfficientSAMFileSampler esfs = new EfficientSAMFileSampler(raf, HANDFUL_SIZE*SAM_LINE_LEN, step);
+		String[][] lines = null;
+		while (i < N_ESTREADPAIRS && esfs.hasNextPair()){
+			lines = esfs.nextPair();
+			line1 = lines[0];
+			line2 = lines[1];
+			int len1 = line1.length;
+			int len2 = line2.length;
+			if (len1 < 11 || len2 < 11)
+				System.out.print("");
+			left1 = Integer.parseInt(line1[3]);
+			left2 = Integer.parseInt(line2[3]);
+			// if pair didn't map, just jump to next
+			// line instead of jumping a full step
+			if (left1 == 0 || left2 == 0) continue;
+			tmp = new ReadPair(line1[0]);
+			tmp.addRead(left1, isReverse(line1[1]), cigarLength(line1[5]), 
+					contigs.get(line1[2]), Integer.parseInt(line1[4]), line1[5]);
+			tmp.addRead(left2, isReverse(line2[1]), cigarLength(line2[5]), 
+					contigs.get(line2[2]), Integer.parseInt(line2[4]), line2[5]);
+			reads.put(line1[0], tmp);
+			i++;
+		}
+		return reads;
+	}	
+
+	private static class EfficientSAMFileSampler {
+		private RandomAccessFile raf;
+		private byte[] buf;
+		private StringTokenizer tok;
+		private int tokLeft;
+		private int currChunkSize;
+		private long step;
+		private int bufSize;
+		public EfficientSAMFileSampler(RandomAccessFile file, int bufSize, long step) throws IOException{
+			raf = file;
+			buf = new byte[bufSize];
+			tokLeft = 0;
+			currChunkSize = 0;
+			this.step = step;
+			this.bufSize = bufSize;
+			resetTok();
+		}
+		
+		/**
+		 * Returns an array of length 2, with two reads.
+		 * @return
+		 * @throws IOException 
+		 */
+		public String[][] nextPair() throws IOException{
+			if (raf.getFilePointer() == raf.length())
+				throw new IOException("Reached end of file.");
+			if (currChunkSize == HANDFUL_SIZE){ 
+				// read our handful, so jump to our next step
+				raf.seek(raf.getFilePointer()+step);
+				resetTok();
+			} else if (tokLeft < 3){
+				resetTok();
+			} 
+			String[] line1 = tok.nextToken().split("\t");
+			String[] line2 = tok.nextToken().split("\t");
+			tokLeft -= 2;
+			// get to the first read in a pair 
+			while (!line1[0].equals(line2[0]) && tok.hasMoreTokens()){
+				line1 = line2;
+				line2 = tok.nextToken().split("\t");
+				tokLeft--;
+			}
+			String[][] ret = {line1,line2};
+			currChunkSize++;
+			return ret;
+		}
+		
+		public boolean hasNextPair() throws IOException{
+			long bytesLeft = raf.length()-raf.getFilePointer();
+			boolean ret = tokLeft >= 3 || (bytesLeft >= buf.length);
+			if (!ret){
+				System.out.print("");
+			}
+			return ret;
+		}
+		
+		private void resetTok() throws IOException{
+			raf.read(buf);
+			tok = new StringTokenizer(new String(buf),"\n");
+			tok.nextToken(); // make sure we're at the beginning of a line
+			tokLeft = tok.countTokens();
+		}
+	}
 	
 	private static class PrintStreamPair implements Comparable<PrintStreamPair>{
 		// a comparator for sorting reads by position
-		private static final Comparator<ReadPair> COMP = new Comparator<ReadPair>(){
-			public int compare(ReadPair arg0, ReadPair arg1) {
-				if (arg0.pos1 == arg1.pos1){
-					if (arg0.pos2 == arg1.pos2)
+		private static final Comparator<int[]> COMP = new Comparator<int[]>(){
+			public int compare(int[] arg1, int[] arg2) {
+				if (arg1[0] == arg2[0]){
+					if (arg1[1] == arg2[1])
 						return 0;
-					else if (arg0.pos2 < arg1.pos2)
+					else if (arg1[1] < arg2[1])
 						return -1;
 					else
 						return 1;
-				} else if (arg0.pos1 < arg1.pos1)
+				} else if (arg1[0] < arg2[0])
 					return -1;
 				else 
 					return 1;
 			} 
 			
 		};
-		private static final int MAX_SB_SIZE = 250;
-		private File fishDir;
-		// a PrintStream and File for both directions
-		private PrintStream out1; 
-		private PrintStream out2;
+		// File for both directions
 		File file1;
 		File file2;
 		private Contig ctg1;
 		private Contig ctg2;
-		private TreeSet<ReadPair> reads;
-		private StringBuilder sb1;
-		private StringBuilder sb2;
+		private int nPairs;
 		
-		public PrintStreamPair(Contig ctg1, Contig ctg2, File outdir) throws IOException{
-			fishDir = outdir;
-			reads = new TreeSet<ReadPair>(COMP);
+		private Vector<int[]> v1;
+		private Vector<int[]> v2;
+		
+		public PrintStreamPair(Contig ctg1, Contig ctg2, File fishDir) throws IOException{
+			nPairs = 0;
 			if (ctg1==ctg2){
 				file1 = new File(fishDir,"match."+ctg1.getRank()+"v"+ctg2.getRank()+".txt");
-				file1.createNewFile();
 				this.ctg1 = ctg1;
 				this.ctg2 = ctg2;
 			} else { 
 				file1 = new File(fishDir,"match."+ctg1.getRank()+"v"+ctg2.getRank()+".txt");
-				file1.createNewFile();
 				file2 = new File(fishDir,"match."+ctg2.getRank()+"v"+ctg1.getRank()+".txt");
-				file2.createNewFile();
 				this.ctg1 = ctg1;
 				this.ctg2 = ctg2;
 			}
-			sb1 = new StringBuilder();
-			sb2 = new StringBuilder();
+			v1 = new Vector<int[]>();
+			v2 = new Vector<int[]>();
 		}
 		
 		public void add(ReadPair pair){
-			reads.add(pair);
+			print(pair.pos1,pair.pos2,((pair.qual1%255)+(pair.qual2%255))/2);
 		}
-		
+				
 		/**
 		 * Assumes pos1 is from ctg1 and pos2 is from ctg2
 		 * 
@@ -865,8 +1088,19 @@ public class FISHInputExporter {
 		public void print(int pos1, int pos2, int qual) {
 			// phred-scaled geometric-mean of posterior probabilites that mapping position is incorrect
 			// mod 255 in case the quality score couldn't be computed.	
+			int[] ar = {pos1,pos2,qual};
+			v1.add(ar);
+			if (this.ctg1 != this.ctg2){
+				int[] ar2 = {pos2,pos1,qual};
+				v2.add(ar2);
+			}
+			nPairs++;
+		}
+	/*
+		public void print(int pos1, int pos2, int qual) {
+			// phred-scaled geometric-mean of posterior probabilites that mapping position is incorrect
+			// mod 255 in case the quality score couldn't be computed.	
 			sb1.append("c"+this.ctg1.getRank()+"p"+pos1+"\tc"+this.ctg2.getRank()+"p"+pos2+"\t"+qual+"\n");
-			if (this.ctg1 != this.ctg2)
 				sb2.append("c"+this.ctg2.getRank()+"p"+pos2+"\tc"+this.ctg1.getRank()+"p"+pos1+"\t"+qual+"\n"); 
 			// flush the buffer 
 			if (sb1.length() >= MAX_SB_SIZE || sb2.length() >= MAX_SB_SIZE){
@@ -887,8 +1121,34 @@ public class FISHInputExporter {
 				}
 			}
 		}
+	*/
 		
 		public void close(){
+			if (v1.size() > 0 || v2.size() > 0){
+				try {
+					int[][] ar = new int[v1.size()][];
+					v1.toArray(ar);
+					Arrays.sort(ar,COMP);
+					file1.createNewFile();
+					PrintStream out = new PrintStream(file1);
+					for (int i = 0; i < ar.length; i++)
+						out.print("c"+this.ctg1.getRank()+"p"+ar[i][0]+"\tc"+this.ctg2.getRank()+"p"+ar[i][1]+"\t"+ar[i][2]+"\n");
+					out.close();
+					if (ctg1 != ctg2) {
+						v2.toArray(ar);
+						Arrays.sort(ar,COMP);
+						file2.createNewFile();
+						out = new PrintStream(file2);
+						for (int i = 0; i < ar.length; i++)
+							out.print("c"+this.ctg2.getRank()+"p"+ar[i][0]+"\tc"+this.ctg1.getRank()+"p"+ar[i][1]+"\t"+ar[i][2]+"\n");
+						out.close();
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(-1);
+				}
+			}
+		/*	
 			if (sb1.length() > 0 || sb2.length() > 0){
 				try {
 					BufferedWriter bw = new BufferedWriter(new FileWriter(file1, true));
@@ -906,6 +1166,7 @@ public class FISHInputExporter {
 					System.exit(-1);
 				}
 			}
+		*/
 		/*
 			if (reads.size() == 0)
 				return;
