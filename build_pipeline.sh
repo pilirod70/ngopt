@@ -2,7 +2,7 @@
 
 
 function copy_bin {
-	bin="bwa fish sga idba tagdust"
+	bin="bwa fish sga idba tagdust samtools"
 	for ex in $bin; do
 		cp $1/$ex $findir/bin
 	done
