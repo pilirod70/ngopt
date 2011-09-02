@@ -50,6 +50,9 @@ public class FISHInputExporter {
 			String samPath = args[0];
 			String base = args[1];
 			File outdir = new File(args[2]);
+			if (!outdir.exists()){
+				outdir.mkdirs();
+			}
 			int numLibs = 1;
 			if (args.length == 4){
 				numLibs = Integer.parseInt(args[3]);
@@ -87,7 +90,7 @@ public class FISHInputExporter {
 			
 			Map<String,ReadPair> reads = new HashMap<String,ReadPair>();
 			System.out.println("[a5_fie] Filtering duplicate connections...");
-		Set<ReadPair> uniq = new TreeSet<ReadPair>(new Comparator<ReadPair>(){
+			Set<ReadPair> uniq = new TreeSet<ReadPair>(new Comparator<ReadPair>(){
 				public int compare(ReadPair arg0, ReadPair arg1) {
 					if (arg0.ctg1.equals(arg1.ctg1)){
 						if (arg0.ctg2.equals(arg1.ctg2)){
@@ -346,7 +349,7 @@ public class FISHInputExporter {
 		int left1 = 0;
 		int left2 = 0;
 		String ctgStr = null;
-		Map<String,ReadPair> reads = new HashMap<String, ReadPair>();
+		//Map<String,ReadPair> reads = new HashMap<String, ReadPair>();
 		String tmp = null;
 		PrintStreamPair psPair = null;
 		Contig ctg1 = null;
@@ -435,8 +438,10 @@ public class FISHInputExporter {
 			tmpPts = mapPoints.get(tmp);
 			if (tmpPts.size() < MIN_PTS)
 				ctgToRm.add(tmp);
-			else 
+			else {
+				System.out.println("[a5_fie] Sorting read points for "+tmp);
 				Collections.sort(tmpPts, posComp);
+			}
 		}
 		//removeKeys(mapPoints, ctgToRm);
 		removeKeys(ctgs, ctgToRm);
@@ -487,13 +492,8 @@ public class FISHInputExporter {
 			ctrlOut.println(tmpInt+"\t"+maps.get(tmpInt));
 		}
 		
-		it = reads.keySet().iterator();
 		PrintStreamPair tmpPSP = null;
 		ctrlOut.println("-matches");
-		while(it.hasNext()) {
-			
-		}
-		
 		it = psPairs.keySet().iterator();
 		Vector<String> mfToRm = new Vector<String>();
 		
@@ -544,11 +544,12 @@ public class FISHInputExporter {
 		double[] ins = ReadPair.estimateInsertSize(reads.values());
 		System.out.println("[a5_fie] Initial stats for sample: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
 		System.out.print("[a5_fie] EM-clustering insert sizes with K="+K+"... ");
-		
+		long before = System.currentTimeMillis();
 		EMClusterer em = new EMClusterer(toFilt, K);
-		double delta = 0.0001;
+		long after = System.currentTimeMillis();
+		double delta = 0.00005;
 		int iters = em.iterate(1000, delta);
-		System.out.println("stopping after "+iters+" iterations with delta="+delta);
+		System.out.println("stopping after "+iters+" iterations with delta="+delta+". Took "+((double)after-before)/1000+" seconds.");
 		ReadSet[] clusters = new ReadSet[K];
 		em.getClusters().toArray(clusters);
 		double[][] allIns = new double[K][4];
@@ -948,7 +949,7 @@ public class FISHInputExporter {
 			line2 = lines[1];
 			int len1 = line1.length;
 			int len2 = line2.length;
-			if (len1 < 11 || len2 < 11)
+			if (len1 < 4 || len2 < 4)
 				System.out.print("");
 			left1 = Integer.parseInt(line1[3]);
 			left2 = Integer.parseInt(line2[3]);
@@ -998,9 +999,12 @@ public class FISHInputExporter {
 				resetTok();
 			} else if (tokLeft < 3){
 				resetTok();
-			} 
+			}
 			String[] line1 = tok.nextToken().split("\t");
 			String[] line2 = tok.nextToken().split("\t");
+			if (line1[0].equals("SOLEXA2_0000:8:1:1183:8348#0") || line2[0].equals("SOLEXA2_0000:8:1:1183:8348#0")){
+				System.out.print("");
+			}
 			tokLeft -= 2;
 			// get to the first read in a pair 
 			while (!line1[0].equals(line2[0]) && tok.hasMoreTokens()){
