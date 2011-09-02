@@ -439,7 +439,7 @@ public class FISHInputExporter {
 			if (tmpPts.size() < MIN_PTS)
 				ctgToRm.add(tmp);
 			else {
-				System.out.println("[a5_fie] Sorting read points for "+tmp);
+				//System.out.println("[a5_fie] Sorting read points for "+tmp);
 				Collections.sort(tmpPts, posComp);
 			}
 		}
@@ -1055,6 +1055,7 @@ public class FISHInputExporter {
 		// File for both directions
 		File file1;
 		File file2;
+		File fishDir;
 		private Contig ctg1;
 		private Contig ctg2;
 		private int nPairs;
@@ -1064,6 +1065,7 @@ public class FISHInputExporter {
 		
 		public PrintStreamPair(Contig ctg1, Contig ctg2, File fishDir) throws IOException{
 			nPairs = 0;
+			this.fishDir = fishDir;
 			if (ctg1==ctg2){
 				file1 = new File(fishDir,"match."+ctg1.getRank()+"v"+ctg2.getRank()+".txt");
 				this.ctg1 = ctg1;
@@ -1133,6 +1135,7 @@ public class FISHInputExporter {
 					int[][] ar = new int[v1.size()][];
 					v1.toArray(ar);
 					Arrays.sort(ar,COMP);
+					file1 = new File(fishDir,"match."+ctg1.getRank()+"v"+ctg2.getRank()+".txt");
 					file1.createNewFile();
 					PrintStream out = new PrintStream(file1);
 					for (int i = 0; i < ar.length; i++)
@@ -1141,6 +1144,7 @@ public class FISHInputExporter {
 					if (ctg1 != ctg2) {
 						v2.toArray(ar);
 						Arrays.sort(ar,COMP);
+						file2 = new File(fishDir,"match."+ctg2.getRank()+"v"+ctg1.getRank()+".txt");
 						file2.createNewFile();
 						out = new PrintStream(file2);
 						for (int i = 0; i < ar.length; i++)
