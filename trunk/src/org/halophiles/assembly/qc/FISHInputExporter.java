@@ -67,16 +67,14 @@ public class FISHInputExporter {
 			RandomAccessFile raf = new RandomAccessFile(new File(samPath), "r");
 			Map<String,Contig> contigs = readContigs(raf);
 			System.out.println("[a5_fie] Found "+contigs.size()+" contigs");
-			System.out.println("[a5_fie] Reading in a subset of reads for insert size estimation");
-			System.out.println("[a5_fie] Reading in pairs "+HANDFUL_SIZE+" at a time.");
+			System.out.println("[a5_fie] Reading in a subset of reads for insert size estimation.");
 			long before = System.currentTimeMillis();
 			//Map<String,ReadPair> reads = readSubset(raf, contigs);
 			Map<String,ReadPair> reads = readSubsetByChunk(raf, contigs);
 			raf.close(); 
 			setOrientation(reads.values());
 			long after = System.currentTimeMillis();
-			System.out.println("[a5_fie] Took "+((after-before)/1000)+" seconds.");
-			System.out.println("[a5_fie] Read in "+reads.size()+" read pairs.");
+			System.out.println("[a5_fie] Took "+((after-before)/1000)+" seconds to read in "+reads.size()+" read pairs.");
 			if (reads.size() <= 0) {
 				System.err.println("[a5_fie] No paired reads found. Cannot generate match files for running FISH misassembly detection.");
 				System.exit(-1);
@@ -378,9 +376,8 @@ public class FISHInputExporter {
 		long before = System.currentTimeMillis();
 		while (br.ready()){
 			currPos = fis.getChannel().position()-start;
-			perc = ((double)currPos/fis.getChannel().size())*10;
 			//System.err.println(perc);
-			if (perc > ten){
+			if (((double)currPos/len)*10 > ten){
 				System.out.print(".."+NF.format(10*ten)+"%");
 				ten++;
 			}
@@ -454,7 +451,7 @@ public class FISHInputExporter {
 				tmpPSPairs = new Vector<String>();
 				ctgPSPairs.put(ctg1.name, tmpPSPairs);
 			}
-			boolean ret = tmpPts.add(new Double(left1));
+			tmpPts.add(new Double(left1));
 			tmpPSPairs.add(ctgStr);
 			if (mapPoints.containsKey(ctg2.name)){
 				tmpPts = mapPoints.get(ctg2.name);
@@ -644,7 +641,7 @@ public class FISHInputExporter {
 		long before = System.currentTimeMillis();
 		int iters = em.iterate(1000, delta);
 		long after = System.currentTimeMillis();
-		System.out.println("stopping after "+iters+" iterations with delta="+delta+". Took "+((double)after-before)/1000+" seconds.");
+		System.out.println("stopping after "+iters+" iterations with delta="+delta+". Took "+(after-before)/1000+" seconds.");
 		ReadSet[] clusters = new ReadSet[K];
 		em.getClusters().toArray(clusters);
 		double[][] allIns = new double[K][4];
@@ -739,182 +736,6 @@ public class FISHInputExporter {
 			System.out.println("[a5_fie] Removing "+rmClusters);
 		ins = ReadPair.estimateInsertSize(reads.values());
 		System.out.println("[a5_fie] Final stats for sample after filtering: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
-		return ret;
-	}
-	
-	/**
-	 * 
-	 * @return a collection of ReadPairs that were removed
-	 */
-	private static Collection<ReadPair> filterProperConnections(Map<String,ReadPair> reads, int numLibs){
-		int K = numLibs+1;
-		Vector<ReadPair> toFilt = new Vector<ReadPair>();
-		Iterator<ReadPair> rpIt = reads.values().iterator();
-		ReadPair tmp = null;
-		while(rpIt.hasNext()){
-			tmp = rpIt.next();
-			if (tmp.paired && tmp.ctg1.equals(tmp.ctg2))
-				toFilt.add(tmp);
-		}
-		// estimate initial insert size to determine if we should look for shadow library.
-		double[] ins = ReadPair.estimateInsertSize(reads.values());
-		System.out.println("[a5_fie] Initial read set stats: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
-		System.out.print("[a5_fie] EM-clustering insert sizes with K="+K+"... ");
-		
-		EMClusterer em = new EMClusterer(toFilt, K);
-		double delta = 0.0001;
-        int iters = em.iterate(1000, delta);
-        System.out.println("stopping after "+iters+" iterations with delta="+delta);
-		ReadSet[] clusters = new ReadSet[K];
-		em.getClusters().toArray(clusters);
-		double[][] allIns = new double[K][4];
-		for (int i = 0; i < clusters.length; i++){
-			allIns[i][0] = i;
-			allIns[i][1] = clusters[i].mean();
-			allIns[i][2] = clusters[i].sd();
-			allIns[i][3] = ((double)clusters[i].size())/((double)toFilt.size());
-		}
-		
-		Vector<ReadSet> signal = new Vector<ReadSet>();
-		Vector<ReadSet> noise = new Vector<ReadSet>();
-		for (int i = 0; i < clusters.length; i++){
-			NF.setMaximumFractionDigits(0);
-			System.out.print("[a5_fie] cluster"+NF.format(clusters[i].getId())+": mu="+pad(NF.format(allIns[i][1]),10)+
-					"sd="+pad(NF.format(allIns[i][2]),10)+"n="+pad(NF.format(clusters[(int)allIns[i][0]].size()),10));
-			NF.setMaximumFractionDigits(2);
-			System.out.print("perc="+pad(NF.format(100*allIns[i][3]),10));
-			
-			// if insert size distribution is under dispersed, add all these reads to the signal pile
-			if (clusters[i].sd() <= clusters[i].mean()){
-				// if we have a small and very high variance, but not overdispersed cluster, don't discard 
-				if(clusters[i].sd()/clusters[i].mean() >= 0.90 && allIns[i][3] < 0.05){
-					noise.add(clusters[i]);
-					System.out.println("  (noise)");
-				} else {
-					signal.add(clusters[i]);
-					System.out.println("  (signal)");
-				}
-			} else {
-				noise.add(clusters[i]);
-				System.out.println("  (noise)");
-			}
-			
-		}
-		Iterator<ReadSet> noiseIt = noise.iterator();
-		Iterator<ReadSet> sigIt = null;
-		ReadSet currSet = null;
-		ReadSet sigSet = null;
-		double outInsert = 0.0;
-		int numEndSp = 0;
-		while(noiseIt.hasNext()){
-			// iterate over all noisy reads, and check to see if their outside insert size fits any of the other clusters
-			// do this so signal from circular molecules doesn't get mistaken for noise
-			currSet = noiseIt.next();
-			rpIt = currSet.getReads().iterator();
-			while(rpIt.hasNext()){
-				tmp = rpIt.next();
-				// outside distance
-				outInsert = tmp.ctg1.len-tmp.pos2+tmp.pos1+tmp.len1;
-				sigIt = signal.iterator();
-				while(sigIt.hasNext()){
-					sigSet = sigIt.next();
-					if (sigSet.p(outInsert) > currSet.p(tmp.getInsert())){
-						tmp.setEndSpanning(true);
-						currSet.remove(tmp);
-						sigSet.add(tmp);
-						numEndSp++;
-					} 
-				}
-			}	
-		}
-		
-		System.out.println("[a5_fie] Removed "+numEndSp+" putatively noise reads that look like signal if we let the pair span the end of the contig.");
-		String rmClusters = "";
-		sigIt = signal.iterator();
-		Collection<ReadPair> ret = new Vector<ReadPair>();
-		int nSd = 6;
-		while(sigIt.hasNext()){
-			nSd=6;
-			sigSet = sigIt.next();
-			rmClusters += " "+sigSet.toString();
-			ret.addAll(sigSet.getReads());
-			NF.setMaximumFractionDigits(0);
-			System.out.print("[a5_fie] cluster"+NF.format(sigSet.getId())+": mu="+pad(NF.format(sigSet.mean()),10)+
-					"sd="+pad(NF.format(sigSet.sd()),10)+"n="+pad(NF.format(sigSet.size()),10));
-			NF.setMaximumFractionDigits(2);
-			System.out.print("perc="+pad(NF.format(100*((double)sigSet.size()/(double)toFilt.size())),10));
-		/*	rpIt = sigSet.getReads().iterator();
-			while(rpIt.hasNext()){
-				toRm.add(rpIt.next().hdr);
-			}*/
-			while(nSd*sigSet.sd()>sigSet.mean())
-				nSd--;
-			removeKeys(reads,sigSet.getReadHdrs());
-			System.out.println("[a5_fie] Removing reads with inserts between ("+
-			                        NF.format(sigSet.mean()-nSd*sigSet.sd())+","+
-			                        NF.format(sigSet.mean()+nSd*sigSet.sd())+")   nSd="+nSd);
-			// EM-clustering sometimes puts proper connections with noise
-			ReadPair.filterRange(reads, sigSet.mean()-nSd*sigSet.sd(), sigSet.mean()+nSd*sigSet.sd());
-		}
-		if (rmClusters.length()>0)
-			System.out.println("[a5_fie] Removed clusters"+rmClusters);
-		ins = ReadPair.estimateInsertSize(reads.values());
-		System.out.println("[a5_fie] Final stats (for syntenic read pairs): mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
-		return ret;
-	}
-	
-	private static void filterTandemConnections(Map<String,ReadPair> reads){
-		Iterator<String> it = reads.keySet().iterator();
-		Set<Contig> contigs = new HashSet<Contig>();
-		ReadPair pair = null;
-		// get a set of the contigs
-		while(it.hasNext()){
-			pair = reads.get(it.next());
-			contigs.add(pair.ctg1);
-			contigs.add(pair.ctg2);
-		}
-		Iterator<Contig> ctgIt = contigs.iterator();
-		List<ReadPoint> points = null;
-		Set<String> toRm = null;
-		ReadPoint rp1 = null;
-		ReadPoint rp2 = null;
-		Iterator<ReadPoint> ptIt = null;
-		Iterator<ReadPair> rpIt = null;
-		while(ctgIt.hasNext()){
-			// get all pairs where both reads map to this contig
-			rpIt = getReadPairs(reads, ctgIt.next()).iterator();
-			points = new Vector<ReadPoint>();
-			while(rpIt.hasNext()){
-				pair = rpIt.next();
-				points.add(new ReadPoint(pair.hdr,pair.pos1));
-				points.add(new ReadPoint(pair.hdr,pair.pos2));
-			}
-			if (points.size() < 2)
-				continue;
-			// sort by position
-			Collections.sort(points);
-			toRm = new HashSet<String>();
-			ptIt = points.iterator();
-			rp1 = ptIt.next();
-			while(ptIt.hasNext()){
-				rp2 = ptIt.next();
-				if (rp1.hdr.equals(rp2.hdr))
-					toRm.add(rp1.hdr);
-				rp1 = rp2;
-			}
-			removeKeys(reads, toRm);
-		}
-	}
-	
-	private static Collection<ReadPair> getReadPairs(Map<String,ReadPair> reads, Contig ctg){
-		Iterator<String> it = reads.keySet().iterator();
-		Vector<ReadPair> ret = new Vector<ReadPair>();
-		ReadPair pair = null;
-		while(it.hasNext()){
-			pair = reads.get(it.next());
-			if (pair.ctg1.equals(ctg) && pair.ctg2.equals(ctg))
-				ret.add(pair);
-		}
 		return ret;
 	}
 	
@@ -1176,7 +997,7 @@ public class FISHInputExporter {
 		}	
 	}
 	
-	static class MatchFile implements Comparable<MatchFile>{
+	private static class MatchFile implements Comparable<MatchFile>{
 		private Contig ctg1;
 		private Contig ctg2;
 		private File file;
@@ -1202,18 +1023,6 @@ public class FISHInputExporter {
 				return this.ctg1.getRank() - arg0.ctg1.getRank();
 			}
 		}		
-	}
-	
-	static class ReadPoint implements Comparable<ReadPoint>{
-		String hdr;
-		int pos;
-		public ReadPoint(String hdr, int pos){
-			this.hdr = hdr;
-			this.pos = pos;
-		}
-		public int compareTo(ReadPoint rp){
-			return this.pos - rp.pos;
-		}
 	}
 
 	private static boolean nextCharIs(RandomAccessFile raf, char c) throws IOException{
