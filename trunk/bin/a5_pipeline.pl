@@ -587,7 +587,7 @@ sub fish_break_misasms {
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
 	`$DIR/samtools view -bhS $sam | $DIR/samtools sort -o -n - $outbase.sort | $DIR/samtools view -h - > $outbase.sorted.sam`;
-	`mv $outbase.sorted.sam $sam`
+	`mv $outbase.sorted.sam $sam`;
 	`rm $ctgs.* $sai $outbase.sort*`;
 	my $mem = "2000m";
 	my $cmd = "GetFishInput.jar $sam $outbase $WD $nlibs > $WD/$outbase.fie.out";
