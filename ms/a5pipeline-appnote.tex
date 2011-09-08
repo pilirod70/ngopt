@@ -28,21 +28,33 @@ GPL source code and a usage tutorial is at \href{http://ngopt.googlecode.com}{ht
 \end{abstract}
 
 \section{Introduction}
-De novo genome assembly involves piecing together long sequences from many short sequences.
-These short sequences are often highly erroneous, and target long sequences often contain repetitive 
-elements. Numerous pieces of software have been developed for solving this task; however, despite
-many efforts, the task still remains non-trivial. 
+%De novo genome assembly involves piecing together long sequences from many short sequences.
+%These short sequences are often highly erroneous, and target long sequences often contain repetitive 
+%elements. 
+Advances in high throughput DNA sequencing have lead to an increased demand for de novo 
+genome assembly. Numerous pieces of software have been developed for solving this task; 
+however, despite many efforts, the task still remains non-trivial. There are many possible
+steps that can be taken throughout the process of assembling a genome. At each of these steps,
+there exists a plethora of software. However, because of the complexity of the available algorithms,
+running such software can be laboreous, as obtaining the optimal result requires manual tuning of parameters.
+In addition to being time consuming, parameter tuning requires the user to understand the details
+of the algorithms being used. 
 %Despite many efforts to solve the problem of genome assembly, the task still remains non-trivial. 
 
-De novo genome assembly involves many steps. A lot of software, each of which requires 
-much manual tuning. 
+We introduce a new de novo genome assembly pipeline that requires no knowledge
+of the underlying algorithms to use. Using previously 
+published assembly software and short read tools, our pipeline, A5, carries out
+many common steps taken in the genome assembly process. A5 starts with error correction
+and removal of contaminant reads, assembly of reads into contigs, and scaffolding
+of contigs with paired reads. In addition to these steps, our pipeline performs additional
+error checking after scaffolding, to identify and remove any potential misassemblies. 
+Our pipeline behaves comparably to many existing assemblers. Although A5 offers no improvement
+in assembly quality, time spent running A5 to get optimal results is minimal. 
 
-Rapid growth of high throughput DNA sequence techonologies has made sequence 
-data readily available. Analyzing this data is difficult, in part because 
-assembly algorithms have many parameters that are not easily optimized. 
-
-We introduce a new de novo genome assembly pipeline that uses previously 
-published assembly and other short read tools.  
+%De novo genome assembly involves many steps. A lot of software, each of which requires 
+%much manual tuning. Rapid growth of high throughput DNA sequence techonologies has made sequence 
+%data readily available. Analyzing this data is difficult, in part because 
+%assembly algorithms have many parameters that are not easily optimized. 
 
 \begin{methods}
 \section{Methods}
