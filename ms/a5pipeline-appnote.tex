@@ -63,8 +63,8 @@ in assembly quality, time spent running NGOpt to get optimal results is minimal.
 
 Our pipeline consists of five stages: 1) read cleaning, 2) contiging, 3) scaffolding,
 4) misassembly checking, and 5) rescaffolding. For the first stage, we use two previously
-published programs. First, reads are corrected for sequencing errors using error correction tools from the
-SGA software package. Second, Tagdust is used to remove any contaminating sequence introduced
+published programs. First, reads are corrected for sequencing errors using error correction tools 
+from the SGA software package. Second, Tagdust is used to remove any contaminating sequence introduced
 during library preparation. Currently, reads are screened for sequence coming from adapters
 used in the standard Illumina and Nextera Transposase library preparation protocols. Additonal 
 sequence to screen for can be added easily. After reads are cleaned, contigs are built
@@ -73,11 +73,10 @@ high quality contigs and its novel and efficient approach to setting the assembl
 Many deBruijn assemblers require the user to specify a single k-mer length; however, different k-mer
 lengths are optimal for different reasons which will not be addressed here. IDBA allows the user to specify
 a range of k-mer lengths, allowing the user to exploit the benefits of high and low kmer lengths.
-Contigs are then scaffolded
-using the software SSPACE. At this stage, we use original reads instead of cleaned reads. Error correction
-can over estimate the number of erroneous base calls in the presence of repetetive sequence, leading to
-incorrect mapping location of corrected reads. For this reason, raw reads at this, and all future
-stages of the pipeline. 
+Contigs are then scaffolded and extended using the software SSPACE. At this stage, we use original reads
+instead of cleaned reads. Error correction can over estimate the number of erroneous base calls in 
+the presence of repetetive sequence, leading to incorrect mapping location of corrected reads. 
+For this reason, raw reads are used at this and all future stages of the pipeline. 
 
 After contigs have been built and scaffolded, the NGOpt pipeline checks crude scaffolds for 
 misassemblies. Raw reads are mapped back to crude scaffolds using the read mapping software,
@@ -106,6 +105,27 @@ Scaffolds are broken at these blocks and then rescaffolded using SSPACE.
 
 \end{methods}
 
+\subsection{Automated parameter selection}
+
+Throughout the NGOpt pipeline and other assembly programs, there are many 
+parameters that must be tuned to individual datasets. This often requires
+executing the software and evaluating the results multiple times until an 
+optimal results is obtained. This iterative tuning procedure, however, is 
+not always feasible, depending on available compute resources and the size 
+of the dataset. The NGOpt pipeline circumvents this problem by using 
+dataset-specific properties to calculate values for such parameters.
+
+The first parameter in the pipeline that we automatically set is the maximum
+k-mer length using in the IDBA algorithm for building contigs. This is set to be
+$\max_l$ where $l$ is read length. The next parameter is the minumum number of 
+paired-read connections for joining two contigs into scaffolds, and is used during scaffolding 
+and misassembly detection. This parameter set by casting chicken bones.  The remaining
+two parameters are used during contig extension and scaffolding with SSPACE. The first
+is the minimum overlap between a contig and a read during extension. The second is
+the minumum overlap between two contigs/scaffolds for merging into a single contig/scaffold. 
+For these two, we consult with Genomis, the Greek god of genomes. 
+
+
 \subsection{Automated misassembly quality control}
 
 After scaffolds have been built, our pipeline performs an automated quality control step.
@@ -117,7 +137,7 @@ estimates of the insert size distribution. To avoid including noise in mean and 
 we perform a round of EM-clustering of insert sizes before calculating sample statistics. Clusters**
 with low coefficient of variation are identified as true signal in the library and used to filter 
 pairs. Pairs with inserts between the range $(\mu-ns,\mu+ns)$, where $\mu$ is the mean, $s$ is the standard
-deviation, and $n = min(\lfloor\frac{\mu}{s}\rfloor , 6)$. 
+deviation, and $n = \min(\lfloor\frac{\mu}{s}\rfloor, 6)$. 
 After proper connections have been removed, the program FISH is used to chain remaining paired read 
 connections between and within scaffolds into blocks. Scaffolds are then broken at these block boundaries
 and rescaffolded using SSPACE.
@@ -131,11 +151,6 @@ and rescaffolded using SSPACE.
 %connected segments are identified using 
 %FISH. Scaffolds are then broken at the boundaries of these segments and the 
 %resulting contigs/scaffolds are rescaffolded using SSPACE as described above.
-
-\subsection{Automated parameter selection}
-
-Does this work on non-haloarchaea?
-
 
 \begin{table}[!t]
 \processtable{ Metrics on assemblies of Haloferax volcanii from four pipelines.
