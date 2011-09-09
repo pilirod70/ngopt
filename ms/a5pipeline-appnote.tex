@@ -19,8 +19,6 @@ $^{4}$ Biomedical Engineering, University of California-Davis, Davis, CA 95616.}
 \begin{abstract}
 
 \section{Summary:}
-Improvements in high throughput DNA sequencing technologies have lead to the development of
-many methods for analyzing and processing next-gen data. 
 \section{Availability:}
 GPL source code and a usage tutorial is at \href{http://ngopt.googlecode.com}{http://ngopt.googlecode.com}
 
@@ -49,7 +47,7 @@ and removal of contaminant reads, assembles reads into contigs, and scaffolds
 contigs with paired reads. In addition to these steps, NGOpt performs an 
 error checking stage after scaffolding to identify and remove any potential misassemblies. 
 Our pipeline behaves comparably to many existing assemblers. Although NGOpt offers no improvement
-in assembly quality, time spent running NGOpt to get optimal results is minimal. 
+in assembly quality, time spent running NGOpt to obtain optimal results is minimal. 
 
 %De novo genome assembly involves many steps. A lot of software, each of which requires 
 %much manual tuning. Rapid growth of high throughput DNA sequence techonologies has made sequence 
@@ -59,6 +57,15 @@ in assembly quality, time spent running NGOpt to get optimal results is minimal.
 \begin{methods}
 \section{Methods}
 \subsection{Material}
+
+We test the NGOpt pipeline on two datasets. The first data set consists of a small insert 
+short paired read data from the halophilic archaea, \emph{Haloferax volcanii} DS2. Libraries
+were prepared by mechanical shearing using sonication, and reads were generated on
+the Illumina GAIIx platform. The second library consists of short paired read data from \emph{Escherichia 
+coli} CC118. Libraries were prepared via transposase-catalyzed adaptor insertion and reads 
+were generated on the Illumina GAIIx platform.
+
+
 \subsection{NGOpt pipeline}
 
 Our pipeline consists of five stages: 1) read cleaning, 2) contiging, 3) scaffolding,
@@ -130,14 +137,15 @@ For these two, we consult with Genomis, the Greek god of genomes.
 
 After scaffolds have been built, our pipeline performs an automated quality control step.
 Reads are first mapped to scaffolds, and collinear blocks are identified using FISH. After mapping,
-proper connections* within single scaffolds must be removed before running FISH. Proper connections
-are identified using the insert size distribution of the library. However, shadow libraries from 
+connections between paired points that support the current assembly architecture, which we refer to as 
+\emph{proper connections}, must be removed before running FISH. Proper connections
+can be identified using the insert size distribution of the library. However, shadow libraries from 
 mate-pair libraries and inherent noise in libraries will skew the mean and inflate the variance 
 estimates of the insert size distribution. To avoid including noise in mean and variance estimates, 
-we perform a round of EM-clustering of insert sizes before calculating sample statistics. Clusters**
-with low coefficient of variation are identified as true signal in the library and used to filter 
-pairs. Pairs with inserts between the range $(\mu-ns,\mu+ns)$, where $\mu$ is the mean, $s$ is the standard
-deviation, and $n = \min(\lfloor\frac{\mu}{s}\rfloor, 6)$. 
+we perform a round of EM-clustering of insert sizes before calculating sample statistics. Clusters
+with low variance are identified as true signal in the libraryi. Each cluster is then used to filter 
+pairs with inserts between the range $(\mu-ns,\mu+ns)$, where $\mu$ is the mean insert of pairs within
+the cluster, $s$ is the standard deviation, and $n = \min(\lfloor\frac{\mu}{s}\rfloor, 6)$. 
 After proper connections have been removed, the program FISH is used to chain remaining paired read 
 connections between and within scaffolds into blocks. Scaffolds are then broken at these block boundaries
 and rescaffolded using SSPACE.
@@ -153,11 +161,12 @@ and rescaffolded using SSPACE.
 %resulting contigs/scaffolds are rescaffolded using SSPACE as described above.
 
 \begin{table}[!t]
-\processtable{ Metrics on assemblies of Haloferax volcanii from four pipelines.
+\processtable{ Reference-based assembly metrics on crude and error-checked assemblies.
 \label{Tab:01}}
 {\begin{tabular}{l|cccc}\toprule
-Metric & volcS & volcV & volcNGOpt & volcNGOpt-noQC\\\midrule
+Metric & Ecol & Ecol-noQC & Hvol & Hvol-noQC\\\midrule
 Scaffold count & 1000 & 10000 & 50  & 6 \\
+N50 & & & & \\
 Miscalled bases & 1000 & 2e6 & 100 & 100 \\
 Uncalled bases & 15000 & 60000 & 10000 & 7500 \\
 Extra bases & 5.0\% & 2.5\% & 8.0\% & 4.0\% \\
@@ -171,6 +180,21 @@ Intact CDS & 93.2\% & 89.4\% & 97.0\% & 97.3\% \\
 \end{table}
 
 
+\begin{table}[!t]
+\processtable{ Metrics on crude and error-checked assemblies 
+\label{Tab:01}}
+{\begin{tabular}{l|cccc}\toprule
+Metric           &  volcS & volcV & volcNGOpt & volcNGOpt-noQC\\\midrule
+Scaffold count   & & & & \\
+N50              & & & & \\
+Mean contig len  & & & & \\
+Max contig len   & & & & \\
+Min contig len   & & & & \\
+Total bases      & & & & \\
+Num unkowns      & & & & \\
+\botrule \\
+\end{tabular}}{}
+\end{table}
 
 \section{Discussion}
 
