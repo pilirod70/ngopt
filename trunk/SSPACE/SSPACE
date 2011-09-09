@@ -62,7 +62,7 @@
 
   use vars qw($opt_m $opt_o $opt_v $opt_p $opt_k $opt_a $opt_z $opt_s $opt_b $opt_d $opt_n $opt_l $opt_x $opt_u $opt_t);
   &Getopts('m:o:v:p:k:a:z:s:b:d:n:l:x:u:t:');
-  my ($base_overlap,$min_overlap,$verbose,$MIN_READ_LENGTH,$SEQ_SLIDE,$min_base_ratio,$min_links,$max_link_ratio,$unpaired_file,$max_trim,$base_name, $outdir,$max_count_trim,$min_tig_overlap, $doplot, $extending)= (20, 32, 0, 16, 1, 1, 5, 0.70, "no-u", 0, "standard_output",".", 10, 15, 0, 0);
+  my ($base_overlap,$min_overlap,$verbose,$MIN_READ_LENGTH,$SEQ_SLIDE,$min_base_ratio,$min_links,$max_link_ratio,$unpaired_file,$max_trim,$base_name, $outdir,$max_count_trim,$min_tig_overlap, $doplot, $extending)= (20, 32, 0, 16, 1, 1, 5, 0.70, "no-u", 0, "standard_output",".", 10, 15, 0, 1);
 
   my $version = "[SSPACE_v1-1]";
   my $seplines = ("-" x 60)."\n";
