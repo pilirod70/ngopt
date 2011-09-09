@@ -588,7 +588,8 @@ sub fish_break_misasms {
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
 	`$DIR/samtools view -bhS $sam | $DIR/samtools sort -o -n - $outbase.sort | $DIR/samtools view -h - > $outbase.sorted.sam`;
 	`mv $outbase.sorted.sam $sam`;
-	`rm $ctgs.* $sai $outbase.sort*`;
+	`rm $ctgs.* $sai`;
+	`rm $outbase.sort*` if -f "$outbase.sort*";
 	my $mem = "2000m";
 	my $cmd = "GetFishInput.jar $sam $outbase $WD $nlibs > $WD/$outbase.fie.out";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
@@ -599,6 +600,7 @@ sub fish_break_misasms {
 	print STDERR "[a5] $cmd\n"; 
 	`$DIR/$cmd`;
 	if ($? != 0) {
+		die "[a5] Error getting blocks with FISH for $outbase\n" if ! -f "$WD/$outbase.blocks.txt";
 		my $complete = `grep -c  \"\\-by size\" $WD/$outbase.blocks.txt`;
 		chomp $complete;
 		die "[a5] Error getting blocks with FISH for $outbase\n" unless ($complete);
