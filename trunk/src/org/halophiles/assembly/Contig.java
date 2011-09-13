@@ -33,15 +33,7 @@ public class Contig implements Comparable<Contig> {
 		//	String[] spl = name.split("\\|");
 		//	this.name = spl[0];
 			this.name = name;
-			if (this.name.startsWith("node")){
-				// if contigs came from IDBA : increment by 1 so we don't start at 0. We don't want FISH to shit itself.
-				id = Integer.parseInt(this.name.substring(this.name.indexOf("node")+4, this.name.indexOf('_'))) + 1; 			
-			} else if (this.name.startsWith("scaffold")){
-				// if contigs came from SSPACE
-				id = Integer.parseInt(this.name.substring(this.name.indexOf("scaffold")+8, this.name.indexOf('.')));			
-			} else {
-				id = CTG_COUNT+1;
-			}
+			id = CTG_COUNT+1;
 			this.len= -1;
 			this.concat_start = -1;
 			this.rankId = id;
