@@ -11,6 +11,9 @@ import java.util.Vector;
 import org.halophiles.tools.SummaryStats;
 
 public class ReadPair{
+	public static boolean INWARD;
+	public static boolean OUTWARD;
+	
 	public final String hdr;
 	public int pos1 = 0;
 	public boolean rev1 = false;
@@ -30,6 +33,8 @@ public class ReadPair{
 	public boolean outward;
 	public boolean inward;
 	private boolean endSpanning;
+	private int ins = -1;
+	
 	public ReadPair(String hdr){
 		this.hdr=hdr;
 	}
@@ -109,11 +114,15 @@ public class ReadPair{
 	}
 	
 	public int getInsert(){
+		if (ins > -1){
+			return ins;
+		}
 		if (this.ctg1 != null && this.ctg2 != null && this.ctg1.equals(this.ctg2)){
 			if (endSpanning) {
-				return this.ctg1.len-this.pos2+this.pos1+this.len1;
+				ins = this.ctg1.len-this.pos2+this.pos1+this.len1;
 			} else 
-				return this.pos2-this.pos1+this.len2;
+				ins = this.pos2-this.pos1+this.len2;
+			return ins;
 		} else 
 			return -1;
 	}

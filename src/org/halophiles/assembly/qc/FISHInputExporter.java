@@ -40,8 +40,10 @@ public class FISHInputExporter {
 	private static NumberFormat NF;
 	private static int N_ESTREADPAIRS = 100000;
 	private static int MINQUAL = 13;
-	private static boolean INWARD = true;
-	private static boolean OUTWARD = true;
+	private static boolean INWARD = false;
+	private static boolean OUTWARD = false;
+	private static double NIN = 0;
+	private static double NOUT = 0;
 	
 	public static void main(String[] args){
 		if (args.length != 3 && args.length != 4){
@@ -72,95 +74,22 @@ public class FISHInputExporter {
 			//Map<String,ReadPair> reads = readSubset(raf, contigs);
 			Map<String,ReadPair> reads = readSubsetByChunk(raf, contigs);
 			raf.close(); 
-			setOrientation(reads.values());
 			long after = System.currentTimeMillis();
 			System.out.println("[a5_fie] Took "+((after-before)/1000)+" seconds to read in "+reads.size()+" read pairs.");
 			if (reads.size() <= 0) {
 				System.err.println("[a5_fie] No paired reads found. Cannot generate match files for running FISH misassembly detection.");
 				System.exit(-1);
 			}
+			setOrientation(reads.values());
+			if (INWARD && !OUTWARD)
+				System.out.println("[a5_fie] Found a substantial amount of innies, but found no outties.");
+			else if (!INWARD && OUTWARD)
+				System.out.println("[a5_fie] Found a substantial amount of outties, but found no innies.");
+			else 
+				System.out.println("[a5_fie] Found both innies and outties.");
 			
 			double[][] ranges = getRangesToFilter(reads, numLibs);
 			
-			for (int i = 0; i < ranges.length; i++){
-				System.out.println("[a5_fie] Filtering read pairs with inserts between "+
-						NF.format(ranges[i][0]-ranges[i][1]*ranges[i][3])+"-"+
-						NF.format(ranges[i][0]+ranges[i][1]*ranges[i][3]));
-				double[] tmp = {ranges[i][0]-ranges[i][1]*ranges[i][3],ranges[i][0]+ranges[i][1]*ranges[i][3]};
-				ranges[i] = tmp;
-			}
-			
-			/*
-			SAMFileParser sfp = new SAMFileParser(samPath,N_ESTREADPAIRS);
-
-			System.out.println("[a5_fie] Found "+sfp.getNumContigs()+" contigs.");
-			System.out.println("[a5_fie] Found "+sfp.getNumReads()+" total reads and "+sfp.getNumPairs()+" read-pairs.");
-			
-			Map<String,ReadPair> reads = new HashMap<String,ReadPair>();
-			System.out.println("[a5_fie] Filtering duplicate connections...");
-			Set<ReadPair> uniq = new TreeSet<ReadPair>(new Comparator<ReadPair>(){
-				public int compare(ReadPair arg0, ReadPair arg1) {
-					if (arg0.ctg1.equals(arg1.ctg1)){
-						if (arg0.ctg2.equals(arg1.ctg2)){
-							if (arg0.pos1 == arg1.pos1){
-								if (arg0.pos2 == arg1.pos2){
-									return 0;
-								} else
-									return arg0.pos2 - arg1.pos2;
-							} else
-								return arg0.pos1 - arg1.pos1;
-						} else 
-							return arg0.ctg2.compareTo(arg1.ctg2);
-					} else 
-						return arg0.ctg1.compareTo(arg1.ctg1);
-				}
-			});
-			Iterator<ReadPair> rpIt = sfp.getReadPairs();
-			while(rpIt.hasNext()){
-				ReadPair tmp = rpIt.next();
-				if (!tmp.paired) 
-					continue;
-				if (tmp.ctg1.equals(tmp.ctg2) && tmp.getInsert() < MINQUAL)
-					continue;
-				
-				if(uniq.add(tmp))
-					reads.put(tmp.hdr, tmp);
-			}
-			*/
-			
-			
-		/*
-			File insFile = new File(outdir, base+".ins_size_unfilt.txt");
-			insFile.createNewFile();
-			PrintStream insOut = new PrintStream(insFile);
-			ReadPair.exportInsertSize(reads.values(), insOut);
-			insOut.close();
-
-			System.out.println("[a5_fie] Filtering proper connections... ");
-			int before = reads.size();
-			Collection<ReadPair> filtered = filterProperConnections(reads, numLibs);
-			System.out.println("[a5_fie] removed "+(before - reads.size())+" of "+before +" read pairs.");
-
-			insFile = new File(outdir,base+".ins_size_rm.txt");
-			insFile.createNewFile();
-			insOut = new PrintStream(insFile);
-			ReadPair.exportInsertSize(filtered, insOut);
-			insOut.close();
-		*/
-		/*	
-			System.out.print("[a5_fie] Filtering tandem connections... ");
-			before = reads.size();
-			filterTandemConnections(reads);
-			System.out.println("removed "+(before - reads.size())+" of "+before +" read pairs.");
-		*/	
-		/*
-			insFile = new File(outdir,base+".ins_size_filt.txt");
-			insFile.createNewFile();
-			insOut = new PrintStream(insFile);
-			ReadPair.exportInsertSize(reads.values(), insOut);
-			insOut.close();
-		*/
-			//export(reads,outdir,base);
 			export2(samPath, outdir, base, contigs, ranges);
 			
 		} catch(IOException e){
@@ -332,6 +261,9 @@ public class FISHInputExporter {
 	 * @throws IOException
 	 */
 	public static void export2(String samPath, File fishDir, String base, Map<String,Contig> ctgs, double[][] ranges) throws IOException{
+		for (int i = 0; i < ranges.length; i++)
+			System.out.println("[a5_fie] Filtering read pairs with inserts between "+
+					NF.format(ranges[i][0])+"-"+NF.format(ranges[i][1]));
 		Map<String,TreeSet<Double>> mapPoints = new HashMap<String,TreeSet<Double>>();
 		Map<String,PrintStreamPair> psPairs = new HashMap<String,PrintStreamPair>();
 		Map<String,Vector<String>> ctgPSPairs = new HashMap<String,Vector<String>>();
@@ -398,10 +330,11 @@ public class FISHInputExporter {
 			ctg1 = ctgs.get(line1[2]);
 			ctg2 = ctgs.get(line2[2]);
 			
+			// phred-scaled geometric-mean of posterior probabilites that mapping position is incorrect
+			// mod 255 in case the quality score couldn't be computed.	
 			qual = ((Integer.parseInt(line1[4]) % 255) + (Integer.parseInt(line2[4]) % 255))/2;
 			ctgNameComp = line1[2].compareTo(line2[2]); // order for consistency
-			if (left1 == 111302 || left2 == 111302)
-				System.out.print("");
+			
 			if (ctgNameComp < 0){
 				if (inRange(ranges,left1, cigarLength(line1[5]), ctg1, isReverse(line1[1]), left2, cigarLength(line2[5]), ctg2, isReverse(line2[1])))
 					continue;
@@ -479,10 +412,7 @@ public class FISHInputExporter {
 			if (tmpPts.size() < MIN_PTS) {
 				ctgToRm.add(tmp);
 				psPairsToRm.addAll(ctgPSPairs.get(tmp));
-			} /*else {
-				//System.out.println("[a5_fie] Sorting read points for "+tmp);
-				Collections.sort(tmpPts, posComp);
-			}*/
+			}
 		}
 		//removeKeys(mapPoints, ctgToRm);
 		removeKeys(ctgs, ctgToRm);
@@ -516,7 +446,6 @@ public class FISHInputExporter {
 			PrintStream ctgMapOut = new PrintStream(ctgMapFile);
 			Arrays.sort(ar, posComp);
 			for (Double d: ar){
-				//ctgMapOut.println("c"+contigs.get(ctg).getRank()+"p"+Math.abs(d.intValue())+"\t"+(d < 0 ? -1 : 1));
 				ctgMapOut.println("c"+ctgs.get(ctg).getRank()+"p"+Math.abs(d.intValue())+"\t0");
 			}
 			
@@ -549,6 +478,8 @@ public class FISHInputExporter {
 		it = psPairs.keySet().iterator();
 		while(it.hasNext()) {
 			ctgStr = it.next();
+			if (psPairs.get(ctgStr).getNumPairs() < MIN_PTS)
+				continue;
 			psPairs.get(ctgStr).close();
 			matchFiles.addAll(psPairs.get(ctgStr).getMatchFiles());
 		}
@@ -565,21 +496,21 @@ public class FISHInputExporter {
 	}
 	
 	private static void setOrientation(Collection<ReadPair> reads){
-		int in = 0;
-		int out = 0;
+		NIN = 0;
+		NOUT = 0;
 		Iterator<ReadPair> it = reads.iterator();
 		ReadPair tmp = null;
 		while(it.hasNext()){
 			tmp = it.next();
 			if (tmp.inward)
-				in++;
+				NIN++;
 			else if (tmp.outward)
-				out++;
+				NOUT++;
 		}
-		double total = in + out;
-		if (in/total > 0.1)
+		double total = NIN + NOUT;
+		if (NIN/total > 0.1)
 			INWARD = true;
-		if (out/total > 0.1)
+		if (NOUT/total > 0.1)
 			OUTWARD = true;
 	}
 	
@@ -591,27 +522,35 @@ public class FISHInputExporter {
 	}
 	
 	private static boolean inRange(double[][] ranges, int pos1, int len1, Contig ctg1, boolean rev1, int pos2, int len2, Contig ctg2, boolean rev2){
-		if (rev1 == rev2) 
-			return false;
+		if (pos1 == 103131 && pos2 == 46024)
+			System.out.print("");
 		int ins = 0;
-		if (INWARD){
-			if (rev2)
-				ins = (pos2+len2-1) + (ctg1.len-pos1+1);
-			else 
-				ins = (pos1+len1-1) + (ctg2.len-pos2+1);
-			for (int i = 0; i < ranges.length; i++)
-				if (ins >= ranges[i][0] || ins <= ranges[i][1])
-					return true;
-		}
-		if (OUTWARD) {
-			if (rev2)
-				ins = (pos1+len1-1) + (ctg2.len-pos2+1);
+		if (rev1 == rev2) { // one of our contigs is invertedins = 0;
+			if (pos1 > ctg1.len/2)
+				ins += ctg1.len - pos1 + 1;
 			else
-				ins = (pos2+len2-1) + (ctg1.len-pos1+1);
-			for (int i = 0; i < ranges.length; i++)
-				if (ins >= ranges[i][0] || ins <= ranges[i][1])
-					return true;
+				ins += pos1 + len1;
+			if (pos2 > ctg2.len/2)
+				ins+= ctg2.len - pos2 + 1;
+			else
+				ins += pos2 + len2;
+		} else {
+			if (INWARD){
+				if (rev2)
+					ins = (pos2+len2-1) + (ctg1.len-pos1+1);
+				else 
+					ins = (pos1+len1-1) + (ctg2.len-pos2+1);
+			}
+			if (OUTWARD) {
+				if (rev2)
+					ins = (pos1+len1-1) + (ctg2.len-pos2+1);
+				else
+					ins = (pos2+len2-1) + (ctg1.len-pos1+1);
+			}
 		}
+		for (int i = 0; i < ranges.length; i++)
+			if (ins >= ranges[i][0] && ins <= ranges[i][1])
+				return true;
 		return false;
 	}
 	
@@ -652,6 +591,19 @@ public class FISHInputExporter {
 			allIns[i][3] = ((double)clusters[i].size())/((double)toFilt.size());
 		}
 		
+		// sort clusters so we can keep the top numLibs underdispersed clusters
+		Arrays.sort(clusters,new Comparator<ReadSet>(){
+			public int compare(ReadSet x, ReadSet y) {
+				double rx = x.sd()/x.mean();
+				double ry = y.sd()/y.mean();
+				if (rx < ry) 
+					return -1;
+				else if (rx > ry) 
+					return 1;
+				else
+					return 0;
+			}
+		});
 		
 		System.out.println("[a5_fie] Found the following clusters:");	
 		
@@ -665,15 +617,10 @@ public class FISHInputExporter {
 			System.out.print("perc="+pad(NF.format(100*allIns[i][3]),10));
 			
 			// if insert size distribution is under dispersed, add all these reads to the signal pile
-			if (clusters[i].sd() <= clusters[i].mean()){
-				// if we have a small and very high variance, but not overdispersed cluster, don't discard 
-				if(clusters[i].sd()/clusters[i].mean() >= 0.90 && allIns[i][3] < 0.05){
-					noise.add(clusters[i]);
-					System.out.println("  (noise)");
-				} else {
-					signal.add(clusters[i]);
-					System.out.println("  (signal)");
-				}
+			// take up to numLibs underdispersed clusters 
+			if (clusters[i].sd() <= clusters[i].mean() && i < numLibs){
+				signal.add(clusters[i]);
+				System.out.println("  (signal)");
 			} else {
 				noise.add(clusters[i]);
 				System.out.println("  (noise)");
@@ -686,7 +633,7 @@ public class FISHInputExporter {
 		ReadSet sigSet = null;
 		double outInsert = 0.0;
 		int numEndSp = 0;
-		while(noiseIt.hasNext()){
+	/*	while(noiseIt.hasNext()){
 			// iterate over all noisy reads, and check to see if their outside insert size fits any of the other clusters
 			// do this so signal from circular molecules doesn't get mistaken for noise
 			currSet = noiseIt.next();
@@ -708,22 +655,34 @@ public class FISHInputExporter {
 			}	
 		}
 		
-		System.out.println("[a5_fie] "+numEndSp+" putatively noise reads look like signal if we let the pair span the end of the contig.");
+		System.out.println("[a5_fie] "+numEndSp+" putatively noise reads look like signal if we let the pair span the end of the contig.");*/
 		String rmClusters = "";
 		sigIt = signal.iterator();
-		//Collection<ReadPair> ret = new Vector<ReadPair>();
 		int nSd = 6;
 		double[][] ret = new double[signal.size()][];
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
 		int i = 0;
 		while(sigIt.hasNext()){
 			sigSet = sigIt.next();
 			rmClusters += " cluster"+sigSet.getId();
+			rpIt = sigSet.getReads().iterator();
+			while(rpIt.hasNext()){
+				ReadPair tmpRp = rpIt.next();
+				if (tmpRp.getInsert() < min)
+					min = tmpRp.getInsert();
+				if (tmpRp.getInsert() > max)
+					max = tmpRp.getInsert();
+			}
+			
 			nSd = Math.min(((int)sigSet.mean())/((int)sigSet.sd()),6);
-			ret[i] = new double[4];
+			ret[i] = new double[6];
 			ret[i][0] = sigSet.mean();
 			ret[i][1] = sigSet.sd();
 			ret[i][2] = sigSet.size();
 			ret[i][3] = nSd;
+			ret[i][4] = min;
+			ret[i][5] = max;
 			removeKeys(reads,sigSet.getReadHdrs());
 			NF.setMaximumFractionDigits(0);
 			System.out.print("[a5_fie] cluster"+NF.format(sigSet.getId())+": mu="+pad(NF.format(sigSet.mean()),10)+
@@ -736,6 +695,16 @@ public class FISHInputExporter {
 			System.out.println("[a5_fie] Removing "+rmClusters);
 		ins = ReadPair.estimateInsertSize(reads.values());
 		System.out.println("[a5_fie] Final stats for sample after filtering: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
+		for (i = 0; i < ret.length; i++){
+			//double[] tmpAr = {ret[i][0]-ret[i][1]*ret[i][3],ret[i][0]+ret[i][1]*ret[i][3]};
+			double[] tmpAr = {1,2*ret[i][0]};
+			if (tmpAr[0] > min)
+				tmpAr[0] = min;
+			if (tmpAr[1] < max)
+				tmpAr[1] = max;
+			ret[i] = tmpAr;
+			
+		}
 		return ret;
 	}
 	
@@ -801,9 +770,31 @@ public class FISHInputExporter {
 			// line instead of jumping a full step
 			if (left1 == 0 || left2 == 0) continue;
 			tmp = new ReadPair(line1[0]);
-			tmp.addRead(left1, isReverse(line1[1]), cigarLength(line1[5]), 
+			boolean rev1 = isReverse(line1[1]);
+			boolean rev2 = isReverse(line2[1]);
+			
+			if (contigs.get(line1[2]).equals(contigs.get(line2[2])) && rev1 != rev2){
+				if (left1 < left2){
+					if (rev1){
+						contigs.get(line1[2]).addOut();
+						contigs.get(line2[2]).addOut();
+					} else {
+						contigs.get(line1[2]).addIn();
+						contigs.get(line2[2]).addIn();
+					}
+				} else {
+					if (rev1){
+						contigs.get(line1[2]).addIn();	
+						contigs.get(line2[2]).addIn();
+					} else {
+						contigs.get(line1[2]).addOut();
+						contigs.get(line2[2]).addOut();						
+					}
+				}
+			}
+			tmp.addRead(left1, rev1, cigarLength(line1[5]), 
 					contigs.get(line1[2]), Integer.parseInt(line1[4]), line1[5]);
-			tmp.addRead(left2, isReverse(line2[1]), cigarLength(line2[5]), 
+			tmp.addRead(left2, rev2, cigarLength(line2[5]), 
 					contigs.get(line2[2]), Integer.parseInt(line2[4]), line2[5]);
 			reads.put(line1[0], tmp);
 			i++;
@@ -928,24 +919,32 @@ public class FISHInputExporter {
 			if (pos1 == 111302 || pos2 == 111302){
 				System.out.print("");
 			}
-			// phred-scaled geometric-mean of posterior probabilites that mapping position is incorrect
-			// mod 255 in case the quality score couldn't be computed.	
+			
 			if (this.ctg1 != this.ctg2){
 				int[] ar = {pos1,pos2,qual};
 				boolean added = v1.add(ar);
 				if (added){
 					int[] ar2 = {pos2,pos1,qual};
-					v2.add(ar2);
+					added = v2.add(ar2);
+					if (!added)
+						v1.remove(ar);
+					else
+						nPairs++;
 				}
 			} else { 
 				int[] ar = {pos1,pos2,qual};
-				v1.add(ar);
+				boolean added = v1.add(ar);
+				if (added) 
+					nPairs++;
 			}
-			nPairs++;
+		}
+		
+		public int getNumPairs(){
+			return nPairs;
 		}
 		
 		public void close(){
-			if (v1.size() > 0 || v2.size() > 0){
+			if (v1.size() >= MIN_PTS || v2.size() >= MIN_PTS){
 				try {
 					file1 = new File(fishDir,"match."+ctg1.getRank()+"v"+ctg2.getRank()+".txt");
 					file1.createNewFile();

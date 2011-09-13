@@ -19,6 +19,9 @@ public class Contig implements Comparable<Contig> {
 	private Map<String,ReadPair> reads;
 	private double mappedBasesCount;
 	private int mappedReadCount;
+	
+	private int out;
+	private int in;
 	public Contig(String name, int len){
 		this(name);
 		this.len = len;
@@ -51,6 +54,21 @@ public class Contig implements Comparable<Contig> {
 			mappedReadCount = 0;
 			start = new ContigTerminal(this, ContigTerminal.START);
 			end = new ContigTerminal(this,ContigTerminal.END);
+			out = 0;
+			in = 0;
+	}
+	
+	public void addOut(){
+		out++;
+	}
+	public int getOut(){
+		return out;
+	}
+	public void addIn(){
+		in++;
+	}
+	public int getIn(){
+		return in;
 	}
 	
 	public double getCov(){
