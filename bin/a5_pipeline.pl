@@ -480,6 +480,7 @@ sub aggregate_libs {
 	my ($ins_mean, $ins_err, $outtie) = get_insert($fq1,$fq2,"$OUTBASE.$curr_lib",$curr_ctgs);
 	$fin_lib{"ins"} = abs($ins_mean);
 	$fin_lib{"err"} = abs($ins_err);	
+	$fin_lib{"rc"} = $outtie;
 	$fin_lib{"nlibs"} = scalar(@$curr_lib_file);
 	return \%fin_lib;		
 }
