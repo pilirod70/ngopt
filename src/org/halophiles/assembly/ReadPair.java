@@ -276,6 +276,24 @@ public class ReadPair{
 		return reads;
 	}
 	
+	public static int getOrientation(Collection<ReadPair> reads){
+		Iterator<ReadPair> it = reads.iterator();
+		double NIN = 0;
+		double NOUT = 0;
+		ReadPair tmp = null;
+		while(it.hasNext()){
+			tmp = it.next();
+			if (tmp.inward)
+				NIN++;
+			else if (tmp.outward)
+				NOUT++;
+		}
+		if (NIN > NOUT)
+			return 0;
+		else
+			return 1;
+	}
+	
 	private static boolean isDiag(ReadPair r, double[] ins, int nSd){
 		double dist = Math.abs(r.pos1 - r.pos2 );
 		return (dist < ins[0]+nSd*ins[1] && dist > ins[0]-nSd*ins[1]) && r.ctg1.equals(r.ctg2);

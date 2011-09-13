@@ -74,7 +74,8 @@ public class InsertSizeExporter {
 				PrintStream distOut = new PrintStream(distFile);
 				exportInsertDistances(reads.values(), distOut);*/
 				
-				double insTot[] = ReadPair.estimateInsertSize(reads.values());
+				double[] insTot = ReadPair.estimateInsertSize(reads.values());
+				double[] ret = {insTot[0],insTot[1],insTot[2],ReadPair.getOrientation(reads.values())};
 				if (insTot[0]>1500){
 					System.err.println("[a5_ise] EM Clustering with K = 2 to remove noisy reads and shadow library");			
 					EMClusterer em = new EMClusterer(reads.values(), 2);
@@ -87,15 +88,17 @@ public class InsertSizeExporter {
 					while(clustIt.hasNext()){
 						tmpClust = clustIt.next();
 						if (tmpClust.mean()>1500){
-							insTot[0] = tmpClust.mean();
-							insTot[1] = tmpClust.sd();
-							insTot[2] = tmpClust.size();
+							ret[0] = tmpClust.mean();
+							ret[1] = tmpClust.sd();
+							ret[2] = tmpClust.size();
+							ret[3] = ReadPair.getOrientation(tmpClust.getReads());
 							break;
 						} 
 					}
 					
+					
 				}
-				System.out.println(NF.format(insTot[0])+","+NF.format(insTot[1])+","+NF.format(insTot[2]));
+				System.out.println(NF.format(ret[0])+","+NF.format(ret[1])+","+NF.format(ret[2])+","+NF.format(ret[3]));
 				System.out.flush();
 			}
 		} catch (IOException e){
