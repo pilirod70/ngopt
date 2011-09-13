@@ -159,18 +159,35 @@ sub sga_clean {
 	my $t = $^O =~ m/darwin/ ? 1 : 4;
 	# figure out which files we need to pass to SGA
 	my $files = "";
+	my $tail_file = "";
 	for my $lib (keys %libs) {
 		if (defined($libs{$lib}{"p1"})) {
 			my $fq1 = $libs{$lib}{"p1"}; 
 			my $fq2 = $libs{$lib}{"p2"}; 
+			$tail_file = $fq1 unless length($tail_file);
 			$files .= "$fq1 $fq2 ";
 		}
 		if (defined($libs{$lib}{"up"})){
 			my $up = $libs{$lib}{"up"}; 
+			$tail_file = $up unless length($tail_file);
 			$files .= "$up ";
 		}
 	}
-	my $cmd = "sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $WD/$outbase.pp.fastq";
+	my $qline = `head -n 1000 $tail_file | tail -n 1`;
+	chomp $qline;
+	my $phred64 = 1;
+	for my $q (split(//,$qline)){
+		if (ord($q) < 64) {
+			$phred64 = 0;
+			last;
+		}
+	}
+	my $cmd = "";
+	if ($phred64) {
+		$cmd = "sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $WD/$outbase.pp.fastq";
+	} else {
+		$cmd = "sga preprocess -q 10 -f 20 -m 30 $files > $WD/$outbase.pp.fastq";
+	}
 	print STDERR "[a5] $cmd\n";
 	system("$DIR/$cmd");
 	die "[a5] Error preprocessing reads with SGA\n" if( $? != 0 );
@@ -751,88 +768,7 @@ sub get_insert($$$$) {
 		$ins_mean *= -1; 
 		$ins_error *= -1;
 	}
-#	my $orient = get_orientation("$WD/$outbase.sub.pe.sam");
 	return ($ins_mean, $ins_error, $ori);
-}
-
-sub get_orientation {
-	my $samfile = shift;
-	open(SAM,"<$samfile");
-	my %reads = ();
-	my $in = 0;
-	my $in_ins = 0;
-	my $out = 0;
-	my $out_ins = 0;
-	my $tot = 0;
-	while(<SAM>){
-		next if ($_ =~ /^@/);
-		$tot++;
-		my @r1 = split /\t/;
-		# skip this read pair if either the mate or the query is unmapped
-		next if (get_bit($r1[1],2));
-		next if (get_bit($r1[1],3));
-		if (defined($reads{$r1[0]})){
-			my $r2 = delete($reads{$r1[0]});
-			next unless($r1[2] eq $r2->[2]);
-		#	print STDERR "[a5] found read pair $r1[0] on $r1[2]\n";
-			if ($r1[3] < $r2->[3]){
-		#		print STDERR "[a5] r1 is upstream of r2\n";
-				my $s1 = get_bit($r1[1],4);
-				my $s2 = get_bit($r2->[1],4);
-				# outie orientation if upstream read maps to reverse strand
-				if($s1 && !$s2){
-					$out++;
-					$out_ins += abs($r1[1]);
-				} elsif (!$s1 && $s2){
-					$in++;
-					$in_ins += abs($r1[1]);
-				}
-			} else {
-		#		print STDERR "[a5] r1 is upstream of r2\n";
-				my $s1 = get_bit($r1[1],4);
-				my $s2 = get_bit($r2->[1],4);
-				# outie orientation if upstream read maps to reverse strand
-				if(!$s1 && $s2){
-					$out++;
-					$out_ins += abs($r1[1]);
-				} elsif ($s1 && !$s2){
-					$in++;
-					$in_ins += abs($r1[1]);
-				}
-			}
-		} else {
-			$reads{$r1[0]} = \@r1;
-		}
-	}
-	$tot /= 2;
-	$out_ins /= $out if ($out);
-	$in_ins /= $in if ($in);
-#	print STDERR "[a5] get_orientation $samfile: tot=$tot"."\n".
-#	             "                               outties: n=$out mu=".sprintf("%.0f",$out_ins)."\n".
-#	             "                               innies:  n=$in mu=".sprintf("%.0f", $in_ins)."\n";
-	# if majority outies or we have  
-	my $ori;
-	if (($out_ins > 1500 && $out/$tot > 0.1) || $in < $out){
-		$ori = 1;
-	} else {
-		$ori = 0;
-	}	
-#	print STDERR "                               orientation = $ori\n";
-	return $ori;
-}
-
-sub get_bit {
-	my $mod = 0;
-	my $flag = shift;
-	my $dig = shift;
-	my $i = 0;
-	while($flag != 0){
-		$mod = $flag % 2;
-		$flag = int($flag/2);
-		return $mod if ($i == $dig); 
-		$i++;
-	}
-	return 0;
 }
 
 sub get_rdlen($$){
