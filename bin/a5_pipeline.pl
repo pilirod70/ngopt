@@ -736,24 +736,8 @@ sub get_insert($$$$) {
 	print STDERR "[a5] java -jar $cmd\n"; 
 	my $cmdout = `java -jar $DIR/$cmd`;
 	chomp $cmdout;
-#	print STDERR "[a5]: \$cmdout = >$cmdout<\n";
-	my ($ins_mean,$ins_sd,$ins_n) = split(/,/,$cmdout);
-#	open(SAMPE, "<","$WD/$outbase.sampe.out");
-#	my $ins_mean = 0;
+	my ($ins_mean,$ins_sd,$ins_n, $ori) = split(/,/,$cmdout);
 	my $ins_error = 0;
-#	my $min;
-#	my $ins_sd;
-#	my $ins_n;
-#	my $found = 0;	
-#	while( my $line = <SAMPE> ){
-#		if(!$found  && $line =~ m/^\[infer_isize\] inferred external isize from (\d+) pairs: ([\d\.]+) \+\/\- ([\d\.]+)$/){
-#			$ins_n = $1;
-#			$ins_mean = $2;
-#			$ins_sd = $3;
-#			close SAMPE;
-#			last;
-#		} 
-#	}
 	`rm $r1fq.sub* $r2fq.sub* $ctgs.*`;
 	my $n_sd = 6;
 	if ($ins_n > $require_fraction * $estimate_pair_count) {		
@@ -766,8 +750,8 @@ sub get_insert($$$$) {
 		$ins_mean *= -1; 
 		$ins_error *= -1;
 	}
-	my $orient = get_orientation("$WD/$outbase.sub.pe.sam");
-	return ($ins_mean, $ins_error, $orient);
+#	my $orient = get_orientation("$WD/$outbase.sub.pe.sam");
+	return ($ins_mean, $ins_error, $ori);
 }
 
 sub get_orientation {

@@ -96,6 +96,9 @@ for my $ctg (keys %blkbnds){
 	delete($blkbnds{$ctg});
 	push(@{$blkbnds{$ctg}},@sorted);
 	for (my $i = 1; $i < scalar(@sorted); $i++){
+		if ($sorted[$i][0] < $sorted[$i-1][1] && $sorted[$i-1][0] < $sorted[$i][1]) {
+			print STDERR "[a5_break] Found overlapping blocks\n";
+		}	
 		if ($sorted[$i][0] - $sorted[$i-1][1] <= $max_gap_len){
 			my @tmp = ($sorted[$i-1][0],$sorted[$i][1]);
 			push(@{$remove{$ctg}},[ @tmp ]);
