@@ -32,7 +32,7 @@
 
   open (SUMFILE, ">>$summaryfile") || die "Can't open $summaryfile -- fatal\n";
   open (LOG, ">>$log") || die "Can't write to logfile$log -- fatal\n";
-  my $filenameOutExt = $outdir."/".$base_name . ".singlereads.fasta";
+  my $filenameOutExt = $base_name . ".singlereads.fasta";
 
   &ExtendContigs($base_name, $filecontig, $filenameOutExt, $Bin) if($extending == 1);
   &FormatContigs() if($extending == 0);
@@ -48,9 +48,9 @@ sub ExtendContigs{
   
   my $encoded = &encodeBases();
   #-------------------------------------------------NOW MAP SINGLE READS TO INITIAL CONTIGS FILE.
-  my $outfile = "reads/" . $filenameOutExt;
+  my $outfile = $outdir . "/reads/" . $filenameOutExt;
   my $lib = "start";
-  system("perl $Bin/bin/mapWithBowtie.pl $base_name $filecontig $outfile $lib $Bin");
+  system("perl $Bin/bin/mapWithBowtie.pl $base_name $filecontig $outfile $lib $Bin $outdir");
   #-------------------------------------------------READ UNMAPPED READS FOR EXTENSION
   ($set,$bin) = &readUnmappedReads($set,$bin,$base_name, $encoded);
   #-------------------------------------------------CONTIG EXTENSION USING UNMAPPED PAIRS STORED IN $SET

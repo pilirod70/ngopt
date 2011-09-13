@@ -25,7 +25,7 @@
   open (LOG, ">>$log") || die "Can't write to $log -- fatal\n";
   
   my $filenameOutFilt = "filtered.readpairs.fasta";
-  my $filenameOutExt = $outdir."/".$base_name . ".singlereads.fasta";
+  my $filenameOutExt = $base_name . ".singlereads.fasta";
 
   open OUTFILEExt, "> $outdir/reads/$filenameOutExt" if($extending == 1);
 
