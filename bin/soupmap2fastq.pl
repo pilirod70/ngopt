@@ -18,7 +18,8 @@ open( FILTEREDREADS1, ">".$ARGV[3]."_p1.fastq" ) || die "Unable to open \"$ARGV[
 open( FILTEREDREADS2, ">".$ARGV[3]."_p2.fastq" ) || die "Unable to open \"$ARGV[3]\" for writing\n";
 
 # parse pairs of high-quality mapped reads
-my $keepstring = "49M";  # reads are 49nt long so 49M indicates complete mapping without indels
+my $cigar_keep = "49M";  # reads are 49nt long so 49M indicates complete mapping without indels
+my $tag_keep = "XT:A:U";
 my %keepreads;
 while( my $line = <READMAP> )
 {
@@ -27,7 +28,8 @@ while( my $line = <READMAP> )
 		next;
 	}
 	my @mapline = split( /\s+/, $line );
-	next unless $mapline[5] eq $keepstring;
+	next unless $mapline[5] eq $cigar_keep;
+	next unless $mapline[11] eq $tag_keep;
 	$keepreads{$mapline[0]} = $line;
 }
 
@@ -35,7 +37,8 @@ while( my $line = <READMAP2> )
 {
         next if ($line =~ /^\@/);
 	my @mapline = split( /\s+/, $line );
-	next unless $mapline[5] eq $keepstring;
+	next unless $mapline[5] eq $cigar_keep;
+	next unless $mapline[11] eq $tag_keep;
 	next unless defined($keepreads{$mapline[0]});
 	my @mapline1 = split( /\s+/, $keepreads{$mapline[0]} );
         print FILTEREDREADS1 "\@$mapline1[0]/1\n";
