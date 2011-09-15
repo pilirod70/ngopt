@@ -748,7 +748,7 @@ sub get_insert($$$$) {
 	`$DIR/bwa aln $ctgs $r2fq.sub > $r2fq.sub.sai`;
 	# bwa will print the estimated insert size, let's capture it then kill the job
 	my $cmd = "$DIR/bwa sampe -P $ctgs $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub ".
-												"> $WD/$outbase.sub.pe.sam 2> $WD/$outbase.sampe.out";
+												"> $outbase.sub.pe.sam 2> $outbase.sampe.out";
 	`$cmd`;
 	$cmd = "GetInsertSize.jar $WD/$outbase.sub.pe.sam";
 	print STDERR "[a5] java -jar $cmd\n"; 
