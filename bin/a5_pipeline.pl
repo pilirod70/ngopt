@@ -750,7 +750,7 @@ sub get_insert($$$$) {
 	my $cmd = "$DIR/bwa sampe -P $ctgs $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub ".
 												"> $outbase.sub.pe.sam 2> $outbase.sampe.out";
 	`$cmd`;
-	$cmd = "GetInsertSize.jar $WD/$outbase.sub.pe.sam";
+	$cmd = "GetInsertSize.jar $outbase.sub.pe.sam";
 	print STDERR "[a5] java -jar $cmd\n"; 
 	my $cmdout = `java -jar $DIR/$cmd`;
 	chomp $cmdout;

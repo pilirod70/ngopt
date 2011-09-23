@@ -134,7 +134,7 @@ my $seq = "";
 my $nbases = 0;
 while (<IN>){
 	chomp;
-	if ($_ =~ m/^>(.*)/){
+	if ($_ =~ m/^>(\S+)/){
 		$ctg = $1;
 	} else {
 		$seqs{$ctg} .= $_; 
