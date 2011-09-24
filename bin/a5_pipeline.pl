@@ -691,9 +691,13 @@ sub run_sspace {
 	my $sspace_m = int(log2($genome_size)+3.99);
 	$sspace_m = 15 if $sspace_m < 15;
 	my $sspace_n = int(log2($insert_size)*1.25+.99);
-	my $sspace_k = int(log($exp_links)/log(1.4)-9.5);
-	# require at least 2 links to preclude chimeras
-	$sspace_k = $sspace_k < 2 ? 2 : $sspace_k;	
+	my $sspace_k = int(log($exp_links)/log(1.4)-11.5);
+	# require at least 1 link
+	# rationale: paired-end: the chimerism rate in small paired end libraries is low. in cases where there is ambiguous pairing, 
+	#            the -a parameter will recognize this and resolve it
+	#            mate-pair: the chimerism rate in mate-pair libraries can be high, up to 25% or more, but using the soup 
+	#            strategy lowers the rate to 1% or less. At this low rate, even single links for scaffolds are almost always reliable
+	$sspace_k = $sspace_k < 1 ? 1 : $sspace_k;
 #	$sspace_k = 5;	# gives best results on mediterranei
 
 	my $sspace_cmd = "SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 ".
