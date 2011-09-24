@@ -4,26 +4,28 @@
 function copy_bin {
 	bin="bwa fish sga idba tagdust samtools"
 	for ex in $bin; do
-		cp $1/$ex $findir/bin
+		cp -v $1/$ex $findir/bin
+		if [ ! $? ]; then return 1; fi;
 	done
 }
 
 function copy_sspace {
 	echo "Copying SSPACE to $findir"
 	mkdir $sspace_dir
-	cp SSPACE/SSPACE $sspace_dir/ 
-	cp -r SSPACE/bin $sspace_dir/
-	cp -r SSPACE/dotlib $sspace_dir/
+	cp -v SSPACE/SSPACE $sspace_dir/ && \
+	cp -v -r SSPACE/bin $sspace_dir/ && \
+	cp -v -r SSPACE/dotlib $sspace_dir/
 }
 
 function copy_bowtie {
 	mkdir $sspace_dir/bowtie
-	cp -r $1/bowtie* $sspace_dir/bowtie
+	cp -vr $1/bowtie* $sspace_dir/bowtie
 }
 
 function copy_adhoc {
-	cp bin/a5_pipeline.pl bin/break_misassemblies.pl bin/GetInsertSize.jar bin/GetFishInput.jar $findir/bin
-	cp adapter.fasta $findir/
+	cp -v bin/a5_pipeline.pl bin/break_misassemblies.pl bin/GetInsertSize.jar bin/GetFishInput.jar $findir/bin && \
+	cp -v adapter.fasta $findir/
+	if [ ! $? ]; then return 1; fi
 	echo "Removing unnecessary .svn directories"
 	for dir in `find $findir/ -name .svn`; do 
 		rm -rf $dir; 
@@ -32,64 +34,72 @@ function copy_adhoc {
 
 function copy_exdat {
 	echo "Copying example data and README to archive"
-	mkdir $findir/example
-	cp test/sequence/phiX_p[1,2].fastq test/sequence/phiX.libs $findir/example
-	cp ngopt_a5pipeline.README $findir/README
+	mkdir -p $findir/example
+	cp -v test/sequence/phiX_p[1,2].fastq test/sequence/phiX.libs $findir/example && \
+	cp -v ngopt_a5pipeline.README $findir/README
 }
 
 function bundle_clean {
-	if [ -f $findir.tar.gz ]; then
-		rm $findir.tar.gz
-	fi
+	rm -f $findir.tar.gz
 	echo "Creating archive"
 	tar -czvf $findir.tar.gz $findir
 	rm -rf $findir
 }
 
 function reset {
-	if [ -d $findir ]; then
-		rm -rf $findir
-	fi
-	mkdir $findir
-	mkdir $findir/bin
+	rm -rf $findir
+	mkdir -p $findir/bin
 }
 
 findir_base="ngopt_a5pipeline"
 
 ############################# Linux Build #############################
 
-echo "Building pipeline for Linux x64"
 
-findir="${findir_base}_linux-x64"
+function build_linux_x64 {
 
-reset
-echo "Copying Linux binaries to $findir"
-copy_bin linux-x64
-sspace_dir="$findir/bin/SSPACE"
-copy_sspace
-echo "Copying Linux specific bowtie binaries to SSPACE directory"
-copy_bowtie linux-x64
+	echo "Building pipeline for Linux x64"
+	findir="${findir_base}_linux-x64"
 
-echo "Compiling Java code and bundling into executable Jar"
-ant -q compile jar
-copy_adhoc
-copy_exdat
-bundle_clean
+	reset && \
+	echo "Copying Linux binaries to $findir" && \
+	copy_bin linux-x64 && \
+	sspace_dir="$findir/bin/SSPACE" && \
+	copy_sspace && \
+	echo "Copying Linux specific bowtie binaries to SSPACE directory" && \
+	copy_bowtie linux-x64 && \
+
+	echo "Compiling Java code and bundling into executable Jar" && \
+	ant -q compile jar && \
+	copy_adhoc && \
+	copy_exdat && \
+	bundle_clean
+	return 0
+}
 
 ############################# Mac Build #############################
 
-echo -e "\nBuilding pipeline for Mac OSX"
+function build_osx {
 
-findir="${findir_base}_macOS-x64"
+	echo -e "\nBuilding pipeline for Mac OSX"
+	findir="${findir_base}_macOS-x64"
 
-reset
-echo "Copying Mac binaries to $findir"
-copy_bin osx
-sspace_dir="$findir/bin/SSPACE"
-copy_sspace
-echo "Copying Mac specific bowtie binaries to SSPACE directory"
-copy_bowtie osx
+	reset && \
+	echo "Copying Mac binaries to $findir" && \
+	copy_bin osx && \
+	sspace_dir="$findir/bin/SSPACE" && \
+	copy_sspace && \
+	echo "Copying Mac specific bowtie binaries to SSPACE directory" && \
+	copy_bowtie osx && \
+	copy_adhoc && \
+	copy_exdat && \
+	bundle_clean
+	return 0
+}
 
-copy_adhoc
-copy_exdat
-bundle_clean
+build_linux_x64
+if [ ! $? ]; then echo "Error building 64-bit linux pipeline" ; fi
+
+build_osx
+if [ ! $? ]; then echo "Error building Mac OS X pipeline"; fi
+
