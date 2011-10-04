@@ -10,7 +10,7 @@ import org.halophiles.assembly.ReadPair;
 import org.halophiles.assembly.ReadSet;
 
 public class EMClusterer {
-	private static long SEED = System.currentTimeMillis();
+	private static long SEED = 1000;
 	
 	private Random rand;
 	
