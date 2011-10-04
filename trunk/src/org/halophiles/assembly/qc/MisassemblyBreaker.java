@@ -63,7 +63,7 @@ public class MisassemblyBreaker {
 	
 	public static void main(String[] args){
 		if (args.length != 3 && args.length != 4){
-			System.err.println("Usage: java -jar QC.jar <sam_file> <contig_file> <output_file> <num_libs>");
+			System.err.println("Usage: java -jar A5qc.jar <sam_file> <contig_file> <output_file> <num_libs>");
 			System.exit(-1);
 		}
 		try{
@@ -158,6 +158,11 @@ public class MisassemblyBreaker {
 				
 			}
 			removeKeys(blocks, toRm);
+			
+			if (blocks.isEmpty()){
+				System.out.println("[a5_qc] No blocks were found. Not breaking scaffolds.");
+				System.exit(0);
+			}
 			
 			/*
 			 *  break on regions of a minimum distance that are flanked by two blocks

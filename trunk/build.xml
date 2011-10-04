@@ -30,8 +30,8 @@
 				<include name="**/org/halophiles/tools/SummaryStats.class"/>
 			</fileset>
         </jar>
-		<delete file="bin/QC.jar"/>
-        <jar destfile="bin/QC.jar">
+		<delete file="bin/A5qc.jar"/>
+        <jar destfile="bin/A5qc.jar">
             <manifest>
                 <attribute name="Main-Class" value="org.halophiles.assembly.qc.MisassemblyBreaker"/>
             </manifest>
