@@ -116,7 +116,7 @@ if ($start <= 4) {
 	print STDERR "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
 	$WD="$OUTBASE.s4";
 	mkdir($WD) if ! -d $WD;
-	$scafs = break_all_misasms($prev_scafs,\%PAIR_LIBS,"$OUTBASE.fish"); 
+	$scafs = break_all_misasms($prev_scafs,\%PAIR_LIBS,"$OUTBASE.qc"); 
 	if ($scafs eq $prev_scafs){
 		$need_qc = 0;
 		`cp $scafs $OUTBASE.final.scaffolds.fasta`;
@@ -582,25 +582,20 @@ sub break_all_misasms {
 			print STDERR "[a5_break_misasm] Expecting shadow library in library $lib\n"; 
 		}
 		my $prev_ctgs = $ctgs;
-		$ctgs = fish_break_misasms($ctgs,$fq1,$fq2,"$outbase.lib$lib",$nlibs,$sspace_k,$min_len,$max_len);
-		#print STDERR "\$prev_ctgs = $prev_ctgs     \$ctgs = $ctgs\n";
+		$ctgs = break_misasms($ctgs,$fq1,$fq2,"$outbase.lib$lib",$nlibs);
 	}	
 	return $ctgs;
 }
 
-sub fish_break_misasms {
+sub break_misasms {
 	my $ctgs = shift;
 	my $fq1 = shift;
 	my $fq2 = shift;
 	my $outbase = shift;
 	my $nlibs = shift;
-	my $min_pts = shift;
-	my $min_len = shift;
-	my $max_len = shift;
 	print STDERR "[a5] Identifying misassemblies in $ctgs with $outbase\n";
 	my $sai = "$WD/$outbase.sai";
 	my $sam = "$WD/$outbase.sam";
-#	print STDERR "[a5] Attempting to run bwa from $DIR\n";	
 	`$DIR/bwa index -a is $ctgs > $WD/$outbase.index.out`;
 	`cat $fq1 $fq2 | $DIR/bwa aln $ctgs - > $sai`;
 	`cat $fq1 $fq2 | $DIR/bwa samse $ctgs $sai - > $sam`;
@@ -609,30 +604,16 @@ sub fish_break_misasms {
 	`rm $ctgs.* $sai`;
 	`rm $outbase.sort*` if -f "$outbase.sort*";
 	my $mem = "2000m";
-	my $cmd = "GetFishInput.jar $sam $outbase $WD $nlibs > $WD/$outbase.fie.out";
+	my $cmd = "A5qc.jar $sam $ctgs $WD/$outbase.broken.fasta $nlibs > $WD/$outbase.qc.out";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
 	`java -Xmx$mem -jar $DIR/$cmd`;
-	die "[a5] Error getting FISH input for $outbase\n" if ($? != 0);
+	die "[a5] Error in detecting misassemblies.\n" if ($? != 0);
 	`gzip -f $sam`;
-	$cmd = "fish -off -f $WD/$outbase.control.txt -b $WD/$outbase.blocks.txt > $WD/$outbase.fish.out";
-	print STDERR "[a5] $cmd\n"; 
-	`$DIR/$cmd`;
-	if ($? != 0) {
-		die "[a5] Error getting blocks with FISH for $outbase\n" if ! -f "$WD/$outbase.blocks.txt";
-		my $complete = `grep -c  \"\\-by size\" $WD/$outbase.blocks.txt`;
-		chomp $complete;
-		die "[a5] Error getting blocks with FISH for $outbase\n" unless ($complete);
-	}
-	$cmd = "break_misassemblies.pl $WD/$outbase.blocks.txt $WD/$outbase.contig_labels.txt $ctgs $WD/$outbase.broken.fasta $min_pts $min_len $max_len";
-	print STDERR "[a5] $cmd\n"; 
-	my $nblks = `$DIR/$cmd`;
-	chomp $nblks;
-#	print STDERR "\$nblks = $nblks\n";
-	die "[a5] Error breaking contigs after running FISH\n" if ($? != 0);
-	if ($nblks) {
-		return "$WD/$outbase.broken.fasta";
-	} else {
+	my $qc_stdout = read_file("$WD/$outbase.qc.out");
+	if ($qc_stdout =~ /No blocks were found/){
 		return $ctgs;
+	} else {
+		return "$WD/$outbase.broken.fasta";
 	}
 }
 
