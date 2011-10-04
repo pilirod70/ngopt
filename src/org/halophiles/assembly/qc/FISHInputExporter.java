@@ -1,26 +1,19 @@
 package org.halophiles.assembly.qc;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
 import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
@@ -31,15 +24,14 @@ import java.util.Vector;
 import org.halophiles.assembly.Contig;
 import org.halophiles.assembly.ReadPair;
 import org.halophiles.assembly.ReadSet;
-import org.halophiles.assembly.SAMFileParser;
 
 public class FISHInputExporter {
 	private static final int HANDFUL_SIZE = 100;
 	private static final int SAM_LINE_LEN = 215;
+	private static final String TAG_KEEP = "XT:A:U";
 	private static final int MIN_PTS = 3;
 	private static NumberFormat NF;
 	private static int N_ESTREADPAIRS = 100000;
-	private static int MINQUAL = 13;
 	private static boolean INWARD = false;
 	private static boolean OUTWARD = false;
 	private static double NIN = 0;
@@ -627,13 +619,13 @@ public class FISHInputExporter {
 			}
 			
 		}
-		Iterator<ReadSet> noiseIt = noise.iterator();
 		Iterator<ReadSet> sigIt = null;
-		ReadSet currSet = null;
 		ReadSet sigSet = null;
+	/*	Iterator<ReadSet> noiseIt = noise.iterator();
+		ReadSet currSet = null;
 		double outInsert = 0.0;
 		int numEndSp = 0;
-	/*	while(noiseIt.hasNext()){
+		while(noiseIt.hasNext()){
 			// iterate over all noisy reads, and check to see if their outside insert size fits any of the other clusters
 			// do this so signal from circular molecules doesn't get mistaken for noise
 			currSet = noiseIt.next();
@@ -773,7 +765,9 @@ public class FISHInputExporter {
 			boolean rev1 = isReverse(line1[1]);
 			boolean rev2 = isReverse(line2[1]);
 			
-			if (contigs.get(line1[2]).equals(contigs.get(line2[2])) && rev1 != rev2){
+			if (contigs.get(line1[2]).equals(contigs.get(line2[2])) && rev1 != rev2 &&
+					// require this mapping to be unique. 
+					line1[11].equals(TAG_KEEP) && line2[11].equals(TAG_KEEP)){
 				if (left1 < left2){
 					if (rev1){
 						contigs.get(line1[2]).addOut();
@@ -864,7 +858,7 @@ public class FISHInputExporter {
 		}
 	}
 	
-	private static class PrintStreamPair implements Comparable<PrintStreamPair>{
+	public static class PrintStreamPair implements Comparable<PrintStreamPair>{
 		// a comparator for sorting reads by position
 		private static final Comparator<int[]> COMP = new Comparator<int[]>(){
 			public int compare(int[] arg1, int[] arg2) {
@@ -996,7 +990,7 @@ public class FISHInputExporter {
 		}	
 	}
 	
-	private static class MatchFile implements Comparable<MatchFile>{
+	public static class MatchFile implements Comparable<MatchFile>{
 		private Contig ctg1;
 		private Contig ctg2;
 		private File file;
