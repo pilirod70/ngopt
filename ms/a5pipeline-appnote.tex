@@ -58,12 +58,14 @@ in assembly quality, time spent running NGOpt to obtain optimal results is minim
 \section{Methods}
 \subsection{Material}
 
-We test the NGOpt pipeline on two datasets. The first data set consists of a small insert 
+We test the NGOpt pipeline on three datasets. Two of the three datasets were generated from
+previously published genomes, allowing for reference-based metrics. The first data set consists of a small insert 
 short paired read data from the halophilic archaea, \emph{Haloferax volcanii} DS2. Libraries
 were prepared by mechanical shearing using sonication, and reads were generated on
-the Illumina GAIIx platform. The second library consists of short paired read data from \emph{Escherichia 
+the Illumina GAIIx platform. The second data set was downloaded from Illumina's website. 
+The third library consists of short paired read data from \emph{Escherichia 
 coli} CC118. Libraries were prepared via transposase-catalyzed adaptor insertion and reads 
-were generated on the Illumina GAIIx platform.
+were generated on the Illumina GAIIx platform. T
 
 
 \subsection{NGOpt pipeline}
@@ -164,17 +166,17 @@ and rescaffolded using SSPACE.
 \processtable{ Reference-based assembly metrics on crude and error-checked assemblies.
 \label{Tab:01}}
 {\begin{tabular}{l|cccc}\toprule
-Metric & Ecol & Ecol-noQC & Hvol & Hvol-noQC\\\midrule
-Scaffold count & 1000 & 10000 & 50  & 6 \\
-N50 & & & & \\
-Miscalled bases & 1000 & 2e6 & 100 & 100 \\
-Uncalled bases & 15000 & 60000 & 10000 & 7500 \\
-Extra bases & 5.0\% & 2.5\% & 8.0\% & 4.0\% \\
-Missing bases & 7.5\% & 13.0\% & 7.5\% & 7.0\% \\
-Extra segments & 500 & 262 & 45 & 1 \\
-Missing segments & 117 & 1144 & 192 & abc \\
-DCJ Distance & 1100 & 10250 & 56 & 8 \\
-Intact CDS & 93.2\% & 89.4\% & 97.0\% & 97.3\% \\
+Metric            & Ecol & Ecol-noQC & Hvol & Hvol-noQC\\\midrule
+Scaffold count    &  &  &  & 608 \\
+N50               &  &  &  & 12735   \\
+Miscalled bases   &  &  &  & 201 \\
+Uncalled bases    &  &  &  & 984 \\
+Extra bases       & \% & \% & \% & 0.369\% \\
+Missing bases     & \% & \% & \% & 3.004\% \\
+Extra segments    &  & & & 41 \\
+Missing segments  &  & & & 0 \\
+DCJ Distance      &  & & & 584 \\
+Intact CDS        & \% & \% & \% & \% \\
 \botrule \\
 \end{tabular}}{}
 \end{table}
