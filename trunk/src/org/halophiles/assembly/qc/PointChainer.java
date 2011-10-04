@@ -12,7 +12,14 @@ import java.util.Vector;
 import org.halophiles.tools.SummaryStats;
 
 public class PointChainer {
-
+	
+	private static Comparator<KClump> COMP = new Comparator<KClump>() {
+		@Override
+		public int compare(KClump arg0, KClump arg1) {
+			return arg1.id - arg0.id;
+		}
+	};
+	
 	/**
 	 *  maximum residual for adding a MatchPoint to a KClump
 	 */ 
@@ -57,12 +64,7 @@ public class PointChainer {
 		
 		this.kclumps = new KClump[kclumpSet.size()];
 		kclumpSet.toArray(this.kclumps);
-		Arrays.sort(this.kclumps, new Comparator<KClump>() {
-			@Override
-			public int compare(KClump arg0, KClump arg1) {
-				return arg1.id - arg0.id;
-			}
-		});
+		Arrays.sort(this.kclumps, COMP);
 	}
 
 	public KClump[] getKClumps() {

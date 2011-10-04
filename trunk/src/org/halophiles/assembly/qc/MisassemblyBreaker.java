@@ -63,35 +63,27 @@ public class MisassemblyBreaker {
 	
 	public static void main(String[] args){
 		if (args.length != 3 && args.length != 4){
-			System.err.println("Usage: java -jar GetFishInput.jar <sam_file> <contig_file> <output_file> <num_libs>");
+			System.err.println("Usage: java -jar QC.jar <sam_file> <contig_file> <output_file> <num_libs>");
 			System.exit(-1);
 		}
 		try{
-			
-			printMemory();
 			
 			NF = NumberFormat.getInstance();
 			NF.setMaximumFractionDigits(0);
 			NF.setGroupingUsed(false);
 			String samPath = args[0];
 			String base = args[2];
-			//File outdir = new File(args[2]);
-		//	if (!outdir.exists()){
-		//		outdir.mkdirs();
-			//}
 			int numLibs = 1;
 			if (args.length == 4){
 				numLibs = Integer.parseInt(args[3]);
 			}
 			System.out.println("[a5_qc] Reading "+samPath);
 			File samFile = new File(samPath);
-			//System.out.println("[a5_qc] Writing output to "+outdir.getAbsolutePath()+" with basename "+base);
 			RandomAccessFile raf = new RandomAccessFile(samFile, "r");
 			Map<String,Contig> contigs = readContigs(raf);
 			System.out.println("[a5_qc] Found "+contigs.size()+" contigs");
 			System.out.println("[a5_qc] Reading in a subset of reads for insert size estimation.");
 			long before = System.currentTimeMillis();
-			//Map<String,ReadPair> reads = readSubset(raf, contigs);
 			Map<String,ReadPair> reads = readSubsetByChunk(raf, contigs);
 			raf.close(); 
 			long after = System.currentTimeMillis();
@@ -108,7 +100,7 @@ public class MisassemblyBreaker {
 			else 
 				System.out.println("[a5_qc] Found both innies and outties.");
 			
-			
+				
 			double[][] clusterStats = getRangesToFilter(reads, numLibs);
 			double[][] ranges = new double[clusterStats.length][2];
 			for (int i = 0; i < clusterStats.length; i++){
@@ -131,7 +123,7 @@ public class MisassemblyBreaker {
 			Vector<int[]> yBlocks = null;
 			while(mbIt.hasNext()){
 				MatchBuilder mb = mbIt.next();
-				mb.print(new File(samFile.getParentFile(),"match."+mb.getContig1().getId()+"v"+mb.getContig2().getId()+".txt"));
+				//mb.print(new File(samFile.getParentFile(),"match."+mb.getContig1().getId()+"v"+mb.getContig2().getId()+".txt"));
 				// get Vector for holding contig X blocks
 				xBlocks = new Vector<int[]>();
 				// get Vector for holding contig Y blocks
@@ -196,11 +188,11 @@ public class MisassemblyBreaker {
 				}
 				
 				Vector<int[]> tmpBlks = blocks.get(tmpCtg);
-				System.out.print(tmpCtg+"\t"+tmpBlks.get(0)[0]+"-"+tmpBlks.get(0)[1]);
+				/*System.out.print(tmpCtg+"\t"+tmpBlks.get(0)[0]+"-"+tmpBlks.get(0)[1]);
 				for (int i = 1; i < tmpBlks.size(); i++){
 					System.out.print(", "+tmpBlks.get(i)[0]+"-"+tmpBlks.get(i)[1]);
 				}
-				System.out.println();
+				System.out.println(); */
 				if (tmpBlks.size() < 2){
 					out.export(tmpCtg, sb);
 					continue;
@@ -214,7 +206,7 @@ public class MisassemblyBreaker {
 				for (int i = 1; i < tmpAr.length; i++){
 					if (tmpAr[i-1][1] > tmpAr[i][0]){ // if they overlap, split at the midpoint of overlap
 						right = (tmpAr[i-1][1] + tmpAr[i][0])/2;
-						System.out.println("Exporting "+tmpCtg+" at "+left+"-"+right);
+						System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
 						out.export(tmpCtg, sb, left, right);
 						left = right+1;
 					} else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST) {
@@ -223,13 +215,13 @@ public class MisassemblyBreaker {
 							continue;
 						}*/
 						right = tmpAr[i-1][1];
-						System.out.println("Exporting "+tmpCtg+" at "+left+"-"+right);
+						System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
 						out.export(tmpCtg, sb, left, right);
 						left = tmpAr[i][0];
 					}
 				}
 				right = sb.length();
-				System.out.println("Exporting "+tmpCtg+" at "+left+"-"+right);
+				System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
 				out.export(tmpCtg, sb, left, right);
 			}
 		} catch(IOException e){
@@ -426,7 +418,7 @@ public class MisassemblyBreaker {
 				coordOffset.put(contigName, offset);
 			}
 		}
-		int windowLen = 1000;
+		int windowLen = Math.max(1000, MEAN_BLOCK_LEN);
 		int[][] readCounts = null;
 		int numWindow = genomeLen/windowLen;
 		if (genomeLen % windowLen != 0) {
@@ -563,8 +555,6 @@ public class MisassemblyBreaker {
 		perc = (double) numKeep / total * 100;
 		System.out.println("[a5_qc] Keeping "+NF.format(perc)+"% ("+numKeep+"/"+total+") of reads.");
 		
-		double oldLambda = ((double) total) / genomeLen;
-		
 		LAMBDA = Double.POSITIVE_INFINITY;
 		File covFile = new File(samFile.getParentFile(),"coverage.txt");
 		covFile.createNewFile();
@@ -579,7 +569,6 @@ public class MisassemblyBreaker {
 		out.close();
 		LAMBDA = LAMBDA/MEAN_BLOCK_LEN;
 		
-		//System.out.println("    LAMBDA: " + LAMBDA +"\nold LAMBDA: " + oldLambda);
 		Iterator<String> ctgIt = mapPoints.keySet().iterator();
 		Set<String> ctgToRm = new HashSet<String>();
 		Set<String> psPairsToRm = new HashSet<String>();
@@ -607,22 +596,20 @@ public class MisassemblyBreaker {
 	}
 	
 	private static void setParameters(double[][] ranges){
-		
 		setMAXINTERPOINTDIST();
 		setMAXINTERBLOCKDIST();
-		System.out.println("LAMBDA = " + LAMBDA);
-		System.out.println("MIN_BLOCK_LEN = " + MIN_BLOCK_LEN);
-		System.out.println("MEAN_BLOCK_LEN = " + MEAN_BLOCK_LEN);
-		System.out.println("MAX_BLOCK_LEN = " + MAX_BLOCK_LEN);
-		System.out.println("MAX_INTERBLOCK_DIST = " + MAX_INTERBLOCK_DIST);
-		System.out.println("MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
+		System.out.println("[a5_qc] parameters:");
+		System.out.println("        LAMBDA              = " + LAMBDA);
+		System.out.println("        MIN_BLOCK_LEN       = " + MIN_BLOCK_LEN);
+		System.out.println("        MEAN_BLOCK_LEN      = " + MEAN_BLOCK_LEN);
+		System.out.println("        MAX_BLOCK_LEN       = " + MAX_BLOCK_LEN);
+		System.out.println("        MAX_INTERBLOCK_DIST = " + MAX_INTERBLOCK_DIST);
+		System.out.println("        MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
 	}
 	
 	private static void setMAXBLOCKLEN(double[][] ranges){
 		for (double[] cluster: ranges){
 			if (cluster[0] > MEAN_BLOCK_LEN){
-			//if (cluster[0]+cluster[1]*cluster[3] > MAX_BLOCK_LEN)
-				//MAX_BLOCK_LEN = (int) (cluster[0]+cluster[1]*cluster[3]);
 				MEAN_BLOCK_LEN = (int) (cluster[0]);
 				MAX_BLOCK_LEN = (int) (cluster[0]+cluster[1]*cluster[3]);
 			}
@@ -1050,21 +1037,4 @@ public class MisassemblyBreaker {
 	   return mod;  
 	}
 	
-	private static void printMemory(){
-		 Runtime runtime = Runtime.getRuntime();
-
-		    NumberFormat format = NumberFormat.getInstance();
-
-		    StringBuilder sb = new StringBuilder();
-		    long maxMemory = runtime.maxMemory();
-		    long allocatedMemory = runtime.totalMemory();
-		    long freeMemory = runtime.freeMemory();
-
-		    sb.append("free memory: " + format.format(freeMemory / 1024) + "\n");
-		    sb.append("allocated memory: " + format.format(allocatedMemory / 1024) + "\n");
-		    sb.append("max memory: " + format.format(maxMemory / 1024) + "\n");
-		    sb.append("total free memory: " + format.format((freeMemory + (maxMemory - allocatedMemory)) / 1024) + "\n");
-		    System.out.print(sb.toString());
-	}
-
 }
