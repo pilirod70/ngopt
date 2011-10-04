@@ -14,6 +14,7 @@ public class ReadSet {
 	private Map<String,ReadPair> reads;
 	private double sd;
 	private double mu;
+	private int nSd;
 	private final int ID;
 	private boolean mod;
 	
@@ -64,6 +65,11 @@ public class ReadSet {
 		return sd;
 	}
 	
+	public int nSd(){
+		update();
+		return nSd;
+	}
+	
 	public int size(){
 		return reads.size();
 	}
@@ -77,6 +83,7 @@ public class ReadSet {
 			double[] ins = ReadPair.estimateInsertSize(reads.values());
 			mu = ins[0];
 			sd = ins[1];
+			nSd = Math.min(6, (int) Math.floor(mu/sd));
 			mod = false;
 		}
 	}

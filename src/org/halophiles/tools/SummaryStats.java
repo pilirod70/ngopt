@@ -43,6 +43,14 @@ public class SummaryStats {
 		return total;
 	}
 	
+	public static int mean(int[] dat){
+		return sum(dat)/dat.length;
+	}
+	
+	public static int mean(Integer[] dat){
+		return sum(dat)/dat.length;
+	}
+	
 	public static double variance(double[] dat, double mean) {
 		double total = 0;
 		for (int i = 0; i < dat.length; i++) {
@@ -50,6 +58,53 @@ public class SummaryStats {
 		}
 		return total / ((double)(dat.length-1));
 	}
+	
+	public static double covariance(double[] dat1, double[] dat2){
+		double mean1 = mean(dat1);
+		double mean2 = mean(dat2);
+		return covariance(dat1, mean1, dat2, mean2);
+	}
+	
+	public static double covariance(double[] dat1, double mean1, double[] dat2, double mean2) {
+		if (dat1.length != dat2.length)
+			throw new IllegalArgumentException("dat1 and dat2 must be the same length");
+		double total = 0;
+		for (int i = 0; i < dat1.length; i++) {
+			total += (dat1[i]-mean1)*(dat2[i]-mean2);
+		}
+		return total / ((double)(dat1.length-1));
+	}
+	
+	public static double correlation(double[] dat1, double[] dat2){
+		return correlation(dat1,mean(dat1),dat2,mean(dat2));
+	}
+	
+	public static double correlation(double[] dat1, double mean1, double[] dat2, double mean2) {
+		if (dat1.length != dat2.length)
+			throw new IllegalArgumentException("dat1 and dat2 must be the same length");
+		double total = 0;
+		for (int i = 0; i < dat1.length; i++) {
+			total += (dat1[i]-mean1)*(dat2[i]-mean2);
+		}
+		return (total / ((double)(dat1.length-1)))/Math.sqrt(variance(dat1,mean1)*variance(dat2,mean2));
+	}
+	
+	public static double covariance(int[] dat1, int[] dat2){
+		int mean1 = mean(dat1);
+		int mean2 = mean(dat2);
+		return covariance(dat1, mean1, dat2, mean2);
+	}
+	
+	public static double covariance(int[] dat1, int mean1, int[] dat2, int mean2) {
+		if (dat1.length != dat2.length)
+			throw new IllegalArgumentException("dat1 and dat2 must be the same length");
+		double total = 0;
+		for (int i = 0; i < dat1.length; i++) {
+			total += (dat1[i]-mean1)*(dat2[i]-mean2);
+		}
+		return total / ((double)(dat1.length-1));
+	}
+
 	
 	public static double variance(Double[] dat, double mean) {
 		double total = 0;
@@ -101,6 +156,40 @@ public class SummaryStats {
 		return skew(dat,mean,var);
 	}
 	
+	public static double max(double[] dat){
+		double max = Double.NEGATIVE_INFINITY;
+		for (int i = 0; i < dat.length; i++)
+			if (dat[i]>max)
+				max = dat[i];
+		return max;
+		
+	}
 	
+	public static double min(double[] dat){
+		double min = Double.POSITIVE_INFINITY;
+		for (int i = 0; i < dat.length; i++)
+			if (dat[i]<min)
+				min = dat[i];
+		return min;
+		
+	}
+
+	public static int max(int[] dat){
+		int max = Integer.MIN_VALUE;
+		for (int i = 0; i < dat.length; i++)
+			if (dat[i]>max)
+				max = dat[i];
+		return max;
+		
+	}
+	
+	public static int min(int[] dat){
+		int min = Integer.MAX_VALUE;
+		for (int i = 0; i < dat.length; i++)
+			if (dat[i]<min)
+				min = dat[i];
+		return min;
+		
+	}
 
 }

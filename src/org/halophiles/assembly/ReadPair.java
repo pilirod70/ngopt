@@ -21,14 +21,12 @@ public class ReadPair{
 	public int qual1 = -1;
 	public String cig1;
 	public Contig ctg1;
-//	public String[] sam1;
 	public int pos2 = 0;
 	public boolean rev2 = false;
 	public int len2 = 0;
 	public String cig2;
 	public Contig ctg2;
 	public int qual2 = -1;
-//	public String[] sam2;
 	public boolean paired;
 	public boolean outward;
 	public boolean inward;
