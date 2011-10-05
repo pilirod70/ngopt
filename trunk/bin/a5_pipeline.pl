@@ -79,11 +79,19 @@ if ($start <= 2) {
 	($reads, $maxrdlen) = fastq_to_fasta($reads,"$WD/$OUTBASE.ec.fasta");
 	`gzip -f $fq_reads`;
 
-	#print STDERR "$reads exists\n" if -f $reads;
-	#print STDERR "$reads does not exist\n" if ! -f $reads;
 	$ctgs = idba_assemble($OUTBASE, $reads, $maxrdlen); 
 	`rm $reads`;
-	`mv $ctgs $OUTBASE.contigs.fasta`;
+	open (my $filtered, ">", "$OUTBASE.contigs.fasta");
+	open (IN,"<",$ctgs);
+	while (my $hdr = <IN>){
+		my $seq = <IN>:
+		chomp $seq;
+		next if (length($seq) < 2*$maxrdlen); 
+		print $filtered $hdr.$seq."\n";
+	}
+	close $filtered;
+	`rm $ctgs`;
+	#`mv $ctgs $OUTBASE.contigs.fasta`;
 	
 } 
 $WD="$OUTBASE.s3";
@@ -618,29 +626,36 @@ sub break_misasms {
 }
 
 sub pipe_fastq {
-	my $from = shift;
-	my $to = shift;
-	my $rc = shift;
-	while (!eof($from)){
-		my $line = readline($from);
-		print $to $line;
-		$line = readline($from);
-		if ($rc){
-			chomp $line;
-			$line =~ tr/ACGTacgt/TGCAtgca/; # complement
-			$line = reverse($line);         # reverse
-			print $to $line."\n";
-			print $to readline($from);
+    my $from = shift;
+    my $to = shift;
+    my $rc = shift;
+    while (!eof($from)){
+        my $line = readline($from);
+        print $to $line;
+        $line = readline($from);
+        if ($rc){
+            chomp $line;
+            $line =~ tr/ACGTacgt/TGCAtgca/; # complement
+            $line = reverse($line);         # reverse
+            print $to $line."\n";
 			$line = readline($from);
 			chomp $line;
-			$line = reverse($line);         # reverse
-			print $to $line."\n";
-		} else {
-			print $to $line;
-			print $to readline($from);
-			print $to readline($from);
-		}
-	}
+            print $to $line."\n";
+            $line = readline($from);
+            chomp $line;
+            $line = reverse($line);         # reverse
+            print $to $line."\n";
+        } else {
+			chomp $line;
+            print $to $line."\n";
+			$line = readline($from);
+			chomp $line;
+            print $to $line."\n";
+			$line = readline($from);
+			chomp $line;
+            print $to $line."\n";
+        }   
+    }   
 }
 
 # calculate the expected number of read pairs to span a point in the assembly
