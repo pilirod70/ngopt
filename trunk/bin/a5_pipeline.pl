@@ -355,13 +355,14 @@ sub scaffold_sspace {
 	my @curr_lib_file = ();
 	my $curr_ins = -1;
 	my %run_lib;
+	$rescaffold=0 unless defined($rescaffold);
 	# sort library.txt to so that we scaffold with smaller insert libraries first
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
 		my ($exp_link, $cov) = calc_explinks( $genome_size, $libs{$lib}{"ins"}, $libs{$lib}{"p1"} ); 
 		printf STDERR "[a5] %s\: Insert %.0f, coverage %.2f, expected links %.0f\n", $libs{$lib}{"id"}, $libs{$lib}{"ins"}, $cov, $exp_link;
 		if (-f "$OUTBASE.unpaired.fastq") { # run sspace with unpaired library if we have one
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
-                                                  $libs{$lib}{"libfile"}, $curr_ctgs, "$OUTBASE.unpaired.fastq", $rescaffold);
+                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold, "$OUTBASE.unpaired.fastq");
 		} else {
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
                                                   $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold);
@@ -684,8 +685,8 @@ sub run_sspace {
 	my $exp_links = shift;
 	my $outbase = shift;
 	my $libfile = shift;
-	my $input_fa = shift;
 	my $rescaffold = shift;
+	my $input_fa = shift;
 
 	my $sspace_x = 1;
 	my $sspace_m = int(log2($genome_size)+3.99);
@@ -701,7 +702,7 @@ sub run_sspace {
 
 	my $sspace_a = 0.6;	# be less stringent about ambiguity by default, since these will be fixed by the misassembly detector
 
-	if(defined($rescaffold)){
+	if(defined($rescaffold)&&$rescaffold==1){
 		# when rescaffolding we want to pick up the low coverage
 		# and small pieces that were cut out from misassembled regions
 		$sspace_a = 0.3; # be stringent here -- do not want more misassembly
