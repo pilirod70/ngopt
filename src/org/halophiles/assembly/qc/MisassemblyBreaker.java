@@ -101,7 +101,7 @@ public class MisassemblyBreaker {
 				System.out.println("[a5_qc] Found both innies and outties.");
 			
 				
-			double[][] clusterStats = getRangesToFilter(reads, numLibs);
+			double[][] clusterStats = getLibraryStats(reads, numLibs);
 			double[][] ranges = new double[clusterStats.length][2];
 			for (int i = 0; i < clusterStats.length; i++){
 				if (clusterStats[i][0]>1000){
@@ -115,6 +115,7 @@ public class MisassemblyBreaker {
 			setMAXBLOCKLEN(clusterStats);
 			loadData(samPath, base, contigs, ranges);
 			setParameters(clusterStats);
+			printParams();
 			
 			// collect all of our blocks for each contig
 			Iterator<MatchBuilder> mbIt = matches.iterator();
@@ -299,6 +300,13 @@ public class MisassemblyBreaker {
 		}
 	}
 	
+	/**
+	 * Merge overlapping blocks, remove blocks that are less than MAX_BLOCK_LEN
+	 * and remove blocks that come from the end of the given Contig
+	 * 
+	 * @param contig the Contig that <code>blocks</code> belongs to
+	 * @param blocks
+	 */
 	private static void mergeAndFilterBlocks(Contig contig, Vector<int[]> blocks){
 		int i = 0;
 		int len = 0;
@@ -379,6 +387,7 @@ public class MisassemblyBreaker {
 	
 	
 	/**
+	 * Read data from a SAM file. Filters out pairs with inserts with in the given ranges
 	 * 
 	 * @param samPath
 	 * @param fishDir
@@ -404,6 +413,7 @@ public class MisassemblyBreaker {
 		BufferedReader br = new BufferedReader (new InputStreamReader(fis));
 		
 		
+		/* begin: build a lookup table for tallying coverage in windows */
 		int genomeLen = 0;
 		String[] hdr = null;
 		String contigName = null;
@@ -423,6 +433,7 @@ public class MisassemblyBreaker {
 				coordOffset.put(contigName, offset);
 			}
 		}
+		// require the window length to be at least 1000 base pairs
 		int windowLen = Math.max(1000, MEAN_BLOCK_LEN);
 		int[][] readCounts = null;
 		int numWindow = genomeLen/windowLen;
@@ -436,6 +447,7 @@ public class MisassemblyBreaker {
 			readCounts[0][i] = windowLen*(i+1);
 			readCounts[1][i] = 0;
 		}
+		/* end: build a lookup table for tallying coverage in windows */
 		
 		
 		String[] line1 = null;
@@ -479,6 +491,7 @@ public class MisassemblyBreaker {
 			ctg1 = ctgs.get(line1[2]);
 			ctg2 = ctgs.get(line2[2]);
 			
+			/* begin: tally these read positions */
 			offset = coordOffset.get(ctg1.name);
 			index = Arrays.binarySearch(readCounts[0], offset+left1);
 			if (index < 0)
@@ -489,10 +502,15 @@ public class MisassemblyBreaker {
 			if (index < 0)
 				index = -1*(index+1);
 			readCounts[1][index]++;
+			/* end: tally these read positions */
 			
 			
-			ctgNameComp = line1[2].compareTo(line2[2]); // order for consistency
+			ctgNameComp = line1[2].compareTo(line2[2]);
 			
+			/*
+			 * if this pair spans two different contigs, we need to sort the names
+			 * for consistency before we add the match
+			 */
 			if (ctgNameComp < 0){
 				ctgStr = line1[2]+"-"+line2[2];
 				if (matchBldrs.containsKey(ctgStr))
@@ -560,6 +578,10 @@ public class MisassemblyBreaker {
 		perc = (double) numKeep / total * 100;
 		System.out.println("[a5_qc] Keeping "+NF.format(perc)+"% ("+numKeep+"/"+total+") of reads.");
 		
+		/*
+		 * Set LAMDBA, our Poisson rate parameter. We will use this to 
+		 * compute key runtime parameters
+		 */
 		LAMBDA = Double.POSITIVE_INFINITY;
 		File covFile = new File(samFile.getParentFile(),"coverage.txt");
 		covFile.createNewFile();
@@ -600,16 +622,13 @@ public class MisassemblyBreaker {
 		matches = matchBldrs.values();
 	}
 	
+	/**
+	 * Set parameters and print their values to standard out
+	 * @param ranges
+	 */
 	private static void setParameters(double[][] ranges){
 		setMAXINTERPOINTDIST();
 		setMAXINTERBLOCKDIST();
-		System.out.println("[a5_qc] parameters:");
-		System.out.println("        LAMBDA              = " + LAMBDA);
-		System.out.println("        MIN_BLOCK_LEN       = " + MIN_BLOCK_LEN);
-		System.out.println("        MEAN_BLOCK_LEN      = " + MEAN_BLOCK_LEN);
-		System.out.println("        MAX_BLOCK_LEN       = " + MAX_BLOCK_LEN);
-		System.out.println("        MAX_INTERBLOCK_DIST = " + MAX_INTERBLOCK_DIST);
-		System.out.println("        MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
 	}
 	
 	private static void setMAXBLOCKLEN(double[][] ranges){
@@ -645,6 +664,16 @@ public class MisassemblyBreaker {
 		MAX_INTERBLOCK_DIST = (int)(2*(Math.pow(1-ALPHA, 1/(LAMBDA*MEAN_BLOCK_LEN))*MEAN_BLOCK_LEN));
 	}
 	
+	private static void printParams(){
+		System.out.println("[a5_qc] parameters:");
+		System.out.println("        LAMBDA              = " + LAMBDA);
+		System.out.println("        MIN_BLOCK_LEN       = " + MIN_BLOCK_LEN);
+		System.out.println("        MEAN_BLOCK_LEN      = " + MEAN_BLOCK_LEN);
+		System.out.println("        MAX_BLOCK_LEN       = " + MAX_BLOCK_LEN);
+		System.out.println("        MAX_INTERBLOCK_DIST = " + MAX_INTERBLOCK_DIST);
+		System.out.println("        MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
+	}
+	
 	private static void setOrientation(Collection<ReadPair> reads){
 		NIN = 0;
 		NOUT = 0;
@@ -664,6 +693,12 @@ public class MisassemblyBreaker {
 			OUTWARD = true;
 	}
 	
+	/**
+	 * Return true of <code>ins</code> fits into any of the given ranges
+	 * @param ranges
+	 * @param ins
+	 * @return
+	 */
 	private static boolean inRange(double[][] ranges, double ins){
 		for (int i = 0; i < ranges.length; i++)
 			if (ins >= ranges[i][0] && ins <= ranges[i][1])
@@ -675,9 +710,9 @@ public class MisassemblyBreaker {
 	 * Returns an array of arrays with each array having the following information:	<br><br>
 	 * <code>[ mean, sd, n, nSd , min, max ]</code>
 	 * 
-	 * @return an array or arrays, where individual arrays contain cluster stats
+	 * @return an array or arrays, where individual arrays contain ReadSet stats
 	 */
-	private static double[][] getRangesToFilter(Map<String,ReadPair> reads, int numLibs){
+	private static double[][] getLibraryStats(Map<String,ReadPair> reads, int numLibs){
 		int K = numLibs+1;
 		Vector<ReadPair> toFilt = new Vector<ReadPair>();
 		Iterator<ReadPair> rpIt = reads.values().iterator();
@@ -691,14 +726,16 @@ public class MisassemblyBreaker {
 		double[] ins = ReadPair.estimateInsertSize(reads.values());
 		System.out.println("[a5_qc] Initial stats for sample: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
 		System.out.print("[a5_qc] EM-clustering insert sizes with K="+K+"... ");
-		double delta = 0.00005;
+		/* begin: cluster read pairs by insert size so we can efficiently determine the insert size of this library */
 		EMClusterer em = new EMClusterer(toFilt, K);
 		long before = System.currentTimeMillis();
+		double delta = 0.00005;
 		int iters = em.iterate(1000, delta);
 		long after = System.currentTimeMillis();
 		System.out.println("stopping after "+iters+" iterations with delta="+delta+". Took "+(after-before)/1000+" seconds.");
 		ReadSet[] clusters = new ReadSet[K];
 		em.getClusters().toArray(clusters);
+		/* end: cluster read pairs  */
 		
 		// sort clusters so we can keep the top numLibs underdispersed clusters
 		Arrays.sort(clusters,new Comparator<ReadSet>(){
@@ -716,8 +753,13 @@ public class MisassemblyBreaker {
 		
 		System.out.println("[a5_qc] Found the following clusters:");	
 		
+		/* 
+		 * begin: find all clusters that look like true signal 
+		 *        Use the cluster with the highest standard deviation 
+		 *        to compute the maximum residual allowed for fitting
+		 *        a point to a KClump (see KClump.fit(MatchPoint)) 
+		 */
 		Vector<ReadSet> signal = new Vector<ReadSet>();
-		Vector<ReadSet> noise = new Vector<ReadSet>();
 		PointChainer.MAX_RES = 0;
 		for (int i = 0; i < clusters.length; i++){
 			NF.setMaximumFractionDigits(0);
@@ -736,11 +778,12 @@ public class MisassemblyBreaker {
 				if (clusters[i].sd() > PointChainer.MAX_RES)
 					PointChainer.MAX_RES = (int) clusters[i].sd();
 			} else {
-				noise.add(clusters[i]);
 				System.out.println("  (noise)");
 			}
 			
 		}
+		/* end: find all clusters that look like true signal */
+		
 		Iterator<ReadSet> sigIt = null;
 		ReadSet sigSet = null;
 
@@ -780,26 +823,21 @@ public class MisassemblyBreaker {
 		ins = ReadPair.estimateInsertSize(reads.values());
 		System.out.println("[a5_qc] Final stats for sample after filtering: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
 		
-		/*
-		for (i = 0; i < ret.length; i++){
-			double[] tmpAr = {1,2*ret[i][0]};
-			if (tmpAr[0] > min)
-				tmpAr[0] = min;
-			if (tmpAr[1] < max)
-				tmpAr[1] = max;
-			ret[i] = tmpAr;
-			
-		}
-		*/
 		return ret;
 	}
 	
+	/**
+	 * A function for removing keys from a Map
+	 */
 	private static <V> void removeKeys(Map<String,V> reads, Collection<String> torm){
 		Iterator<String> it = torm.iterator();
 		while(it.hasNext())
 			reads.remove(it.next());
 	}
 	
+	/**
+	 * Read in contigs from the header of a SAM file
+	 */
 	private static Map<String,Contig> readContigs(RandomAccessFile raf) throws IOException {
 		Map<String,Contig> contigs = new HashMap<String,Contig>();
 		String[] hdr = null;
@@ -826,6 +864,8 @@ public class MisassemblyBreaker {
 	}
 	
 	/**
+	 * Reads in a subset of read pairs from a SAM file.
+	 * 
 	 * This method assumes that the contig header has been read in, and 
 	 * the file pointer is at the beginning of the first read's line.
 	 * 
@@ -888,7 +928,12 @@ public class MisassemblyBreaker {
 		}
 		return reads;
 	}	
-
+	
+	/**
+	 * A class for reading a SAM file via random access. 
+	 * @author andrew
+	 *
+	 */
 	private static class EfficientSAMFileSampler {
 		private RandomAccessFile raf;
 		private byte[] buf;
@@ -951,34 +996,6 @@ public class MisassemblyBreaker {
 		}
 	}
 	
-	public static class MatchFile implements Comparable<MatchFile>{
-		private Contig ctg1;
-		private Contig ctg2;
-		private File file;
-		
-		public MatchFile(Contig ctg1, Contig ctg2, File file){
-			this.ctg1 = ctg1;
-			this.ctg2 = ctg2;
-			this.file = file;
-		}
-		
-		public String toString(){ 
-			return ctg1.getRank()+"\t"+ctg2.getRank();
-		}
-		
-		public String getName(){
-			return file.getName();
-		}
-		
-		public int compareTo(MatchFile arg0) {
-			if (this.ctg1.getRank() - arg0.ctg1.getRank() == 0){
-				return this.ctg2.getRank() - arg0.ctg2.getRank();
-			} else {
-				return this.ctg1.getRank() - arg0.ctg1.getRank();
-			}
-		}		
-	}
-
 	private static boolean nextCharIs(RandomAccessFile raf, char c) throws IOException{
 		char next = (char) raf.read();
 		raf.seek(raf.getFilePointer()-1);
@@ -1025,12 +1042,18 @@ public class MisassemblyBreaker {
 		return alignLen;
 	}
 
+	/**
+	 * Returns true of the 4th bit is set in the flag given in the SAM file
+	 */
 	private static boolean isReverse(String flag){
 		int iflag = Integer.parseInt(flag);
 		if (getBit(4,iflag) == 1) return true;
 			else return false;
 	}
-
+	
+	/**
+	 * get the bit from the flag given in a SAM file
+	 */
 	private static int getBit (int bit, int flag) { 
 	   int mod = 0;
 	   int dig = 0;

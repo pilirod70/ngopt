@@ -55,30 +55,22 @@ public class EMClusterer {
 			i++;
 		}
 		maximize();
-		/*for (i = 0; i < gause.length; i++){
-			MU_last[i] = gause[i].mean();
-			SD_last[i] = gause[i].sd();
-		}*/
 	}
 	
+	/**
+	 * Run up to <code>I</code> EM iterations until the average change in 
+	 * cluster means is less than <code>minDelta</code>
+	 * 
+	 * @param I the maximum number of iterations to run this EM algorithm for
+	 * @param minDelta the minimal change in average cluster means before for calling convergence
+	 * @return the number of iterations until convergance 
+	 */
 	public int iterate(int I, double minDelta){
-		/*
-		System.out.print("initial: cluster0:"+gause[0].toString());
-		for (int j = 1; j < gause.length; j++)
-			System.out.print(" cluster"+j+gause[j].toString());
-		System.out.println();
-		*/
 		double delta = 0;
 		int i = 0;
 		for (i = 0; i < I; i++){
 			maximize();
 			expect();
-			/*
-			System.out.print("iteration " + i + ": cluster0:"+gause[0].toString());
-			for (int j = 1; j < gause.length; j++)
-				System.out.print(" cluster"+j+gause[j].toString());
-			NF.setMaximumFractionDigits(6);
-			*/
 			for (int j = 0; j < gause.length; j++){
 				MU[j] = gause[j].mean();
 				SD[j] = gause[j].sd();
@@ -88,11 +80,8 @@ public class EMClusterer {
 				delta += Math.abs(MU[j]-MU_last[j])/MU_last[j];
 			}
 			delta = delta/gause.length;
-			if (delta < minDelta) {
-				//System.out.print("*********");
-				//System.out.println(" delta="+NF.format(delta));
+			if (delta < minDelta) 
 				break;
-			}
 		}
 		return i;
 	}
