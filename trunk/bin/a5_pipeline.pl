@@ -685,8 +685,8 @@ sub run_sspace {
 	my $exp_links = shift;
 	my $outbase = shift;
 	my $libfile = shift;
-	my $rescaffold = shift;
 	my $input_fa = shift;
+	my $rescaffold = shift;
 
 	my $sspace_x = 1;
 	my $sspace_m = int(log2($genome_size)+3.99);
