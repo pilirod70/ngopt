@@ -28,6 +28,12 @@ public class KClump {
 	
 	final int id;
 	
+	/**
+	 * Create a KClump from the set of given points.
+	 * 
+	 * @param points the points in this KClump
+	 * @param maxResid the maximum residual for calling a point a member of this KClump
+	 */
 	public KClump(Set<MatchPoint> points, int maxResid){
 		id = ++COUNT;
 		xMax = Integer.MIN_VALUE;
@@ -57,25 +63,31 @@ public class KClump {
 		}
 		double mu_x = SummaryStats.mean(x);
 		double mu_y = SummaryStats.mean(y);
+		// compute the linear regression coefficients
 		slope = SummaryStats.covariance(x,mu_x,y,mu_y)/SummaryStats.variance(x,mu_x);
 		intercept = mu_y - slope*mu_x;
-		xLowerBnd = Math.max(xMin, ((int) mu_x) - MisassemblyBreaker.MAX_INTERPOINT_DIST/2); 
-		xUpperBnd = Math.min(xMax, ((int) mu_x) + MisassemblyBreaker.MAX_INTERPOINT_DIST/2);
+		// set upper and lower x limits for this KClump
+		xLowerBnd = xMin - MisassemblyBreaker.MAX_INTERPOINT_DIST; 
+		xUpperBnd = xMax + MisassemblyBreaker.MAX_INTERPOINT_DIST;
 		this.maxResid = maxResid;
 		this.points = points;
 	}
 	
+	/**
+	 * Determines if MatchPoint p fits in this KClump
+	 * @param p the point to fit
+	 * @return true if within x limits and residual is small enough
+	 */
 	public boolean fits(MatchPoint p){
 		double yfit = slope*p.x()+intercept;
 		return xLowerBnd < p.x() && p.x() < xUpperBnd && Math.abs(yfit - p.y()) < maxResid;
 	}
 	
-	public double density(){
-		double dx = ((double)points.size())/(xMax-xMin);
-		double dy = ((double)points.size())/(yMax-yMin);
-		return (dx+dy)/2;
-	}
-	
+	/**
+	 * Add MatchPoint p to this KClump if it fits according to the function <code> fit(MatchPoint p) </code>
+	 * @param p
+	 * @return
+	 */
 	public boolean add(MatchPoint p){
 		if (fits(p)){
 			points.add(p);
@@ -93,15 +105,28 @@ public class KClump {
 			return false;
 		}
 	}
-	
+	/**
+	 * Returns the number of points in this KClump
+	 * @return the number of points in this KClump
+	 */
 	public int size(){
 		return points.size();
 	}
 	
+	/**
+	 * Return the points in this KClump
+	 * @return the points in this KClump
+	 */
 	public Collection<MatchPoint> getMatchPoints(){
 		return points;
 	}
 	
+	/**
+	 * Prints this KClump to the given file
+	 * 
+	 * @param file
+	 * @throws IOException
+	 */
 	public void print(File file) throws IOException {
 		file.createNewFile();
 		PrintStream out = new PrintStream(file);

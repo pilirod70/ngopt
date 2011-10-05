@@ -10,6 +10,7 @@ public class ScaffoldExporter {
 
 	private File outFile;
 	private PrintStream out;
+	/** A map for keeping track of how many subsequences have been printed for this contig */
 	Map<String,Integer> counts;
 	
 	public ScaffoldExporter (File file) throws IOException{
@@ -18,6 +19,9 @@ public class ScaffoldExporter {
 		counts = new HashMap<String,Integer>();
 	}
 	
+	/**
+	 * print a substring from the given sequence with a given header
+	 */
 	public void export(String hdr, StringBuilder sequence, int left, int right){
 		int subSeq = -1;
 		if (counts.containsKey(hdr))
@@ -29,11 +33,17 @@ public class ScaffoldExporter {
 		counts.put(hdr, subSeq);
 	}
 	
+	/**
+	 * print an entire sequence with the given header and sequence
+	 */
 	public void export(String hdr, StringBuilder sequence){
 		out.println(">"+hdr);
 		out.println(sequence.toString());
 	}
 	
+	/**
+	 * Close the underlying PrintStream
+	 */
 	public void close(){
 		out.close();
 	}

@@ -1,37 +1,31 @@
 package org.halophiles.assembly.qc;
 
-import java.io.PrintStream;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Stack;
 
-import org.halophiles.tools.SummaryStats;
-
 public class MatchPoint {
 	double S = -1;
 	private int x;
 	private int y;
-	private int xRot;
-	private int yRot;
 	MatchPoint pred = null;
 	MatchPoint incoming = null;
 	Set<MatchPoint> neighborhood;
 	Set<MatchPoint> tbEdges;
+	/**
+	 * Construct a new MatchPoint with the given points x and y
+	 * @param x the point in contig 1 
+	 * @param y the point in contig 2
+	 */
 	public MatchPoint(int x, int y){
 		this.x = x;
 		this.y = y;
-		xRot = x;
-		yRot = y;
 		neighborhood = new HashSet<MatchPoint>();
 		tbEdges = new HashSet<MatchPoint>();
 	}
-	public void invert(){
-		yRot = -1*yRot;
-	}
 	/**
-	 * this is a member of p's neighborhood
+	 * Adds a new point to the set of neighborhoods that this MatchPoint is in
 	 * 
 	 * @param p the MatchPoint who's neighborhood this is in
 	 */
@@ -39,10 +33,11 @@ public class MatchPoint {
 		neighborhood.add(p);
 	}
 	
-	public boolean inOwnNbhood(){
-		return neighborhood.contains(this);
-	}
-	
+	/**
+	 * Computes the score of the maximal chain ending at this MatchPoint
+	 * 
+	 * @return the score of the maximal chain ending at this MatchPoint
+	 */
 	public double getScore(){
 		if (S != -1) {
 			return S;
@@ -69,94 +64,64 @@ public class MatchPoint {
 		}
 	}
 	
+	/**
+	 * Return the x coordinate for this MatchPoint
+	 * @return
+	 */
 	public int x(){
-		return xRot;
+		return x;
 	}
 	
+	/**
+	 * Return the y coordinate for this MatchPoint
+	 * @return
+	 */
 	public int y(){
-		return yRot;
+		return y;
 	}
 	
-	public static double getCorrelation(Collection<MatchPoint> points, MatchPoint p){
-		double[] x = new double[points.size()+1];
-		double[] y = new double[points.size()+1];
-		Iterator<MatchPoint> it = points.iterator();
-		int i = 0;
-		while(it.hasNext()){
-			MatchPoint tmp = it.next();
-			x[i] = tmp.xRot;
-			y[i] = tmp.yRot;
-			i++;
+	/**
+	 * Build the connected component starting at this MatchPoint
+	 * @return a set of MatchPoints that comprise the connected component that this MatchPoint belongs to.
+	 */
+	public Stack<MatchPoint> getCC(){
+		Stack<MatchPoint> ret = new Stack<MatchPoint>();
+		return getCC(ret,this);	
+	}
+	
+	/**
+	 * A helper function for getCC()
+	 */
+	private Stack<MatchPoint> getCC(Stack<MatchPoint> points, MatchPoint p){
+		if (p.incoming == null) {
+			points.push(p);
+			return points;
+		} else {
+			points.push(p);
+			return getCC(points,p.incoming);
 		}
-		return SummaryStats.correlation(x,y);
 	}
 	
+	/**
+	 * Return a String representation of this MatchPoint
+	 */
+	public String toString(){
+		return "("+x+","+y+")";
+	}
+	
+	/**
+	 * Computes the number of "gaps" between <code>p1</code> <code>p2</code> using 
+	 * the formula given in Haas et al. 2004
+	 *  
+	 * @param p1
+	 * @param p2
+	 * @return
+	 */
 	private static double numGaps(MatchPoint p1, MatchPoint p2){
 		double xDiff = (p2.x-p1.x); 
 		double yDiff = (p2.y-p1.y);
 		return Math.floor((xDiff+yDiff+Math.abs(xDiff-yDiff))
 				/ 2*MisassemblyBreaker.MAX_INTERPOINT_DIST + 0.5);
 	}
-	
-	public void print(PrintStream out){
-		out.print(this.toString()+" - ");
-		if (pred != null)
-			out.print(pred.toString()+ " - ");
-		Iterator<MatchPoint> it  = neighborhood.iterator();
-		if (it.hasNext())
-			out.print(it.next().toString());
-		while(it.hasNext())
-			out.print(","+it.next().toString());
-		out.println();
-		
-	}
-	
-	public Stack<MatchPoint> getCC(){
-		Stack<MatchPoint> ret = new Stack<MatchPoint>();
-		return getCC(ret,this,0);	
-	}
-	
-	private Stack<MatchPoint> getCC(Stack<MatchPoint> points, MatchPoint p, int count){
-		if (p.incoming == null) {
-			points.push(p);
-			return points;
-		} else {
-			points.push(p);
-			return getCC(points,p.incoming,++count);
-		}
-	}
-	public String toString(){
-		return "("+x+","+y+")";
-	}
-	public double xDist(MatchPoint p){
-		return Math.abs(this.x - p.x);
-	}
-	public double yDist(MatchPoint p){
-		double yDist = Math.abs(this.y - p.y);
-		return yDist;
-	}
-	
-	public static double xyDiff(MatchPoint p1, MatchPoint p2) {
-		return Math.abs(Math.abs(p1.x-p2.x)-Math.abs(p1.y-p2.y));
-	}
-	
-	public static double manhattan(MatchPoint p1, MatchPoint p2){
-		return Math.abs(p1.x-p2.x)+Math.abs(p1.y-p2.y);
-	}
 
-	public static double euclidean(MatchPoint p1, MatchPoint p2) {
-		return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-	}
-
-	public static double slopeDev(MatchPoint p1, MatchPoint p2) {
-		double xdiff = p2.x - p1.x;
-		double ydiff = p2.y - p1.y;
-		return Math.abs(1 - Math.abs(ydiff / xdiff));
-	}
-
-	public static double slope(MatchPoint p1, MatchPoint p2) {
-		double xdiff = p2.x - p1.x;
-		double ydiff = p2.y - p1.y;
-		return ydiff / xdiff;
-	}
 }
