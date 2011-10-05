@@ -84,7 +84,7 @@ if ($start <= 2) {
 	open (my $filtered, ">", "$OUTBASE.contigs.fasta");
 	open (IN,"<",$ctgs);
 	while (my $hdr = <IN>){
-		my $seq = <IN>:
+		my $seq = <IN>;
 		chomp $seq;
 		next if (length($seq) < 2*$maxrdlen); 
 		print $filtered $hdr.$seq."\n";
@@ -140,7 +140,7 @@ if ($start <= 5 && $need_qc) {
 	print STDERR "[a5_s5] Scaffolding broken contigs with SSPACE\n";
 	$WD="$OUTBASE.s5";
 	mkdir($WD) if ! -d $WD;
-	$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs);
+	$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs,1);
 	`mv $scafs $OUTBASE.final.scaffolds.fasta`;
 } 
 print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
@@ -344,6 +344,8 @@ sub scaffold_sspace {
 	my $libsref = shift;
 	my %libs = %$libsref;
 	my $curr_ctgs = shift;
+	my $rescaffold = shift;
+
 	my @library_file = ();
 	my @lib_files;
 
@@ -359,10 +361,10 @@ sub scaffold_sspace {
 		printf STDERR "[a5] %s\: Insert %.0f, coverage %.2f, expected links %.0f\n", $libs{$lib}{"id"}, $libs{$lib}{"ins"}, $cov, $exp_link;
 		if (-f "$OUTBASE.unpaired.fastq") { # run sspace with unpaired library if we have one
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
-                                                  $libs{$lib}{"libfile"}, $curr_ctgs, "$OUTBASE.unpaired.fastq");
+                                                  $libs{$lib}{"libfile"}, $curr_ctgs, "$OUTBASE.unpaired.fastq", $rescaffold);
 		} else {
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
-                                                  $libs{$lib}{"libfile"}, $curr_ctgs);
+                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold);
 		}
 	}
 
@@ -683,20 +685,34 @@ sub run_sspace {
 	my $outbase = shift;
 	my $libfile = shift;
 	my $input_fa = shift;
+	my $rescaffold = shift;
 
+	my $sspace_x = 1;
 	my $sspace_m = int(log2($genome_size)+3.99);
-	$sspace_m = 15 if $sspace_m < 15;
-	my $sspace_n = int(log2($insert_size)*1.25+.99);
+	$sspace_m = 15 if $sspace_m < 15; # min overlap of read during extension. as genome size goes down, k-mers of a particular size are more likely to be unique, thus overlaps can be trusted at smaller sizes in smaller genomes
+	my $sspace_n = int(log2($insert_size)*1.25+.99); # min overlap required to merge contigs. smaller the insert size, the more certain we can be about a short overlap being correct, so scale this up/down according to insert size
 	my $sspace_k = int(log($exp_links)/log(1.4)-11.5);
-	# require at least 1 link
 	# rationale: paired-end: the chimerism rate in small paired end libraries is low. in cases where there is ambiguous pairing, 
 	#            the -a parameter will recognize this and resolve it
 	#            mate-pair: the chimerism rate in mate-pair libraries can be high, up to 25% or more, but using the soup 
 	#            strategy lowers the rate to 1% or less. At this low rate, even single links for scaffolds are almost always reliable
-	$sspace_k = $sspace_k < 1 ? 1 : $sspace_k;
+
 #	$sspace_k = 5;	# gives best results on mediterranei
 
-	my $sspace_cmd = "SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a 0.2 -o 1 ".
+	my $sspace_a = 0.6;	# be less stringent about ambiguity by default, since these will be fixed by the misassembly detector
+
+	if(defined($rescaffold)){
+		# when rescaffolding we want to pick up the low coverage
+		# and small pieces that were cut out from misassembled regions
+		$sspace_a = 0.3; # be stringent here -- do not want more misassembly
+		$sspace_k -= 2;
+		$sspace_x = 0; # do not extend contigs -- risks further misassembly
+	}
+
+	# require at least 1 link
+	$sspace_k = $sspace_k < 1 ? 1 : $sspace_k;
+
+	my $sspace_cmd = "SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a $sspace_a -o 1 -x 0 ".
                                         "-l $libfile -s $input_fa -b $outbase -d $WD";
 	if (@_) {
 		print STDERR "[a5] Running SSPACE with unpaired reads\n";
