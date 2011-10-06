@@ -243,7 +243,7 @@ public class MisassemblyBreaker {
 		int[] p1 = points.get(mb.getContig1().name);
 		int[] p2 = points.get(mb.getContig2().name);
 		int[][] matches = mb.getMatches();
-		PointChainer pc = new PointChainer(p1, p2, matches);
+		PointChainer pc = new PointChainer(matches);
 		KClump[] kclumps = pc.getKClumps();
 		int xlen = 0;
 		int ylen = 0;
@@ -270,16 +270,16 @@ public class MisassemblyBreaker {
 		/*
 		 * Now do the same for the the reverse. 
 		 */
-		int[] p2Inv = new int[p2.length];
+/*		int[] p2Inv = new int[p2.length];
 		for (int i = 0; i < p2Inv.length; i++){
 			p2Inv[i] = -1*p2[p2.length-i-1];
 		}
-		int[][] matchesInv = new int[matches.length][3];
+*/		int[][] matchesInv = new int[matches.length][3];
 		for (int i = 0; i < matchesInv.length; i++) {
 			matchesInv[i][0] = matches[i][0];
 			matchesInv[i][1] = -1*matches[i][1];
 		}
-		pc = new PointChainer(p1, p2Inv, matchesInv);
+		pc = new PointChainer(matchesInv);
 		KClump[] kclumpsInv = pc.getKClumps();
 		for (int i = 0; i < kclumpsInv.length; i++){
 			xlen = kclumpsInv[i].xMax-kclumpsInv[i].xMin;
