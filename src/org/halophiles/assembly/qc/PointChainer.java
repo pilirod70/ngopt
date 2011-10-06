@@ -7,6 +7,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Stack;
 import java.util.Vector;
+import java.util.HashMap;
+import java.lang.Integer;
 
 public class PointChainer {
 	
@@ -40,6 +42,23 @@ public class PointChainer {
 	 */
 	Collection<MatchPoint> points;
 	
+	HashMap<MatchPoint, Integer> xref = new HashMap<MatchPoint, Integer>();
+	HashMap<MatchPoint, Integer> yref = new HashMap<MatchPoint, Integer>();
+	int[][] xy_matches;
+	int[] x_order;
+	int[] y_order;
+	private class MatchComparator implements Comparator{
+		public MatchComparator(int contig, int[][] matches){
+			this.contig = contig;
+			this.matches = matches;
+		}
+		public int compare(Object a, Object b){
+			return matches[((Integer)a).intValue()][contig]-matches[((Integer)b).intValue()][contig];
+		}
+		int contig;
+		int[][] matches;
+	}
+	
 	/**
 	 * Constructs a new PointChainer. Builds the matrix of MatchPoints and runs
 	 * dynamic programming algorithm. 
@@ -48,16 +67,43 @@ public class PointChainer {
 	 * @param p2 a sorted array of points in contig 2
 	 * @param matches an array of length 2 arrays. each array contains the point in each contig that comprise this match
 	 */
-	public PointChainer(int[] p1, int[] p2, int[][] matches) {
-		matrix = new MatchPoint[p1.length][p2.length];
-		points = buildMatrix(matrix, p1, p2, matches);
-		buildNeighborHoods(matrix, p1, p2);
-		getScores(matrix);
+	public PointChainer(int[][] matches) {
+		xy_matches = matches;
+		
+		Integer[] x_order_int = new Integer[matches.length];
+		Integer[] y_order_int = new Integer[matches.length];
+		x_order = new int[matches.length];
+		y_order = new int[matches.length];		
+		MatchPoint[] matchpoints = new MatchPoint[matches.length];
+		for(int i=0; i<matches.length; i++){
+			x_order_int[i]=i;
+			y_order_int[i]=i;
+			matchpoints[i] = new MatchPoint(matches[i][0],matches[i][1]);
+		}
+		MatchComparator mcx = new MatchComparator(0, matches);
+		MatchComparator mcy = new MatchComparator(1, matches);
+		
+		Arrays.sort(x_order_int, mcx);
+		Arrays.sort(y_order_int, mcy);
+				
+		for(int i=0; i<x_order.length; i++){
+			x_order[i] = x_order_int[i];
+			y_order[i] = y_order_int[i];
+			xref.put(matchpoints[x_order[i]], i);
+			yref.put(matchpoints[y_order[i]], i);
+		}
+
+		
+		
+//		matrix = new MatchPoint[p1.length][p2.length];
+//		points = buildMatrix(matrix, p1, p2, matches);
+		
+		buildNeighborHoods(matchpoints);
+		getScores(matchpoints);
 		// first find our Kclumps
 		Vector<KClump> kclumpSet = new Vector<KClump>();
-		Iterator<MatchPoint> it = points.iterator();
-		while (it.hasNext()) {
-			MatchPoint tmp = it.next();
+		for(int i=0; i<matchpoints.length; i++){
+			MatchPoint tmp = matchpoints[i];
 			//tmp.print(System.out);
 			if (tmp.pred == null) {
 				Stack<MatchPoint> cc = tmp.getCC();
@@ -74,10 +120,8 @@ public class PointChainer {
 				System.out.print("");
 			if(tmpKc.id == 9)
 				System.out.print("");
-			it = points.iterator();
-			while (it.hasNext()) {
-				MatchPoint tmp = it.next();
-				tmpKc.add(tmp);
+			for(int i=0; i<matchpoints.length; i++){
+				tmpKc.add(matchpoints[i]);
 			}
 		}
 		
@@ -89,47 +133,36 @@ public class PointChainer {
 	public KClump[] getKClumps() {
 		return kclumps;
 	}
-	
-	/**
-	 * Fills a matrix with MatchPoints corresponding to matches in <code>matches</code>
-	 * 
-	 * @param matrix The matrix to fill
-	 * @param p1 the points in contig 1
-	 * @param p2 the points in contig 2
-	 * @param matches matching points between <code>p1</code> and <code>p2</code>
-	 * @return the points that are now in <code>matrix</code>
-	 */
-	private static Collection<MatchPoint> buildMatrix(MatchPoint[][] matrix, int[] p1, int[] p2, int[][] matches) {
-		Collection<MatchPoint> points = new Vector<MatchPoint>();
-		for (int i = 0; i < matches.length; i++) {
-			// Find the index of each point in match i
-			int x = Arrays.binarySearch(p1, matches[i][0]);
-			int y = Arrays.binarySearch(p2, matches[i][1]);
-			if (x < 0) {
-				System.err.println("[a5_qc] Can't find " + matches[i][0]
-						+ " in map file");
-			}
-			if (y < 0) {
-				System.err.println("[a5_qc] Can't find " + matches[i][1]
-						+ " in map file");
-			}
-			matrix[x][y] = new MatchPoint(matches[i][0], matches[i][1]);
-			points.add(matrix[x][y]);
-		}
-		return points;
-	}
-	
+
 	/**
 	 * For each point in <code>matrix</code>, find all other points in <code>matrix</code> whose nieghborhood the point is in
 	 * point j is in the neighborhood of point i if
 	 * 			j_x - i_x < MAX_INTERPOINT_DIST and
 	 * 			j_y - i_y < MAX_INTERPOINT_DIST
 	 * 
-	 * @param matrix the matrix of points to build neighborhoods for
-	 * @param p1 the points in contig 1
-	 * @param p2 the points in contig 2
 	 */
-	private static void buildNeighborHoods(MatchPoint[][] matrix, int[] p1, int[] p2){
+	private void buildNeighborHoods(MatchPoint[] matchpoints){
+		for( int i=0; i<matchpoints.length; i++){
+			// where is this point in x?
+			int i_in_x = xref.get(matchpoints[i]);
+			int i_in_y = yref.get(matchpoints[i]);
+			for(int j_x=i_in_x+1; j_x < x_order.length && 
+				xy_matches[x_order[j_x]][0] - xy_matches[i][0] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; 
+				j_x++ ){
+					int j_in_y = yref.get(matchpoints[x_order[j_x]]);
+					if(xy_matches[y_order[j_in_y]][1] - xy_matches[i][1] <= MisassemblyBreaker.MAX_INTERPOINT_DIST)
+						matchpoints[i].addNeighborhood(matchpoints[x_order[j_x]]);
+				}
+			for(int j_y=i_in_y+1; j_y < y_order.length && 
+				xy_matches[y_order[j_y]][1] - xy_matches[i][1] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; 
+				j_y++ ){
+				int j_in_x = xref.get(matchpoints[y_order[j_y]]);
+				if(xy_matches[x_order[j_in_x]][0] - xy_matches[i][0] <= MisassemblyBreaker.MAX_INTERPOINT_DIST)
+					matchpoints[i].addNeighborhood(matchpoints[y_order[j_y]]);
+			}
+		}
+	}
+/*
 		for (int i = 0; i < matrix.length; i++) {
 			for (int j = 0; j < matrix[i].length; j++) {
 				if (matrix[i][j] == null)
@@ -188,17 +221,14 @@ public class PointChainer {
 			}
 		}
 	}
+		*/
 	/**
 	 * A function to compute scores (i.e. run dynamic programming algorithm)
 	 * @param matrix the matrix of points to compute scores for
 	 */
-	private static void getScores(MatchPoint[][] matrix){
-		for (int i = 0; i < matrix.length; i++) {
-			for (int j = 0; j < matrix[i].length - 1; j++) {
-				if (matrix[i][j] == null)
-					continue;
-				matrix[i][j].getScore();
-			}
+	private static void getScores(MatchPoint[] matchpoints){
+		for (int i = 0; i < matchpoints.length; i++) {
+			matchpoints[i].getScore();
 		}
 	}
 }
