@@ -150,14 +150,16 @@ public class PointChainer {
 				xy_matches[x_order[j_x]][0] - xy_matches[i][0] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; 
 				j_x++ ){
 					int j_in_y = yref.get(matchpoints[x_order[j_x]]);
-					if(xy_matches[y_order[j_in_y]][1] - xy_matches[i][1] <= MisassemblyBreaker.MAX_INTERPOINT_DIST)
+					if(xy_matches[y_order[j_in_y]][1] > xy_matches[i][1] && 
+							xy_matches[y_order[j_in_y]][1] - xy_matches[i][1] <= MisassemblyBreaker.MAX_INTERPOINT_DIST)
 						matchpoints[i].addNeighborhood(matchpoints[x_order[j_x]]);
 				}
 			for(int j_y=i_in_y+1; j_y < y_order.length && 
 				xy_matches[y_order[j_y]][1] - xy_matches[i][1] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; 
 				j_y++ ){
 				int j_in_x = xref.get(matchpoints[y_order[j_y]]);
-				if(xy_matches[x_order[j_in_x]][0] - xy_matches[i][0] <= MisassemblyBreaker.MAX_INTERPOINT_DIST)
+				if(xy_matches[x_order[j_in_x]][0] > xy_matches[i][0] &&
+						xy_matches[x_order[j_in_x]][0] - xy_matches[i][0] <= MisassemblyBreaker.MAX_INTERPOINT_DIST)
 					matchpoints[i].addNeighborhood(matchpoints[y_order[j_y]]);
 			}
 		}
