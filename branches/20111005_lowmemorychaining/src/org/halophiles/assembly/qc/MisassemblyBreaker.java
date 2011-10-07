@@ -194,11 +194,7 @@ public class MisassemblyBreaker {
 				}
 				
 				Vector<int[]> tmpBlks = blocks.get(tmpCtg);
-				/*System.out.print(tmpCtg+"\t"+tmpBlks.get(0)[0]+"-"+tmpBlks.get(0)[1]);
-				for (int i = 1; i < tmpBlks.size(); i++){
-					System.out.print(", "+tmpBlks.get(i)[0]+"-"+tmpBlks.get(i)[1]);
-				}
-				System.out.println(); */
+
 				if (tmpBlks.size() < 2){
 					out.export(tmpCtg, sb);
 					continue;
@@ -361,7 +357,7 @@ public class MisassemblyBreaker {
 				double union = block2[1] - block1[0];
 				if (intersection/union > 0.5){
 					blocks.remove(i);
-					blocks.remove(i+1);
+					blocks.remove(i);
 				} else
 					i++;
 			} else
