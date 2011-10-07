@@ -34,7 +34,7 @@ public class ScaffoldExporter {
 			else 
 				subSeq = 1;
 			out.println(">"+hdr+"-"+subSeq);
-			out.println(sequence.substring(left-1, right));
+			out.println(brokenScaffolds[i]);
 			counts.put(hdr, subSeq);
 		}
 	}
