@@ -24,7 +24,7 @@ public class KClump {
 	private double slope;
 	private double intercept;
 	
-	private Collection<MatchPoint> points;
+	private Set<MatchPoint> points;
 	
 	final int id;
 	
@@ -56,9 +56,7 @@ public class KClump {
 				yMax = (int) y[i];
 			if (y[i] < yMin)
 				yMin = (int) y[i];			
-			if (i==0){
-			//	ctgX = tmp.
-			}
+			
 			i++;
 		}
 		double mu_x = SummaryStats.mean(x);
@@ -86,9 +84,11 @@ public class KClump {
 	/**
 	 * Add MatchPoint p to this KClump if it fits according to the function <code> fit(MatchPoint p) </code>
 	 * @param p
-	 * @return
+	 * @return false if this point is already in this KClump, or if this point does not fit
 	 */
 	public boolean add(MatchPoint p){
+		if (points.contains(p))
+			return false;
 		if (fits(p)){
 			points.add(p);
 			if (p.x() > xMax)
@@ -99,7 +99,6 @@ public class KClump {
 				yMax = p.y();
 			else if (p.y() < yMin)
 				yMin = p.y();
-			//System.out.println("Adding point "+p.toString()+" to k-clump "+id);
 			return true;
 		} else {
 			return false;
@@ -117,7 +116,7 @@ public class KClump {
 	 * Return the points in this KClump
 	 * @return the points in this KClump
 	 */
-	public Collection<MatchPoint> getMatchPoints(){
+	public Set<MatchPoint> getMatchPoints(){
 		return points;
 	}
 	

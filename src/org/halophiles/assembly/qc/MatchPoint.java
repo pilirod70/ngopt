@@ -9,10 +9,10 @@ public class MatchPoint {
 	double S = -1;
 	private int x;
 	private int y;
+	private boolean inv;
 	MatchPoint pred = null;
 	MatchPoint incoming = null;
 	Set<MatchPoint> neighborhood;
-	Set<MatchPoint> tbEdges;
 	/**
 	 * Construct a new MatchPoint with the given points x and y
 	 * @param x the point in contig 1 
@@ -21,8 +21,8 @@ public class MatchPoint {
 	public MatchPoint(int x, int y){
 		this.x = x;
 		this.y = y;
+		this.inv = false;
 		neighborhood = new HashSet<MatchPoint>();
-		tbEdges = new HashSet<MatchPoint>();
 	}
 	/**
 	 * Adds a new point to the set of neighborhoods that this MatchPoint is in
@@ -64,6 +64,15 @@ public class MatchPoint {
 		}
 	}
 	
+	public void clearNeighborhood(){
+		neighborhood = new HashSet<MatchPoint>();
+	}
+	
+	public void invert(){
+		inv = !inv;
+	}
+	
+	
 	/**
 	 * Return the x coordinate for this MatchPoint
 	 * @return
@@ -77,7 +86,11 @@ public class MatchPoint {
 	 * @return
 	 */
 	public int y(){
-		return y;
+		return (inv?-1:1)*y;
+	}
+	
+	public int hashCode(){
+		return x ^ y;
 	}
 	
 	/**
@@ -106,7 +119,7 @@ public class MatchPoint {
 	 * Return a String representation of this MatchPoint
 	 */
 	public String toString(){
-		return "("+x+","+y+")";
+		return "("+x+","+y+") "+neighborhood.size();
 	}
 	
 	/**
@@ -118,8 +131,8 @@ public class MatchPoint {
 	 * @return
 	 */
 	private static double numGaps(MatchPoint p1, MatchPoint p2){
-		double xDiff = (p2.x-p1.x); 
-		double yDiff = (p2.y-p1.y);
+		double xDiff = (p2.x()-p1.x()); 
+		double yDiff = (p2.y()-p1.y());
 		return Math.floor((xDiff+yDiff+Math.abs(xDiff-yDiff))
 				/ 2*MisassemblyBreaker.MAX_INTERPOINT_DIST + 0.5);
 	}

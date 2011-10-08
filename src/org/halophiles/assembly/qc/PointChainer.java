@@ -10,78 +10,107 @@ import java.util.Vector;
 import java.util.HashMap;
 import java.lang.Integer;
 
+import org.halophiles.assembly.Contig;
+
 public class PointChainer {
-	
-	/**
-	 * A Comparator for sorting KClumps by their id.
-	 */
-	private static Comparator<KClump> COMP = new Comparator<KClump>() {
-		@Override
-		public int compare(KClump arg0, KClump arg1) {
-			return arg1.id - arg0.id;
-		}
-	};
 	
 	/**
 	 *  maximum residual for adding a MatchPoint to a KClump
 	 */ 
 	static int MAX_RES;
+	
+	private Contig ctg1;
+	
+	private Contig ctg2;
 
-	/**
-	 * The KClumps resulting from chaining points
-	 */
-	private KClump[] kclumps;
-	
-	/**
-	 * The matrix of points to use for calculating KClumps 
-	 */
-	MatchPoint[][] matrix;
-	
 	/**
 	 * All points in <code>matrix</code>
 	 */
-	Collection<MatchPoint> points;
+	HashSet<MatchPoint> currPoints;
 	
-	HashMap<MatchPoint, Integer> xref = new HashMap<MatchPoint, Integer>();
-	HashMap<MatchPoint, Integer> yref = new HashMap<MatchPoint, Integer>();
-	int[][] xy_matches;
-	int[] x_order;
-	int[] y_order;
-	private class MatchComparator implements Comparator{
-		public MatchComparator(int contig, int[][] matches){
+	/**
+	 * The KClumps resulting from chaining points.
+	 * KClumps should be mutually exclusive
+	 * 
+	 */
+	private HashSet<KClump> kclumps;
+	
+	private class MatchComparator implements Comparator<Integer>{
+		public MatchComparator(int contig, MatchPoint[] matches){
 			this.contig = contig;
 			this.matches = matches;
 		}
-		public int compare(Object a, Object b){
-			return matches[((Integer)a).intValue()][contig]-matches[((Integer)b).intValue()][contig];
+		public int compare(Integer a, Integer b){
+			if (contig==0)
+				return matches[a.intValue()].x()-matches[b.intValue()].x();
+			else 
+				return matches[a.intValue()].y()-matches[b.intValue()].y();
 		}
 		int contig;
-		int[][] matches;
+		MatchPoint[] matches;
 	}
 	
+	public PointChainer(Contig contig1, Contig contig2){
+		this.ctg1 = contig1;
+		this.ctg2 = contig2;
+		currPoints = new HashSet<MatchPoint>();
+		kclumps = new HashSet<KClump>();
+	}
+	
+	public boolean addMatch(int x, int y){
+		return currPoints.add(new MatchPoint(x, y));
+	}
+	
+	public void buildKClumps(){
+		runAlgo();
+		/*
+		 * clear the neighborhoods of the remaining points
+		 * invert, and re-run the algorithm
+		 */
+		Iterator<MatchPoint> it = currPoints.iterator();
+		while(it.hasNext()){
+			MatchPoint tmp = it.next();
+			tmp.clearNeighborhood();
+			tmp.invert();
+		}
+		runAlgo();
+	}
+	
+
 	/**
-	 * Constructs a new PointChainer. Builds the matrix of MatchPoints and runs
-	 * dynamic programming algorithm. 
-	 * 
-	 * @param p1 a sorted array of points in contig 1 
-	 * @param p2 a sorted array of points in contig 2
-	 * @param matches an array of length 2 arrays. each array contains the point in each contig that comprise this match
+	 * Return a set of mutually exclusive KClumps
+	 * @return a set of mutually exclusive KClumps
 	 */
-	public PointChainer(int[][] matches) {
-		xy_matches = matches;
-		
-		Integer[] x_order_int = new Integer[matches.length];
-		Integer[] y_order_int = new Integer[matches.length];
-		x_order = new int[matches.length];
-		y_order = new int[matches.length];		
-		MatchPoint[] matchpoints = new MatchPoint[matches.length];
-		for(int i=0; i<matches.length; i++){
+	public KClump[] getKClumps() {
+		KClump[] ar = new KClump[kclumps.size()];
+		kclumps.toArray(ar);
+		return ar;
+	}
+	
+	public Contig getContig1(){
+		return ctg1;
+	}
+	
+	public Contig getContig2(){
+		return ctg2;
+	}
+	
+	private void runAlgo(){
+		MatchPoint[] matchpoints = new MatchPoint[currPoints.size()];
+		Integer[] x_order_int = new Integer[matchpoints.length];
+		Integer[] y_order_int = new Integer[matchpoints.length];
+		Iterator<MatchPoint> it = currPoints.iterator();
+		int[] x_order = new int[matchpoints.length];
+		int[] y_order = new int[matchpoints.length];	
+		HashMap<MatchPoint, Integer> xref = new HashMap<MatchPoint, Integer>();
+		HashMap<MatchPoint, Integer> yref = new HashMap<MatchPoint, Integer>();
+		for(int i=0; i<matchpoints.length; i++){
+			matchpoints[i] = it.next();
 			x_order_int[i]=i;
 			y_order_int[i]=i;
-			matchpoints[i] = new MatchPoint(matches[i][0],matches[i][1]);
 		}
-		MatchComparator mcx = new MatchComparator(0, matches);
-		MatchComparator mcy = new MatchComparator(1, matches);
+		MatchComparator mcx = new MatchComparator(0, matchpoints);
+		MatchComparator mcy = new MatchComparator(1, matchpoints);
 		
 		Arrays.sort(x_order_int, mcx);
 		Arrays.sort(y_order_int, mcy);
@@ -92,10 +121,31 @@ public class PointChainer {
 			xref.put(matchpoints[x_order[i]], i);
 			yref.put(matchpoints[y_order[i]], i);
 		}
-		
-		buildNeighborHoods(matchpoints);
-		getScores(matchpoints);
-		// first find our Kclumps
+		/* BUILD NEIGHBORHOODS
+		 * 
+		 * For each point in <code>matrix</code>, find all other points in <code>matrix</code> whose nieghborhood the point is in
+		 * point j is in the neighborhood of point i if
+		 * 			j_x - i_x < MAX_INTERPOINT_DIST and
+		 * 			j_y - i_y < MAX_INTERPOINT_DIST
+		 * 
+		 */
+		for( int i=0; i<matchpoints.length; i++){
+			// where is this point in x?
+			int i_in_x = xref.get(matchpoints[i]);
+			for(int j_x=i_in_x+1; j_x < x_order.length && 
+				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= MisassemblyBreaker.MAX_INTERPOINT_DIST; 
+				j_x++ ){
+					int j_in_y = yref.get(matchpoints[x_order[j_x]]);
+					if(matchpoints[y_order[j_in_y]].y() > matchpoints[i].y() && 
+							matchpoints[y_order[j_in_y]].y() - matchpoints[i].y() <= MisassemblyBreaker.MAX_INTERPOINT_DIST)
+						matchpoints[i].addNeighborhood(matchpoints[x_order[j_x]]);
+				}
+		}
+		// run DP algorithm
+		for (int i = 0; i < matchpoints.length; i++) {
+			matchpoints[i].getScore();
+		}
+		// first find our Kclumps ( DP traceback )
 		Vector<KClump> kclumpSet = new Vector<KClump>();
 		for(int i=0; i<matchpoints.length; i++){
 			MatchPoint tmp = matchpoints[i];
@@ -113,45 +163,8 @@ public class PointChainer {
 			for(int i=0; i<matchpoints.length; i++){
 				tmpKc.add(matchpoints[i]);
 			}
-		}
-		
-		this.kclumps = new KClump[kclumpSet.size()];
-		kclumpSet.toArray(this.kclumps);
-		Arrays.sort(this.kclumps, COMP);
-	}
-
-	public KClump[] getKClumps() {
-		return kclumps;
-	}
-
-	/**
-	 * For each point in <code>matrix</code>, find all other points in <code>matrix</code> whose nieghborhood the point is in
-	 * point j is in the neighborhood of point i if
-	 * 			j_x - i_x < MAX_INTERPOINT_DIST and
-	 * 			j_y - i_y < MAX_INTERPOINT_DIST
-	 * 
-	 */
-	private void buildNeighborHoods(MatchPoint[] matchpoints){
-		for( int i=0; i<matchpoints.length; i++){
-			// where is this point in x?
-			int i_in_x = xref.get(matchpoints[i]);
-			for(int j_x=i_in_x+1; j_x < x_order.length && 
-				xy_matches[x_order[j_x]][0] - xy_matches[i][0] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; 
-				j_x++ ){
-					int j_in_y = yref.get(matchpoints[x_order[j_x]]);
-					if(xy_matches[y_order[j_in_y]][1] > xy_matches[i][1] && 
-							xy_matches[y_order[j_in_y]][1] - xy_matches[i][1] <= MisassemblyBreaker.MAX_INTERPOINT_DIST)
-						matchpoints[i].addNeighborhood(matchpoints[x_order[j_x]]);
-				}
-		}
-	}
-	/**
-	 * A function to compute scores (i.e. run dynamic programming algorithm)
-	 * @param matrix the matrix of points to compute scores for
-	 */
-	private static void getScores(MatchPoint[] matchpoints){
-		for (int i = 0; i < matchpoints.length; i++) {
-			matchpoints[i].getScore();
+			currPoints.removeAll(tmpKc.getMatchPoints());
+			kclumps.add(tmpKc);
 		}
 	}
 }
