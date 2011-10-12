@@ -3,7 +3,6 @@ package org.halophiles.assembly.qc;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -22,6 +21,8 @@ public class KClump {
 	int yMin;
 	
 	private double slope;
+	private double spearman;
+	private double kendall;
 	private double intercept;
 	
 	private Set<MatchPoint> points;
@@ -62,11 +63,18 @@ public class KClump {
 		double mu_x = SummaryStats.mean(x);
 		double mu_y = SummaryStats.mean(y);
 		// compute the linear regression coefficients
-		slope = SummaryStats.covariance(x,mu_x,y,mu_y)/SummaryStats.variance(x,mu_x);
+		slope = SummaryStats.pearson(x, mu_x, y, mu_y);
 		intercept = mu_y - slope*mu_x;
+		if (x.length < 2) {
+			spearman = -1;
+			kendall = -1;
+		} else { 
+			spearman = SummaryStats.spearman(x, y);
+			kendall = SummaryStats.kendall(x, y);
+		}
 		// set upper and lower x limits for this KClump
-		xLowerBnd = xMin - MisassemblyBreaker.MAX_INTERPOINT_DIST; 
-		xUpperBnd = xMax + MisassemblyBreaker.MAX_INTERPOINT_DIST;
+		xLowerBnd = xMin - maxResid; 
+		xUpperBnd = xMax + maxResid;
 		this.maxResid = maxResid;
 		this.points = points;
 	}
@@ -135,6 +143,18 @@ public class KClump {
 			out.println(tmp.x()+"\t"+tmp.y());
 		}
 		out.close();
+	}
+	
+	public double slope(){
+		return slope;
+	}
+	
+	public double spearman(){
+		return spearman;
+	}
+	
+	public double kendall(){
+		return kendall;
 	}
 	
 }

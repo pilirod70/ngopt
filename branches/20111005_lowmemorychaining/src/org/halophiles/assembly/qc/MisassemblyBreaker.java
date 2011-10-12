@@ -59,7 +59,7 @@ public class MisassemblyBreaker {
 	
 	private static Collection<PointChainer> matches;
 	
-	private static Map<String,int[]> points;
+//	private static Map<String,int[]> points;
 	
 	public static void main(String[] args){
 		if (args.length != 3 && args.length != 4){
@@ -122,16 +122,18 @@ public class MisassemblyBreaker {
 			Map<String,Vector<int[]>> blocks = new HashMap<String,Vector<int[]>>();
 			Vector<int[]> xBlocks = null;
 			Vector<int[]> yBlocks = null;
+			File matchDir = new File(samFile.getParentFile(),"matches");
+			matchDir.mkdirs();
 			while(mbIt.hasNext()){
 				PointChainer pc = mbIt.next();
-				//mb.print(new File(samFile.getParentFile(),"match."+mb.getContig1().getId()+"v"+mb.getContig2().getId()+".txt"));
 				// get Vector for holding contig X blocks
 				xBlocks = new Vector<int[]>();
 				// get Vector for holding contig Y blocks
 				yBlocks = new Vector<int[]>();
-				addBlocks(pc, xBlocks, yBlocks, samFile.getParentFile(),"clump."+pc.getContig1().getId()+"v"+pc.getContig2().getId());
-				mergeAndFilterBlocks(pc.getContig1(), xBlocks);
-				mergeAndFilterBlocks(pc.getContig2(), yBlocks);
+				addBlocks(pc, xBlocks, yBlocks);
+				pc.exportCurrState(new File(matchDir,"match."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
+		//		mergeAndFilterBlocks(pc.getContig1(), xBlocks);
+		//		mergeAndFilterBlocks(pc.getContig2(), yBlocks);
 				if (blocks.containsKey(pc.getContig1().name))
 					blocks.get(pc.getContig1().name).addAll(xBlocks);
 				else
@@ -152,10 +154,18 @@ public class MisassemblyBreaker {
 			while(it.hasNext()){
 				String tmpCtg = it.next();
 				Vector<int[]> tmpBlocks = blocks.get(tmpCtg);
+				System.out.println("[a5_qc] Found "+tmpBlocks.size()+" blocks on contig " + tmpCtg);
 				if (tmpBlocks.isEmpty())
 					toRm.add(tmpCtg);
 				else 
 					Collections.sort(tmpBlocks, BLOCK_COMP);
+				Iterator<int[]> blockIt = tmpBlocks.iterator();
+				while(blockIt.hasNext()){
+					int[] tmp = blockIt.next();
+					System.out.println("        "+tmp[0]+" - "+tmp[1]);
+					
+				}
+				
 				
 			}
 			removeKeys(blocks, toRm);
@@ -235,28 +245,69 @@ public class MisassemblyBreaker {
 		}
 	}
 	
-	private static void addBlocks(PointChainer pc, Vector<int[]> xBlocks, Vector<int[]> yBlocks, File outDir, String pathBase) throws IOException {
+	private static void addBlocks(PointChainer pc, Vector<int[]> xBlocks, Vector<int[]> yBlocks) throws IOException {
 		pc.buildKClumps();
+		String comp = pc.getContig1().getId()+"v"+pc.getContig2().getId();
+		
+		
 		KClump[] kclumps = pc.getKClumps();
 		int xlen = 0;
 		int ylen = 0;
 		int[] x = null;
 		int[] y = null;
+		boolean first = true;
 		for (int i = 0; i < kclumps.length; i++){
 			xlen = kclumps[i].xMax-kclumps[i].xMin;
 			ylen = kclumps[i].yMax-kclumps[i].yMin;
-			if (xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN) {
-				x=  new int[2];
-				x[0] = kclumps[i].xMin;
-				x[1] = kclumps[i].xMax;
-				y = new int[2];
+			double xden = ((double)kclumps[i].size())/xlen;
+			double yden = ((double)kclumps[i].size())/ylen;
+			
+			x = new int[2];
+			x[0] = kclumps[i].xMin;
+			x[1] = kclumps[i].xMax;
+			y = new int[2];
+			if (kclumps[i].yMin < 0){
+				y[0] = Math.abs(kclumps[i].yMax);
+				y[1] = Math.abs(kclumps[i].yMin);
+			} else {
 				y[0] = kclumps[i].yMin;
 				y[1] = kclumps[i].yMax;
+			}
+			
+			double rat = ((double)Math.min(xlen,ylen))/Math.max(xlen,ylen);
+			
+			
+			double slopeDev = Math.abs(Math.log10(Math.abs(kclumps[i].slope())));
+			if (pc.getContig1().getId() == 2 && pc.getContig2().getId() == 2)
+				System.out.print("");
+			if (xden >= LAMBDA && yden >= LAMBDA && !(xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN)) {
+				System.out.print("");
+			}
+			if (xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN) {
+//			if (xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN || (pc.getContig1().getId() == 2 && pc.getContig2().getId() == 2)) {
+			//if (xden >= LAMBDA && yden >= LAMBDA && slopeDev <= 0.25) {
+
+				if (first){
+					System.out.println("[a5_qc] Found block between "+pc.getContig1().toString()+" and "+pc.getContig2().toString());
+					first = false;
+				}
+				NF.setMaximumFractionDigits(5);
+				System.out.println("            "+x[0]+"-"+x[1]+" <-> "+y[0]+"-"+y[1]+"    "+kclumps[i].size()+"    "+
+								   NF.format(rat)+"    "+"    "+
+								   NF.format(slopeDev)+"    "+NF.format(kclumps[i].slope())+"    "+NF.format(kclumps[i].spearman())+"    "+NF.format(kclumps[i].kendall()));
 				xBlocks.add(x);
 				yBlocks.add(y);
-//				kclumps[i].print(new File(outDir,pathBase+"."+kclumps[i].id+".txt"));
-//				System.out.println(kclumps[i].id+"  "+mb.getContig1().name+" "+x[0]+"-"+x[1]+"\t"+
-//						mb.getContig2().name+" "+y[0]+"-"+y[1]+" "+kclumps[i].size()+" "+kclumps[i].density()+"     1");
+			
+				if (xden < LAMBDA)
+					System.out.print("");
+				if (yden < LAMBDA)
+					System.out.print("");
+
+			} else {
+				if (xden >= LAMBDA)
+					System.out.print("");
+				if (yden >= LAMBDA)
+					System.out.print("");
 			}
 		}
 	}
@@ -361,10 +412,9 @@ public class MisassemblyBreaker {
 		for (int i = 0; i < ranges.length; i++)
 			System.out.println("[a5_qc] Filtering read pairs with inserts between "+
 					NF.format(ranges[i][0])+"-"+NF.format(ranges[i][1]));
-		Map<String,TreeSet<Integer>> mapPoints = new HashMap<String,TreeSet<Integer>>();
 		Map<String,PointChainer> chainers = new HashMap<String,PointChainer>();
 		Map<String,Vector<String>> ctgMBs = new HashMap<String,Vector<String>>();
-		TreeSet<Integer> tmpPts = null;
+		Map<String,Integer> counts = new HashMap<String,Integer>();
 		Vector<String> tmpMBs = null;
 
 		File samFile = new File(samPath);
@@ -468,28 +518,42 @@ public class MisassemblyBreaker {
 			
 			ctgNameComp = line1[2].compareTo(line2[2]);
 			
+			if (line1[11].equals("XT:A:R")||line2[11].equals("XT:A:R")){
+				continue;
+			}
+			
 			/*
 			 * if this pair spans two different contigs, we need to sort the names
 			 * for consistency before we add the match
 			 */
-			if (ctgNameComp < 0){
-				ctgStr = line1[2]+"-"+line2[2];
-				if (chainers.containsKey(ctgStr))
-					pc = chainers.get(ctgStr);
-				else {
-					pc = new PointChainer(ctg1, ctg2);
-					chainers.put(ctgStr, pc);
+			if (ctgNameComp != 0){
+				if (ctgNameComp < 0){
+					ctgStr = line1[2]+"-"+line2[2];
+					if (chainers.containsKey(ctgStr))
+						pc = chainers.get(ctgStr);
+					else {
+						pc = new PointChainer(ctg1, ctg2);
+						chainers.put(ctgStr, pc);
+					}
+					pc.addMatch(left1, left2);
+				} else {
+					ctgStr = line2[2]+"-"+line1[2];
+					if (chainers.containsKey(ctgStr))
+						pc = chainers.get(ctgStr);
+					else { 
+						pc = new PointChainer(ctg2, ctg1);
+						chainers.put(ctgStr, pc);
+					}
+					pc.addMatch(left2, left1);
 				}
-				pc.addMatch(left1, left2);
-			} else if (ctgNameComp > 0) {
-				ctgStr = line2[2]+"-"+line1[2];
-				if (chainers.containsKey(ctgStr))
-					pc = chainers.get(ctgStr);
-				else { 
-					pc = new PointChainer(ctg2, ctg1);
-					chainers.put(ctgStr, pc);
-				}
-				pc.addMatch(left2, left1);
+				if (counts.containsKey(ctg1.name))
+					counts.put(ctg1.name, counts.get(ctg1.name)+2);
+				else
+					counts.put(ctg1.name, 2);
+				if (counts.containsKey(ctg2.name))
+					counts.put(ctg2.name, counts.get(ctg2.name)+2);
+				else
+					counts.put(ctg2.name, 2);
 			} else { // same contig, so check to see it's within the given ranges
 				int ins = (left2 > left1 ? left2+cigarLength(line2[5])-left1 : left1+cigarLength(line1[5])-left2);
 				if (inRange(ranges,ins)) 
@@ -505,33 +569,30 @@ public class MisassemblyBreaker {
 				if (left2 < left1) // order for consistency
 					pc.addMatch(left2, left1);
 				else 
-					pc.addMatch(left1, left2);				
+					pc.addMatch(left1, left2);
+				if (counts.containsKey(ctg1.name)){
+					counts.put(ctg1.name, counts.get(ctg1.name)+2);
+				} else {
+					counts.put(ctg1.name, 2);
+				}
+				
 			}
-			
 			// add point for contig1, and keep track of which MatchBuilders are associated with contig1
-			if (mapPoints.containsKey(ctg1.name)){
-				tmpPts = mapPoints.get(ctg1.name);
+			if (ctgMBs.containsKey(ctg1.name)){
 				tmpMBs = ctgMBs.get(ctg1.name);
 			} else {
-				tmpPts = new TreeSet<Integer>();
-				mapPoints.put(ctg1.name, tmpPts);
 				tmpMBs = new Vector<String>();
 				ctgMBs.put(ctg1.name, tmpMBs);
 			}
-			tmpPts.add(new Integer(left1));
 			tmpMBs.add(ctgStr);
 			// add point for contig2, and keep track of which MatchBuilders are associated with contig2
-			if (mapPoints.containsKey(ctg2.name)){
-				tmpPts = mapPoints.get(ctg2.name);
+			if (ctgMBs.containsKey(ctg2.name)){
 				tmpMBs = ctgMBs.get(ctg2.name);
 			} else {
-				tmpPts = new TreeSet<Integer>();
-				mapPoints.put(ctg2.name, tmpPts);
 				tmpMBs = new Vector<String>();
 				ctgMBs.put(ctg2.name, tmpMBs);
 			}
 			tmpMBs.add(ctgStr);
-			tmpPts.add(new Integer(left2));
 			numKeep++;
 		}
 		long after = System.currentTimeMillis();
@@ -557,27 +618,17 @@ public class MisassemblyBreaker {
 		out.close();
 		LAMBDA = LAMBDA/MEAN_BLOCK_LEN;
 		
-		Iterator<String> ctgIt = mapPoints.keySet().iterator();
+		Iterator<String> ctgIt = ctgMBs.keySet().iterator();
 		Set<String> ctgToRm = new HashSet<String>();
 		Set<String> psPairsToRm = new HashSet<String>();
-		points = new HashMap<String,int[]>();
 		while(ctgIt.hasNext()){
 			tmp = ctgIt.next();
-			tmpPts = mapPoints.get(tmp);
-			if (tmpPts.size() < MIN_PTS) {
+			if (counts.get(tmp) < MIN_PTS) {
 				ctgToRm.add(tmp);
 				psPairsToRm.addAll(ctgMBs.get(tmp));
-			} else {
-				int[] ar = new int[tmpPts.size()];
-				Iterator<Integer> ptsIterator = tmpPts.iterator();
-				for (int p = 0; p < ar.length; p++){
-					ar[p] = ptsIterator.next();
-				}
-				points.put(tmp, ar);
-			}
+			} 
 		}
 		removeKeys(ctgs, ctgToRm);
-		removeKeys(mapPoints, ctgToRm);
 		removeKeys(chainers, psPairsToRm);
 	
 		matches = chainers.values();
@@ -610,6 +661,7 @@ public class MisassemblyBreaker {
 		 * LAMBDA Rate of mapping points (Poisson rate parameter)
 		 */	
 		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
+//		MAX_INTERPOINT_DIST = 2*PointChainer.MAX_RES;
 		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
 		//MAX_INTERPOINT_DIST = 600;
 	}
@@ -633,6 +685,7 @@ public class MisassemblyBreaker {
 		System.out.println("        MAX_BLOCK_LEN       = " + MAX_BLOCK_LEN);
 		System.out.println("        MAX_INTERBLOCK_DIST = " + MAX_INTERBLOCK_DIST);
 		System.out.println("        MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
+		System.out.println("        MAX_RESIDUAL        = " + PointChainer.MAX_RES);
 	}
 	
 	private static void setOrientation(Collection<ReadPair> reads){
