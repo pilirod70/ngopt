@@ -5,14 +5,32 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.Stack;
+import java.util.TreeSet;
 import java.util.Vector;
 import java.util.HashMap;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.Integer;
 
 import org.halophiles.assembly.Contig;
+import org.halophiles.tools.SummaryStats;
 
 public class PointChainer {
+	
+	private static Comparator<MatchPoint> xSort = new Comparator<MatchPoint>(){
+
+		@Override
+		public int compare(MatchPoint arg0, MatchPoint arg1) {
+			if (arg0.x() == arg1.x())
+				return arg0.y() - arg1.y();
+			else 
+				return arg0.x() - arg1.x();
+		}
+		
+	};
 	
 	/**
 	 *  maximum residual for adding a MatchPoint to a KClump
@@ -26,7 +44,7 @@ public class PointChainer {
 	/**
 	 * All points in <code>matrix</code>
 	 */
-	HashSet<MatchPoint> currPoints;
+	TreeSet<MatchPoint> currPoints;
 	
 	/**
 	 * The KClumps resulting from chaining points.
@@ -53,8 +71,29 @@ public class PointChainer {
 	public PointChainer(Contig contig1, Contig contig2){
 		this.ctg1 = contig1;
 		this.ctg2 = contig2;
-		currPoints = new HashSet<MatchPoint>();
+		currPoints = new TreeSet<MatchPoint>(xSort);
 		kclumps = new HashSet<KClump>();
+	}
+	
+	public void exportCurrState(File file) throws IOException{
+		file.createNewFile();
+		PrintStream out = new PrintStream(file);
+		Iterator<MatchPoint> it = currPoints.iterator();
+		while(it.hasNext()){
+			MatchPoint tmp = it.next();
+			out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t0");
+		}
+		
+		Iterator<KClump> kcIt = kclumps.iterator();
+		while(kcIt.hasNext()){
+			KClump tmpKc = kcIt.next();
+			it = tmpKc.getMatchPoints().iterator();
+			while(it.hasNext()){
+				MatchPoint tmp = it.next();
+				out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t"+tmpKc.id);
+			}
+		}
+		out.close();
 	}
 	
 	public boolean addMatch(int x, int y){
@@ -74,6 +113,39 @@ public class PointChainer {
 			tmp.invert();
 		}
 		runAlgo();
+		
+		// merge overlapping KClumps
+		KClump[] ar = new KClump[kclumps.size()];
+		kclumps.toArray(ar);
+		
+		boolean[] altered = new boolean[kclumps.size()];
+		
+		
+		
+		for (int i = 0; i < ar.length; i++){
+			KClump kcI = ar[i];
+			if (altered[i])
+				continue;
+			for (int j = i+1; j < ar.length; j++){
+				KClump kcJ = ar[j];
+				if (kcI.xMin < kcJ.xMax && kcJ.xMin < kcI.xMax &&            // x locations overlap
+					kcI.yMin < kcJ.yMax && kcJ.yMin < kcI.yMax &&            // y locations overlap
+					Math.signum(kcI.slope()) == Math.signum(kcJ.slope())) {  // same orientation
+					
+					altered[i] = true;
+					altered[j] = true;
+					HashSet<MatchPoint> merged = new HashSet<MatchPoint>();
+					merged.addAll(kcI.getMatchPoints());
+					merged.addAll(kcJ.getMatchPoints());
+					kclumps.add(new KClump(merged, MAX_RES));
+					kclumps.remove(kcJ);
+					kclumps.remove(kcI);
+					break;
+				}
+			}
+		}
+		
+		
 	}
 	
 
@@ -137,9 +209,24 @@ public class PointChainer {
 				j_x++ ){
 					int j_in_y = yref.get(matchpoints[x_order[j_x]]);
 					if(matchpoints[y_order[j_in_y]].y() > matchpoints[i].y() && 
-							matchpoints[y_order[j_in_y]].y() - matchpoints[i].y() <= MisassemblyBreaker.MAX_INTERPOINT_DIST)
-						matchpoints[i].addNeighborhood(matchpoints[x_order[j_x]]);
-				}
+							matchpoints[y_order[j_in_y]].y() - matchpoints[i].y() <= MisassemblyBreaker.MAX_INTERPOINT_DIST){
+						
+						/*double slope = slope(matchpoints[i],matchpoints[x_order[j_x]]);
+						if (Math.abs(Math.log10(Math.abs(slope))) < 0.25){
+							matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);							
+						}*/
+						matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);							
+						
+					} else if(matchpoints[y_order[j_in_y]].y() < matchpoints[i].y() && 
+							 matchpoints[i].y() - matchpoints[y_order[j_in_y]].y() <= MisassemblyBreaker.MAX_INTERPOINT_DIST) {
+						/*double slope = slope(matchpoints[i],matchpoints[x_order[j_x]]);
+						if (Math.abs(Math.log10(Math.abs(slope))) < 0.25){
+							matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);
+						}*/
+						matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);
+					}
+						
+			}
 		}
 		// run DP algorithm
 		for (int i = 0; i < matchpoints.length; i++) {
@@ -150,10 +237,13 @@ public class PointChainer {
 		for(int i=0; i<matchpoints.length; i++){
 			MatchPoint tmp = matchpoints[i];
 			if (tmp.pred == null) {
-				Stack<MatchPoint> cc = tmp.getCC();
+				Set<MatchPoint> cc = tmp.getCC();
 				if (cc.size() < 5)
 					continue;
-				kclumpSet.add(new KClump(new HashSet<MatchPoint>(cc), MAX_RES));
+				refine(cc);
+				KClump tmpKc = new KClump(new HashSet<MatchPoint>(cc), MAX_RES);
+				kclumpSet.add(tmpKc);
+				currPoints.removeAll(cc);
 			}
 		}
 		// now collect all points that look like they belong to this line.
@@ -161,10 +251,53 @@ public class PointChainer {
 		while (kcIt.hasNext()) {
 			KClump tmpKc = kcIt.next();
 			for(int i=0; i<matchpoints.length; i++){
-				tmpKc.add(matchpoints[i]);
+				if (!currPoints.contains(matchpoints[i]) && tmpKc.add(matchpoints[i]))
+					currPoints.remove(matchpoints[i]);
+				
 			}
-			currPoints.removeAll(tmpKc.getMatchPoints());
 			kclumps.add(tmpKc);
 		}
 	}
+	
+	/**
+	 * Remove all points with residual > MAX_RES
+	 * @param points the set of points to refine
+	 * @return the Set of points that were removed from <code>points</code>
+	 */
+	private static Set<MatchPoint> refine(Set<MatchPoint> points){
+		double[] x = new double[points.size()];
+		double[] y = new double[points.size()];
+
+		Iterator<MatchPoint> it = points.iterator();
+		int i = 0;
+		while(it.hasNext()){
+			MatchPoint tmp = it.next();
+			x[i] = tmp.x();
+			y[i] = tmp.y();
+			i++;
+		}
+		double mu_x = SummaryStats.mean(x);
+		double mu_y = SummaryStats.mean(y);
+		// compute the linear regression coefficients
+		double slope = SummaryStats.covariance(x,mu_x,y,mu_y)/SummaryStats.variance(x,mu_x);
+		double intercept = mu_y - slope*mu_x;
+		
+		it = points.iterator();
+		Set<MatchPoint> toRm = new HashSet<MatchPoint>();
+		while(it.hasNext()){
+			MatchPoint p = it.next();
+			if (Math.abs(slope*p.x()+intercept - p.y()) > MAX_RES){
+				toRm.add(p);
+			}
+		}
+		
+		it = toRm.iterator();
+		while(it.hasNext())
+			points.remove(it.next());
+		
+		return toRm;
+	}
+	
+	
+	
 }
