@@ -3,7 +3,6 @@ package org.halophiles.assembly.qc;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -22,9 +21,11 @@ public class KClump {
 	int yMin;
 	
 	private double slope;
+	private double spearman;
+	private double kendall;
 	private double intercept;
 	
-	private Collection<MatchPoint> points;
+	private Set<MatchPoint> points;
 	
 	final int id;
 	
@@ -56,19 +57,24 @@ public class KClump {
 				yMax = (int) y[i];
 			if (y[i] < yMin)
 				yMin = (int) y[i];			
-			if (i==0){
-			//	ctgX = tmp.
-			}
+			
 			i++;
 		}
 		double mu_x = SummaryStats.mean(x);
 		double mu_y = SummaryStats.mean(y);
 		// compute the linear regression coefficients
-		slope = SummaryStats.covariance(x,mu_x,y,mu_y)/SummaryStats.variance(x,mu_x);
+		slope = SummaryStats.pearson(x, mu_x, y, mu_y);
 		intercept = mu_y - slope*mu_x;
+		if (x.length < 2) {
+			spearman = -1;
+			kendall = -1;
+		} else { 
+			spearman = SummaryStats.spearman(x, y);
+			kendall = SummaryStats.kendall(x, y);
+		}
 		// set upper and lower x limits for this KClump
-		xLowerBnd = xMin - MisassemblyBreaker.MAX_INTERPOINT_DIST; 
-		xUpperBnd = xMax + MisassemblyBreaker.MAX_INTERPOINT_DIST;
+		xLowerBnd = xMin - maxResid; 
+		xUpperBnd = xMax + maxResid;
 		this.maxResid = maxResid;
 		this.points = points;
 	}
@@ -86,9 +92,11 @@ public class KClump {
 	/**
 	 * Add MatchPoint p to this KClump if it fits according to the function <code> fit(MatchPoint p) </code>
 	 * @param p
-	 * @return
+	 * @return false if this point is already in this KClump, or if this point does not fit
 	 */
 	public boolean add(MatchPoint p){
+		if (points.contains(p))
+			return false;
 		if (fits(p)){
 			points.add(p);
 			if (p.x() > xMax)
@@ -99,7 +107,6 @@ public class KClump {
 				yMax = p.y();
 			else if (p.y() < yMin)
 				yMin = p.y();
-			//System.out.println("Adding point "+p.toString()+" to k-clump "+id);
 			return true;
 		} else {
 			return false;
@@ -117,7 +124,7 @@ public class KClump {
 	 * Return the points in this KClump
 	 * @return the points in this KClump
 	 */
-	public Collection<MatchPoint> getMatchPoints(){
+	public Set<MatchPoint> getMatchPoints(){
 		return points;
 	}
 	
@@ -136,6 +143,18 @@ public class KClump {
 			out.println(tmp.x()+"\t"+tmp.y());
 		}
 		out.close();
+	}
+	
+	public double slope(){
+		return slope;
+	}
+	
+	public double spearman(){
+		return spearman;
+	}
+	
+	public double kendall(){
+		return kendall;
 	}
 	
 }

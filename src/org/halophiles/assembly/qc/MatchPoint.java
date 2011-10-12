@@ -1,5 +1,6 @@
 package org.halophiles.assembly.qc;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -9,10 +10,13 @@ public class MatchPoint {
 	double S = -1;
 	private int x;
 	private int y;
+	private boolean inv;
 	MatchPoint pred = null;
 	MatchPoint incoming = null;
 	Set<MatchPoint> neighborhood;
-	Set<MatchPoint> tbEdges;
+	
+	HashMap<MatchPoint,Double> incomings;
+	
 	/**
 	 * Construct a new MatchPoint with the given points x and y
 	 * @param x the point in contig 1 
@@ -21,8 +25,9 @@ public class MatchPoint {
 	public MatchPoint(int x, int y){
 		this.x = x;
 		this.y = y;
+		this.inv = false;
 		neighborhood = new HashSet<MatchPoint>();
-		tbEdges = new HashSet<MatchPoint>();
+		this.incomings = new HashMap<MatchPoint, Double>();
 	}
 	/**
 	 * Adds a new point to the set of neighborhoods that this MatchPoint is in
@@ -39,6 +44,7 @@ public class MatchPoint {
 	 * @return the score of the maximal chain ending at this MatchPoint
 	 */
 	public double getScore(){
+		
 		if (S != -1) {
 			return S;
 		} else if (neighborhood.size()==0) {
@@ -52,6 +58,8 @@ public class MatchPoint {
 			// find the minimum value
 			while(it.hasNext()){
 				MatchPoint tmp = it.next();
+//				if (tmp.x==394837 && tmp.y==430259)
+//					System.out.println(x+"\t"+y);
 				tmpScore = numGaps(tmp,this);
 				if (tmpScore < min){
 					min = tmpScore;
@@ -59,10 +67,22 @@ public class MatchPoint {
 				}
 			}
 			pred.incoming = this;
-			S = min - 1;
+			pred.incomings.put(this, min);
+			if (pred.x==394837 && pred.y==430259)
+				System.out.println(x+"\t"+y);
+			S = min;
 			return S;
 		}
 	}
+	
+	public void clearNeighborhood(){
+		neighborhood = new HashSet<MatchPoint>();
+	}
+	
+	public void invert(){
+		inv = !inv;
+	}
+	
 	
 	/**
 	 * Return the x coordinate for this MatchPoint
@@ -77,27 +97,31 @@ public class MatchPoint {
 	 * @return
 	 */
 	public int y(){
-		return y;
+		return (inv?-1:1)*y;
+	}
+	
+	public int hashCode(){
+		return x ^ y;
 	}
 	
 	/**
 	 * Build the connected component starting at this MatchPoint
 	 * @return a set of MatchPoints that comprise the connected component that this MatchPoint belongs to.
 	 */
-	public Stack<MatchPoint> getCC(){
-		Stack<MatchPoint> ret = new Stack<MatchPoint>();
+	public Set<MatchPoint> getCC(){
+		Set<MatchPoint> ret = new HashSet<MatchPoint>();
 		return getCC(ret,this);	
 	}
 	
 	/**
 	 * A helper function for getCC()
 	 */
-	private Stack<MatchPoint> getCC(Stack<MatchPoint> points, MatchPoint p){
+	private Set<MatchPoint> getCC(Set<MatchPoint> points, MatchPoint p){
 		if (p.incoming == null) {
-			points.push(p);
+			points.add(p);
 			return points;
 		} else {
-			points.push(p);
+			points.add(p);
 			return getCC(points,p.incoming);
 		}
 	}
@@ -106,7 +130,7 @@ public class MatchPoint {
 	 * Return a String representation of this MatchPoint
 	 */
 	public String toString(){
-		return "("+x+","+y+")";
+		return "("+x+","+y+") "+neighborhood.size();
 	}
 	
 	/**
@@ -118,10 +142,10 @@ public class MatchPoint {
 	 * @return
 	 */
 	private static double numGaps(MatchPoint p1, MatchPoint p2){
-		double xDiff = (p2.x-p1.x); 
-		double yDiff = (p2.y-p1.y);
-		return Math.floor((xDiff+yDiff+Math.abs(xDiff-yDiff))
-				/ 2*MisassemblyBreaker.MAX_INTERPOINT_DIST + 0.5);
+		double xDiff = (p2.x()-p1.x()); 
+		double yDiff = (p2.y()-p1.y());
+//		return Math.floor((xDiff+yDiff+Math.abs(xDiff-yDiff)) / (2*MisassemblyBreaker.MAX_INTERPOINT_DIST) + 0.5);
+		return (xDiff+yDiff+Math.abs(xDiff-yDiff)) / (2*MisassemblyBreaker.MAX_INTERPOINT_DIST) + 0.5;
 	}
 
 }
