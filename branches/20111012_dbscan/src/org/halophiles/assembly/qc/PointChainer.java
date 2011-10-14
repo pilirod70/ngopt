@@ -21,7 +21,7 @@ import org.halophiles.tools.SummaryStats;
 
 public class PointChainer {
 	
-	static int EPS;
+	static double EPS;
 	
 	static int MIN_PTS = 1;
 	
@@ -33,6 +33,15 @@ public class PointChainer {
 				return arg0.y() - arg1.y();
 			else 
 				return arg0.x() - arg1.x();
+		}
+		
+	};
+
+	public static Comparator<KClump> CLUST_COMP = new Comparator<KClump>(){
+
+		@Override
+		public int compare(KClump arg0, KClump arg1) {
+			return arg0.xMax - arg1.xMax;
 		}
 		
 	};
@@ -83,7 +92,7 @@ public class PointChainer {
 		this.ctg1 = contig1;
 		this.ctg2 = contig2;
 		currPoints = new TreeSet<MatchPoint>(xSort);
-		kclumps = new HashSet<KClump>();
+		kclumps = new TreeSet<KClump>(CLUST_COMP);
 		visited = new HashSet<MatchPoint>();
 		noise = new HashSet<MatchPoint>();
 		assigned = new HashSet<MatchPoint>();
@@ -150,49 +159,45 @@ public class PointChainer {
 			}
 		}
 		out.close();
-		System.out.println(ctg1.getId()+" "+ctg2.getId()+" "+minDens);
 		
 		locateNeighbors();
 		runDBSCAN();
+		if (kclumps.isEmpty())
+			return;
+		System.out.println("[a5_qc] Found "+kclumps.size()+" initial blocks between contigs "+ctg1.getId()+" and "+ctg2.getId());
 		
 		// merge overlapping KClumps
-		KClump[] ar = new KClump[kclumps.size()];
-		kclumps.toArray(ar);
-		boolean[] altered = new boolean[kclumps.size()];
-		for (int i = 0; i < ar.length; i++){
-			KClump kcI = ar[i];
-			if (altered[i])
-				continue;
-			for (int j = i+1; j < ar.length; j++){
-				KClump kcJ = ar[j];
-//				if (kcI.xMin < kcJ.xMax && kcJ.xMin < kcI.xMax &&            // x locations overlap
-//					kcI.yMin < kcJ.yMax && kcJ.yMin < kcI.yMax &&            // y locations overlap
-//					Math.signum(kcI.slope()) == Math.signum(kcJ.slope())) {  // same orientation
-				int xGap = Integer.MAX_VALUE;
-				int yGap = Integer.MAX_VALUE;
-				if (kcI.xMax > kcJ.xMax )
-					xGap = kcI.xMin - kcJ.xMax;
-				else
-					xGap = kcJ.xMin - kcI.xMax;
-				if (kcI.yMax > kcJ.yMax )
-					yGap = kcI.yMin - kcJ.yMax;
-				else
-					yGap = kcJ.yMin - kcI.yMax;
-				
-				
-				if (xGap < EPS || yGap < EPS) {
-					altered[i] = true;
-					altered[j] = true;
-					Set<MatchPoint> merged = new TreeSet<MatchPoint>(xSort);
-					merged.addAll(kcI.getMatchPoints());
-					merged.addAll(kcJ.getMatchPoints());
-					kclumps.add(new KClump(merged));
-					kclumps.remove(kcJ);
-					kclumps.remove(kcI);
-					break;
-				}
+		Vector<KClump> v = new Vector<KClump>(kclumps);
+		int i = 0;
+		while(i < v.size()-1){
+			KClump kcI = v.get(i);
+			KClump kcJ = v.get(i+1);
+//			if (kcI.xMin < kcJ.xMax && kcJ.xMin < kcI.xMax &&            // x locations overlap
+//				kcI.yMin < kcJ.yMax && kcJ.yMin < kcI.yMax &&            // y locations overlap
+//				Math.signum(kcI.slope()) == Math.signum(kcJ.slope())) {  // same orientation
+			int xGap = Integer.MAX_VALUE;
+			int yGap = Integer.MAX_VALUE;
+			if (kcI.xMax > kcJ.xMax )
+				xGap = kcI.xMin - kcJ.xMax;
+			else
+				xGap = kcJ.xMin - kcI.xMax;
+			if (kcI.yMax > kcJ.yMax )
+				yGap = kcI.yMin - kcJ.yMax;
+			else
+				yGap = kcJ.yMin - kcI.yMax;
+			
+			
+			if (xGap < EPS && yGap < EPS) {
+				Set<MatchPoint> merged = new TreeSet<MatchPoint>(xSort);
+				merged.addAll(kcI.getMatchPoints());
+				merged.addAll(kcJ.getMatchPoints());
+				v.remove(i);
+				v.set(i, new KClump(merged));
+				break;
+			} else{
+				i++;
+				currPoints.removeAll(kcI.getMatchPoints());
 			}
-			currPoints.removeAll(kcI.getMatchPoints());
 		}
 		
 	}
@@ -219,28 +224,20 @@ public class PointChainer {
 	private void locateNeighbors(){
 		MatchPoint[] matchpoints = new MatchPoint[currPoints.size()];
 		Integer[] x_order_int = new Integer[matchpoints.length];
-		Integer[] y_order_int = new Integer[matchpoints.length];
 		Iterator<MatchPoint> it = currPoints.iterator();
 		int[] x_order = new int[matchpoints.length];
-		int[] y_order = new int[matchpoints.length];	
 		HashMap<MatchPoint, Integer> xref = new HashMap<MatchPoint, Integer>();
-		HashMap<MatchPoint, Integer> yref = new HashMap<MatchPoint, Integer>();
 		for(int i=0; i<matchpoints.length; i++){
 			matchpoints[i] = it.next();
 			x_order_int[i]=i;
-			y_order_int[i]=i;
 		}
 		MatchComparator mcx = new MatchComparator(0, matchpoints);
-		MatchComparator mcy = new MatchComparator(1, matchpoints);
 		
 		Arrays.sort(x_order_int, mcx);
-		Arrays.sort(y_order_int, mcy);
 				
 		for(int i=0; i<x_order.length; i++){
 			x_order[i] = x_order_int[i];
-			y_order[i] = y_order_int[i];
 			xref.put(matchpoints[x_order[i]], i);
-			yref.put(matchpoints[y_order[i]], i);
 		}
 		/* BUILD NEIGHBORHOODS
 		 * 
@@ -250,41 +247,18 @@ public class PointChainer {
 		 * 			j_y - i_y < MAX_INTERPOINT_DIST
 		 * 
 		 */
-		int R = (int) Math.ceil(EPS*Math.sqrt(2));
+		double R = EPS*Math.sqrt(2);
 		for( int i=0; i<matchpoints.length; i++){
 			// where is this point in x?
 			int i_in_x = xref.get(matchpoints[i]);
 			for(int j_x=i_in_x+1; j_x < x_order.length && 
-				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= R; 
-				j_x++ ){
-					int j_in_y = yref.get(matchpoints[x_order[j_x]]);
-					if(matchpoints[y_order[j_in_y]].y() > matchpoints[i].y() && 
-							matchpoints[y_order[j_in_y]].y() - matchpoints[i].y() <= EPS){
-						matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);							
-						matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);						
-					} else if(matchpoints[y_order[j_in_y]].y() < matchpoints[i].y() && 
-							 matchpoints[i].y() - matchpoints[y_order[j_in_y]].y() <= EPS) {
-						matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);
-						matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
-					}
-						
-			}
+				euclidean(matchpoints[x_order[j_x]],matchpoints[i]) <= EPS; 
+																	j_x++)
+					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 			for(int j_x=i_in_x-1; j_x >= 0 && 
-				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= R; 
-				j_x-- ){
-				int j_in_y = yref.get(matchpoints[x_order[j_x]]);
-				if(matchpoints[y_order[j_in_y]].y() > matchpoints[i].y() && 
-						matchpoints[y_order[j_in_y]].y() - matchpoints[i].y() <= EPS){
-					matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);							
-					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
-				} else if(matchpoints[y_order[j_in_y]].y() < matchpoints[i].y() && 
-						 matchpoints[i].y() - matchpoints[y_order[j_in_y]].y() <= EPS) {
-					matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);
-					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
-					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
-				}
-					
-			}
+				euclidean(matchpoints[x_order[j_x]],matchpoints[i]) <= EPS; 
+																	j_x--)
+				matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 		}
 	}
 	
@@ -292,14 +266,9 @@ public class PointChainer {
 	private void runDBSCAN(){
 		Iterator<MatchPoint> it = currPoints.iterator();
 		Set<MatchPoint> currClust = null;
-		boolean first = true;
 		MatchPoint tmp = null;
 		while(it.hasNext()){
 			tmp = it.next();
-			if (first){
-				System.out.println("FIRST_VISIT = " +tmp.toString());
-				first = false;
-			}
 			if (visited.contains(tmp))
 				continue;
 			if (tmp.getNeighbors().size() < MIN_PTS){
@@ -313,7 +282,6 @@ public class PointChainer {
 			}
 			visited.add(tmp);
 		}
-		System.out.println("LAST_VISIT = "+tmp.toString());
 	}
 	
 	private void expandClusters(MatchPoint p, Set<MatchPoint> clust){

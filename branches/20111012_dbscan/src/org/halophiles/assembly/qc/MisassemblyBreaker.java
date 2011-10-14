@@ -255,16 +255,11 @@ public class MisassemblyBreaker {
 	}
 	
 	private static void addBlocks(PointChainer pc, Vector<int[]> xBlocks, Vector<int[]> yBlocks) throws IOException {
-		String comp = pc.getContig1().getId()+"v"+pc.getContig2().getId();
-		
-		
 		KClump[] kclumps = pc.getKClumps();
-		System.out.println(comp+": "+kclumps.length+" initial blocks");
 		int xlen = 0;
 		int ylen = 0;
 		int[] x = null;
 		int[] y = null;
-		boolean first = true;
 		for (int i = 0; i < kclumps.length; i++){
 			xlen = kclumps[i].xMax-kclumps[i].xMin;
 			ylen = kclumps[i].yMax-kclumps[i].yMin;
@@ -282,35 +277,9 @@ public class MisassemblyBreaker {
 				y[0] = kclumps[i].yMin;
 				y[1] = kclumps[i].yMax;
 			}
-			
-			double rat = ((double)Math.min(xlen,ylen))/Math.max(xlen,ylen);
-			
-			if (pc.getContig1().getId() == 2 && pc.getContig2().getId() == 2)
-				System.out.print("");
-			if (xden >= LAMBDA && yden >= LAMBDA && !(xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN)) {
-				System.out.print("");
-			}
 			if (xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN) {
-//			if (xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN || (pc.getContig1().getId() == 2 && pc.getContig2().getId() == 2)) {
-			//if (xden >= LAMBDA && yden >= LAMBDA && slopeDev <= 0.25) {
-
-				if (first){
-					System.out.println("[a5_qc] Found block between "+pc.getContig1().getId()+" and "+pc.getContig2().getId() + " - " + pc.numPoints());
-					first = false;
-				}
-				NF.setMaximumFractionDigits(5);
-				System.out.println("            "+x[0]+"-"+x[1]+" <-> "+y[0]+"-"+y[1]+"    "+kclumps[i].size()+"    "+ NF.format(kclumps[i].density()) + "    "+xlen+"    "+ylen);
-//				System.out.println("            "+x[0]+"-"+x[1]+" <-> "+y[0]+"-"+y[1]+"    "+kclumps[i].size()+"    "+
-//						NF.format(rat)+"    "+"    "+
-//						NF.format(slopeDev)+"    "+NF.format(kclumps[i].slope())+"    "+NF.format(kclumps[i].spearman())+"    "+NF.format(kclumps[i].kendall()));
 				xBlocks.add(x);
 				yBlocks.add(y);
-			
-				if (xden < LAMBDA)
-					System.out.print("");
-				if (yden < LAMBDA)
-					System.out.print("");
-
 			} else {
 				if (xden >= LAMBDA)
 					System.out.print("");
@@ -685,8 +654,8 @@ public class MisassemblyBreaker {
 		 * LAMBDA Rate of mapping points (Poisson rate parameter)
 		 */	
 //		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
-		MAX_INTERPOINT_DIST = 2*PointChainer.MAX_RES;
-		PointChainer.EPS = MAX_INTERPOINT_DIST;
+		MAX_INTERPOINT_DIST = Math.max(2*PointChainer.MAX_RES,(int) (Math.log(ALPHA)/(-LAMBDA)));
+		PointChainer.EPS = Math.sqrt(2)*MAX_INTERPOINT_DIST;
 		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
 		//MAX_INTERPOINT_DIST = 600;
 	}
