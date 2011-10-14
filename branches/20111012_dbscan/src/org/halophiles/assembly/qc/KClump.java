@@ -11,19 +11,11 @@ import org.halophiles.tools.SummaryStats;
 public class KClump {
 	private static int COUNT = 0;
 	
-	private int maxResid;
-	private int xLowerBnd;
-	private int xUpperBnd;
-	
 	int xMax;
 	int xMin;
 	int yMax;
 	int yMin;
 	
-	private double slope;
-	private double spearman;
-	private double kendall;
-	private double intercept;
 	
 	private Set<MatchPoint> points;
 	
@@ -35,7 +27,7 @@ public class KClump {
 	 * @param points the points in this KClump
 	 * @param maxResid the maximum residual for calling a point a member of this KClump
 	 */
-	public KClump(Set<MatchPoint> points, int maxResid){
+	public KClump(Set<MatchPoint> points){
 		id = ++COUNT;
 		xMax = Integer.MIN_VALUE;
 		xMin = Integer.MAX_VALUE;
@@ -59,37 +51,11 @@ public class KClump {
 				yMin = (int) y[i];			
 			
 			i++;
-		}
-		double mu_x = SummaryStats.mean(x);
-		double mu_y = SummaryStats.mean(y);
-		// compute the linear regression coefficients
-		slope = SummaryStats.pearson(x, mu_x, y, mu_y);
-		intercept = mu_y - slope*mu_x;
-		if (x.length < 2) {
-			spearman = -1;
-			kendall = -1;
-		} else { 
-			spearman = SummaryStats.spearman(x, y);
-			kendall = SummaryStats.kendall(x, y);
-		}
-		// set upper and lower x limits for this KClump
-		xLowerBnd = xMin - maxResid; 
-		xUpperBnd = xMax + maxResid;
-		this.maxResid = maxResid;
+		}	
 		this.points = points;
 	}
 	
-	/**
-	 * Determines if MatchPoint p fits in this KClump
-	 * @param p the point to fit
-	 * @return true if within x limits and residual is small enough
-	 */
-	public boolean fits(MatchPoint p){
-		double yfit = slope*p.x()+intercept;
-		return xLowerBnd < p.x() && p.x() < xUpperBnd && Math.abs(yfit - p.y()) < maxResid;
-	}
 	
-
 	/**
 	 * Returns the number of points in this KClump
 	 * @return the number of points in this KClump
@@ -104,6 +70,10 @@ public class KClump {
 	 */
 	public Set<MatchPoint> getMatchPoints(){
 		return points;
+	}
+	
+	public int hashCode(){
+		return id;
 	}
 	
 	/**
@@ -121,18 +91,6 @@ public class KClump {
 			out.println(tmp.x()+"\t"+tmp.y());
 		}
 		out.close();
-	}
-	
-	public double slope(){
-		return slope;
-	}
-	
-	public double spearman(){
-		return spearman;
-	}
-	
-	public double kendall(){
-		return kendall;
 	}
 	
 	public double density(){
