@@ -11,6 +11,7 @@ import java.util.TreeSet;
 import java.util.Vector;
 import java.util.HashMap;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.Integer;
@@ -19,6 +20,10 @@ import org.halophiles.assembly.Contig;
 import org.halophiles.tools.SummaryStats;
 
 public class PointChainer {
+	
+	static int EPS;
+	
+	static int MIN_PTS = 1;
 	
 	private static Comparator<MatchPoint> xSort = new Comparator<MatchPoint>(){
 
@@ -44,7 +49,9 @@ public class PointChainer {
 	/**
 	 * All points in <code>matrix</code>
 	 */
-	TreeSet<MatchPoint> currPoints;
+	private TreeSet<MatchPoint> currPoints;
+	
+	private int numPoints; 
 	
 	/**
 	 * The KClumps resulting from chaining points.
@@ -52,6 +59,10 @@ public class PointChainer {
 	 * 
 	 */
 	private HashSet<KClump> kclumps;
+	
+	private HashSet<MatchPoint> visited;
+	private HashSet<MatchPoint> noise;
+	private HashSet<MatchPoint> assigned;
 	
 	private class MatchComparator implements Comparator<Integer>{
 		public MatchComparator(int contig, MatchPoint[] matches){
@@ -73,6 +84,10 @@ public class PointChainer {
 		this.ctg2 = contig2;
 		currPoints = new TreeSet<MatchPoint>(xSort);
 		kclumps = new HashSet<KClump>();
+		visited = new HashSet<MatchPoint>();
+		noise = new HashSet<MatchPoint>();
+		assigned = new HashSet<MatchPoint>();
+		numPoints = 0;
 	}
 	
 	public void exportCurrState(File file) throws IOException{
@@ -96,42 +111,76 @@ public class PointChainer {
 		out.close();
 	}
 	
+	public int numPoints(){
+		return numPoints;
+	}
+	
 	public boolean addMatch(int x, int y){
+		numPoints++;
 		return currPoints.add(new MatchPoint(x, y));
 	}
 	
-	public void buildKClumps(){
-		runAlgo();
-		/*
-		 * clear the neighborhoods of the remaining points
-		 * invert, and re-run the algorithm
-		 */
+	public void buildKClumps(File densFile){
+		int win = Math.max(1000,MisassemblyBreaker.MEAN_BLOCK_LEN);
+		int[][] grid = new int[ctg1.len/win+(ctg1.len%win==0?0:1)]
+		                       [ctg2.len/win+(ctg2.len%win==0?0:1)];
 		Iterator<MatchPoint> it = currPoints.iterator();
 		while(it.hasNext()){
 			MatchPoint tmp = it.next();
-			tmp.clearNeighborhood();
-			tmp.invert();
+			int xIdx = tmp.x()/win+(tmp.x()%win==0?-1:0);
+			int yIdx = tmp.y()/win+(tmp.y()%win==0?-1:0); 
+			grid[xIdx][yIdx]++;
 		}
-		runAlgo();
+		double winDouble = win;
+		double minDens = Double.POSITIVE_INFINITY;
+		PrintStream out = null;
+		try {
+			out = new PrintStream(densFile);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			System.exit(-1);
+		}
+		for (int i = 0; i < grid.length; i++){
+			for (int j = 0; j < grid[i].length; j++){
+				double tmp = grid[i][j]/(winDouble*winDouble);
+				if (tmp > 0)
+					out.println(grid[i][j]);
+				if (tmp > 0 && tmp < minDens)
+					minDens = tmp;
+			}
+		}
+		out.close();
+		System.out.println(ctg1.getId()+" "+ctg2.getId()+" "+minDens);
+		
+		locateNeighbors();
+		runDBSCAN();
 		
 		// merge overlapping KClumps
 		KClump[] ar = new KClump[kclumps.size()];
 		kclumps.toArray(ar);
-		
 		boolean[] altered = new boolean[kclumps.size()];
-		
-		
-		
 		for (int i = 0; i < ar.length; i++){
 			KClump kcI = ar[i];
 			if (altered[i])
 				continue;
 			for (int j = i+1; j < ar.length; j++){
 				KClump kcJ = ar[j];
-				if (kcI.xMin < kcJ.xMax && kcJ.xMin < kcI.xMax &&            // x locations overlap
-					kcI.yMin < kcJ.yMax && kcJ.yMin < kcI.yMax &&            // y locations overlap
-					Math.signum(kcI.slope()) == Math.signum(kcJ.slope())) {  // same orientation
-					
+//				if (kcI.xMin < kcJ.xMax && kcJ.xMin < kcI.xMax &&            // x locations overlap
+//					kcI.yMin < kcJ.yMax && kcJ.yMin < kcI.yMax &&            // y locations overlap
+//					Math.signum(kcI.slope()) == Math.signum(kcJ.slope())) {  // same orientation
+				int xGap = Integer.MAX_VALUE;
+				int yGap = Integer.MAX_VALUE;
+				if (kcI.xMax > kcJ.xMax )
+					xGap = kcI.xMin - kcJ.xMax;
+				else
+					xGap = kcJ.xMin - kcI.xMax;
+				if (kcI.yMax > kcJ.yMax )
+					yGap = kcI.yMin - kcJ.yMax;
+				else
+					yGap = kcJ.yMin - kcI.yMax;
+				
+				
+				if (xGap < EPS || yGap < EPS) {
 					altered[i] = true;
 					altered[j] = true;
 					HashSet<MatchPoint> merged = new HashSet<MatchPoint>();
@@ -143,8 +192,8 @@ public class PointChainer {
 					break;
 				}
 			}
+			currPoints.removeAll(kcI.getMatchPoints());
 		}
-		
 		
 	}
 	
@@ -167,7 +216,7 @@ public class PointChainer {
 		return ctg2;
 	}
 	
-	private void runAlgo(){
+	private void locateNeighbors(){
 		MatchPoint[] matchpoints = new MatchPoint[currPoints.size()];
 		Integer[] x_order_int = new Integer[matchpoints.length];
 		Integer[] y_order_int = new Integer[matchpoints.length];
@@ -201,103 +250,93 @@ public class PointChainer {
 		 * 			j_y - i_y < MAX_INTERPOINT_DIST
 		 * 
 		 */
+		int R = (int) Math.ceil(EPS*Math.sqrt(2));
 		for( int i=0; i<matchpoints.length; i++){
 			// where is this point in x?
 			int i_in_x = xref.get(matchpoints[i]);
 			for(int j_x=i_in_x+1; j_x < x_order.length && 
-				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= MisassemblyBreaker.MAX_INTERPOINT_DIST; 
+				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= R; 
 				j_x++ ){
 					int j_in_y = yref.get(matchpoints[x_order[j_x]]);
 					if(matchpoints[y_order[j_in_y]].y() > matchpoints[i].y() && 
-							matchpoints[y_order[j_in_y]].y() - matchpoints[i].y() <= MisassemblyBreaker.MAX_INTERPOINT_DIST){
-						
-						/*double slope = slope(matchpoints[i],matchpoints[x_order[j_x]]);
-						if (Math.abs(Math.log10(Math.abs(slope))) < 0.25){
-							matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);							
-						}*/
+							matchpoints[y_order[j_in_y]].y() - matchpoints[i].y() <= EPS){
 						matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);							
-						
+						matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);						
 					} else if(matchpoints[y_order[j_in_y]].y() < matchpoints[i].y() && 
-							 matchpoints[i].y() - matchpoints[y_order[j_in_y]].y() <= MisassemblyBreaker.MAX_INTERPOINT_DIST) {
-						/*double slope = slope(matchpoints[i],matchpoints[x_order[j_x]]);
-						if (Math.abs(Math.log10(Math.abs(slope))) < 0.25){
-							matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);
-						}*/
+							 matchpoints[i].y() - matchpoints[y_order[j_in_y]].y() <= EPS) {
 						matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);
+						matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 					}
 						
 			}
-		}
-		// run DP algorithm
-		for (int i = 0; i < matchpoints.length; i++) {
-			matchpoints[i].getScore();
-		}
-		// first find our Kclumps ( DP traceback )
-		Vector<KClump> kclumpSet = new Vector<KClump>();
-		for(int i=0; i<matchpoints.length; i++){
-			MatchPoint tmp = matchpoints[i];
-			if (tmp.pred == null) {
-				Set<MatchPoint> cc = tmp.getCC();
-				if (cc.size() < 5)
-					continue;
-				refine(cc);
-				KClump tmpKc = new KClump(new HashSet<MatchPoint>(cc), MAX_RES);
-				kclumpSet.add(tmpKc);
-				currPoints.removeAll(cc);
+			for(int j_x=i_in_x-1; j_x >= 0 && 
+				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= EPS; 
+				j_x-- ){
+				int j_in_y = yref.get(matchpoints[x_order[j_x]]);
+				if(matchpoints[y_order[j_in_y]].y() > matchpoints[i].y() && 
+						matchpoints[y_order[j_in_y]].y() - matchpoints[i].y() <= EPS){
+					matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);							
+					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
+				} else if(matchpoints[y_order[j_in_y]].y() < matchpoints[i].y() && 
+						 matchpoints[i].y() - matchpoints[y_order[j_in_y]].y() <= EPS) {
+					matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);
+					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
+				}
+					
 			}
-		}
-		// now collect all points that look like they belong to this line.
-		Iterator<KClump> kcIt = kclumpSet.iterator();
-		while (kcIt.hasNext()) {
-			KClump tmpKc = kcIt.next();
-			for(int i=0; i<matchpoints.length; i++){
-				if (!currPoints.contains(matchpoints[i]) && tmpKc.add(matchpoints[i]))
-					currPoints.remove(matchpoints[i]);
-				
-			}
-			kclumps.add(tmpKc);
 		}
 	}
 	
-	/**
-	 * Remove all points with residual > MAX_RES
-	 * @param points the set of points to refine
-	 * @return the Set of points that were removed from <code>points</code>
-	 */
-	private static Set<MatchPoint> refine(Set<MatchPoint> points){
-		double[] x = new double[points.size()];
-		double[] y = new double[points.size()];
-
-		Iterator<MatchPoint> it = points.iterator();
-		int i = 0;
+	
+	private void runDBSCAN(){
+		Iterator<MatchPoint> it = currPoints.iterator();
+		Set<MatchPoint> currClust = null;
+		boolean first = true;
 		while(it.hasNext()){
 			MatchPoint tmp = it.next();
-			x[i] = tmp.x();
-			y[i] = tmp.y();
-			i++;
-		}
-		double mu_x = SummaryStats.mean(x);
-		double mu_y = SummaryStats.mean(y);
-		// compute the linear regression coefficients
-		double slope = SummaryStats.covariance(x,mu_x,y,mu_y)/SummaryStats.variance(x,mu_x);
-		double intercept = mu_y - slope*mu_x;
-		
-		it = points.iterator();
-		Set<MatchPoint> toRm = new HashSet<MatchPoint>();
-		while(it.hasNext()){
-			MatchPoint p = it.next();
-			if (Math.abs(slope*p.x()+intercept - p.y()) > MAX_RES){
-				toRm.add(p);
+			if (first){
+				System.out.println("FIRST_VISIT = " +tmp.toString());
+				first = false;
 			}
+			if (visited.contains(tmp))
+				continue;
+			if (tmp.getNeighbors().size() < MIN_PTS){
+				noise.add(tmp);
+				assigned.add(tmp);
+				continue;
+			} else {
+				currClust = new TreeSet<MatchPoint>(xSort);
+				expandClusters(tmp, currClust);
+				kclumps.add(new KClump(currClust, MAX_RES));
+			}
+			visited.add(tmp);
 		}
-		
-		it = toRm.iterator();
-		while(it.hasNext())
-			points.remove(it.next());
-		
-		return toRm;
 	}
 	
+	private void expandClusters(MatchPoint p, Set<MatchPoint> clust){
+		clust.add(p);
+		assigned.add(p);
+		Vector<MatchPoint> neighbors = new Vector<MatchPoint>(p.getNeighbors());
+		int i = 0;
+		while(i < neighbors.size()){
+			MatchPoint tmp = neighbors.get(i);
+			if (!visited.contains(tmp)) {
+				visited.add(tmp);
+				if (tmp.getNeighbors().size() >= MIN_PTS)
+					neighbors.addAll(tmp.getNeighbors());
+					
+			} 
+			if (!assigned.contains(tmp)){
+				clust.add(tmp);
+				assigned.add(tmp);
+			}
+			i++;
+		}
+	}
+	
+	private static double euclidean(MatchPoint p1, MatchPoint p2){
+		return Math.sqrt(Math.pow(p1.x()-p2.x(),2)+Math.pow(p1.y()-p2.y(),2));
+	}
 	
 	
 }

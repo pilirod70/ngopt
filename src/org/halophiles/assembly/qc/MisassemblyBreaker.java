@@ -53,17 +53,17 @@ public class MisassemblyBreaker {
 	private static double LAMBDA;
 	public static int MAX_INTERPOINT_DIST;
 	private static int MAX_INTERBLOCK_DIST;
-	private static int MEAN_BLOCK_LEN;
-	private static int MIN_BLOCK_LEN;
-	private static int MAX_BLOCK_LEN;
+	static int MEAN_BLOCK_LEN;
+	static int MIN_BLOCK_LEN;
+	static int MAX_BLOCK_LEN;
 	
 	private static Collection<PointChainer> matches;
 	
 //	private static Map<String,int[]> points;
 	
 	public static void main(String[] args){
-		if (args.length != 3 && args.length != 4){
-			System.err.println("Usage: java -jar A5qc.jar <sam_file> <contig_file> <output_file> <num_libs>");
+		if (args.length != 5 && args.length != 4){
+			System.err.println("Usage: java -jar A5qc.jar <sam_file> <contig_file> <output_base> <output_dir> <num_libs>");
 			System.exit(-1);
 		}
 		try{
@@ -73,9 +73,11 @@ public class MisassemblyBreaker {
 			NF.setGroupingUsed(false);
 			String samPath = args[0];
 			String base = args[2];
+			File outDir = new File(args[3]);
+			outDir.mkdirs();
 			int numLibs = 1;
-			if (args.length == 4){
-				numLibs = Integer.parseInt(args[3]);
+			if (args.length == 5){
+				numLibs = Integer.parseInt(args[4]);
 			}
 			System.out.println("[a5_qc] Reading "+samPath);
 			File samFile = new File(samPath);
@@ -113,7 +115,7 @@ public class MisassemblyBreaker {
 				}
 			}
 			setMAXBLOCKLEN(clusterStats);
-			loadData(samPath, base, contigs, ranges);
+			loadData(samPath, contigs, ranges);
 			setParameters(clusterStats);
 			printParams();
 			
@@ -122,16 +124,21 @@ public class MisassemblyBreaker {
 			Map<String,Vector<int[]>> blocks = new HashMap<String,Vector<int[]>>();
 			Vector<int[]> xBlocks = null;
 			Vector<int[]> yBlocks = null;
-			File matchDir = new File(samFile.getParentFile(),"matches");
+			File matchDir = new File(outDir,base+".matches");
+			File densDir = new File(outDir,base+".dens");
 			matchDir.mkdirs();
+			densDir.mkdirs();
 			while(mbIt.hasNext()){
 				PointChainer pc = mbIt.next();
 				// get Vector for holding contig X blocks
 				xBlocks = new Vector<int[]>();
 				// get Vector for holding contig Y blocks
 				yBlocks = new Vector<int[]>();
+				pc.buildKClumps(new File(densDir,"dens."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
 				addBlocks(pc, xBlocks, yBlocks);
 				pc.exportCurrState(new File(matchDir,"match."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
+				removeTerminalBlocks(pc.getContig1(), xBlocks);
+				removeTerminalBlocks(pc.getContig2(), yBlocks);
 		//		mergeAndFilterBlocks(pc.getContig1(), xBlocks);
 		//		mergeAndFilterBlocks(pc.getContig2(), yBlocks);
 				if (blocks.containsKey(pc.getContig1().name))
@@ -154,7 +161,7 @@ public class MisassemblyBreaker {
 			while(it.hasNext()){
 				String tmpCtg = it.next();
 				Vector<int[]> tmpBlocks = blocks.get(tmpCtg);
-				System.out.println("[a5_qc] Found "+tmpBlocks.size()+" blocks on contig " + tmpCtg);
+				System.out.println("[a5_qc] Found "+tmpBlocks.size()+" blocks on contig " + contigs.get(tmpCtg).getId());
 				if (tmpBlocks.isEmpty())
 					toRm.add(tmpCtg);
 				else 
@@ -178,7 +185,7 @@ public class MisassemblyBreaker {
 			/*
 			 *  break on regions of a minimum distance that are flanked by two blocks
 			 */
-			File brokenScafFile = new File(args[2]);     
+			File brokenScafFile = new File(outDir, base+".broken.fasta");     
 			brokenScafFile.createNewFile();
 			ScaffoldExporter out = new ScaffoldExporter(brokenScafFile); 
 			File ctgFile = new File(args[1]);
@@ -230,6 +237,8 @@ public class MisassemblyBreaker {
 						System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
 						out.export(tmpCtg, sb, left, right);
 						left = tmpAr[i][0];
+					} else {
+						System.out.println(tmpAr[i][0]-tmpAr[i-1][1]);
 					}
 				}
 				right = sb.length();
@@ -246,11 +255,11 @@ public class MisassemblyBreaker {
 	}
 	
 	private static void addBlocks(PointChainer pc, Vector<int[]> xBlocks, Vector<int[]> yBlocks) throws IOException {
-		pc.buildKClumps();
 		String comp = pc.getContig1().getId()+"v"+pc.getContig2().getId();
 		
 		
 		KClump[] kclumps = pc.getKClumps();
+		System.out.println(comp+": "+kclumps.length+" initial blocks");
 		int xlen = 0;
 		int ylen = 0;
 		int[] x = null;
@@ -288,13 +297,14 @@ public class MisassemblyBreaker {
 			//if (xden >= LAMBDA && yden >= LAMBDA && slopeDev <= 0.25) {
 
 				if (first){
-					System.out.println("[a5_qc] Found block between "+pc.getContig1().toString()+" and "+pc.getContig2().toString());
+					System.out.println("[a5_qc] Found block between "+pc.getContig1().getId()+" and "+pc.getContig2().getId() + " - " + pc.numPoints());
 					first = false;
 				}
 				NF.setMaximumFractionDigits(5);
-				System.out.println("            "+x[0]+"-"+x[1]+" <-> "+y[0]+"-"+y[1]+"    "+kclumps[i].size()+"    "+
-								   NF.format(rat)+"    "+"    "+
-								   NF.format(slopeDev)+"    "+NF.format(kclumps[i].slope())+"    "+NF.format(kclumps[i].spearman())+"    "+NF.format(kclumps[i].kendall()));
+				System.out.println("            "+x[0]+"-"+x[1]+" <-> "+y[0]+"-"+y[1]+"    "+kclumps[i].size()+"    "+ NF.format(kclumps[i].density()) + "    "+xlen+"    "+ylen);
+//				System.out.println("            "+x[0]+"-"+x[1]+" <-> "+y[0]+"-"+y[1]+"    "+kclumps[i].size()+"    "+
+//						NF.format(rat)+"    "+"    "+
+//						NF.format(slopeDev)+"    "+NF.format(kclumps[i].slope())+"    "+NF.format(kclumps[i].spearman())+"    "+NF.format(kclumps[i].kendall()));
 				xBlocks.add(x);
 				yBlocks.add(y);
 			
@@ -309,6 +319,17 @@ public class MisassemblyBreaker {
 				if (yden >= LAMBDA)
 					System.out.print("");
 			}
+		}
+	}
+	
+	private static void removeTerminalBlocks(Contig contig, Vector<int[]> blocks){
+		int i = 0;
+		while (i < blocks.size()){
+			if (blocks.get(i)[1] < MAX_BLOCK_LEN || 
+					contig.len - blocks.get(i)[0] < MAX_BLOCK_LEN)
+				blocks.remove(i);
+			else
+				i++;
 		}
 	}
 	
@@ -408,7 +429,7 @@ public class MisassemblyBreaker {
 	 * @param ranges an array of arrays of max and min insert sizes
 	 * @throws IOException
 	 */
-	public static void loadData(String samPath, String base, Map<String,Contig> ctgs, double[][] ranges) throws IOException{
+	public static void loadData(String samPath, Map<String,Contig> ctgs, double[][] ranges) throws IOException{
 		for (int i = 0; i < ranges.length; i++)
 			System.out.println("[a5_qc] Filtering read pairs with inserts between "+
 					NF.format(ranges[i][0])+"-"+NF.format(ranges[i][1]));
@@ -636,9 +657,14 @@ public class MisassemblyBreaker {
 	
 	/**
 	 * Set parameters and print their values to standard out
-	 * @param ranges
+	 * @param ranges <code>[ mean, sd, n, nSd , min, max ]</code>
 	 */
 	private static void setParameters(double[][] ranges){
+		for (int i = 0; i < ranges.length; i++)
+//			if (ranges[i][1]*ranges[i][3] > PointChainer.MAX_RES)
+//				PointChainer.MAX_RES = (int) (ranges[i][1]*ranges[i][3]);
+			if (ranges[i][1] > PointChainer.MAX_RES)
+				PointChainer.MAX_RES = (int) (ranges[i][1]);
 		setMAXINTERPOINTDIST();
 		setMAXINTERBLOCKDIST();
 	}
@@ -660,8 +686,9 @@ public class MisassemblyBreaker {
 		 *
 		 * LAMBDA Rate of mapping points (Poisson rate parameter)
 		 */	
-		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
-//		MAX_INTERPOINT_DIST = 2*PointChainer.MAX_RES;
+//		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
+		MAX_INTERPOINT_DIST = 2*PointChainer.MAX_RES;
+		PointChainer.EPS = MAX_INTERPOINT_DIST;
 		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
 		//MAX_INTERPOINT_DIST = 600;
 	}
@@ -789,8 +816,6 @@ public class MisassemblyBreaker {
 			if (clusters[i].sd() <= clusters[i].mean() && i < numLibs){
 				signal.add(clusters[i]);
 				System.out.println("  (signal)");
-				if (clusters[i].sd() > PointChainer.MAX_RES)
-					PointChainer.MAX_RES = (int) clusters[i].sd();
 			} else {
 				System.out.println("  (noise)");
 			}
