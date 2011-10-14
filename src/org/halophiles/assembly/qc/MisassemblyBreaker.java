@@ -285,8 +285,6 @@ public class MisassemblyBreaker {
 			
 			double rat = ((double)Math.min(xlen,ylen))/Math.max(xlen,ylen);
 			
-			
-			double slopeDev = Math.abs(Math.log10(Math.abs(kclumps[i].slope())));
 			if (pc.getContig1().getId() == 2 && pc.getContig2().getId() == 2)
 				System.out.print("");
 			if (xden >= LAMBDA && yden >= LAMBDA && !(xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN)) {
@@ -713,6 +711,7 @@ public class MisassemblyBreaker {
 		System.out.println("        MAX_INTERBLOCK_DIST = " + MAX_INTERBLOCK_DIST);
 		System.out.println("        MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
 		System.out.println("        MAX_RESIDUAL        = " + PointChainer.MAX_RES);
+		System.out.println("        EPSILON             = " + PointChainer.EPS);
 	}
 	
 	private static void setOrientation(Collection<ReadPair> reads){

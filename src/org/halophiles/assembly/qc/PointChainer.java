@@ -25,7 +25,7 @@ public class PointChainer {
 	
 	static int MIN_PTS = 1;
 	
-	private static Comparator<MatchPoint> xSort = new Comparator<MatchPoint>(){
+	public static Comparator<MatchPoint> xSort = new Comparator<MatchPoint>(){
 
 		@Override
 		public int compare(MatchPoint arg0, MatchPoint arg1) {
@@ -58,7 +58,7 @@ public class PointChainer {
 	 * KClumps should be mutually exclusive
 	 * 
 	 */
-	private HashSet<KClump> kclumps;
+	private Set<KClump> kclumps;
 	
 	private HashSet<MatchPoint> visited;
 	private HashSet<MatchPoint> noise;
@@ -183,10 +183,10 @@ public class PointChainer {
 				if (xGap < EPS || yGap < EPS) {
 					altered[i] = true;
 					altered[j] = true;
-					HashSet<MatchPoint> merged = new HashSet<MatchPoint>();
+					Set<MatchPoint> merged = new TreeSet<MatchPoint>(xSort);
 					merged.addAll(kcI.getMatchPoints());
 					merged.addAll(kcJ.getMatchPoints());
-					kclumps.add(new KClump(merged, MAX_RES));
+					kclumps.add(new KClump(merged));
 					kclumps.remove(kcJ);
 					kclumps.remove(kcI);
 					break;
@@ -270,7 +270,7 @@ public class PointChainer {
 						
 			}
 			for(int j_x=i_in_x-1; j_x >= 0 && 
-				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= EPS; 
+				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= R; 
 				j_x-- ){
 				int j_in_y = yref.get(matchpoints[x_order[j_x]]);
 				if(matchpoints[y_order[j_in_y]].y() > matchpoints[i].y() && 
@@ -280,6 +280,7 @@ public class PointChainer {
 				} else if(matchpoints[y_order[j_in_y]].y() < matchpoints[i].y() && 
 						 matchpoints[i].y() - matchpoints[y_order[j_in_y]].y() <= EPS) {
 					matchpoints[x_order[j_x]].addNeighborhood(matchpoints[i]);
+					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 				}
 					
@@ -292,8 +293,9 @@ public class PointChainer {
 		Iterator<MatchPoint> it = currPoints.iterator();
 		Set<MatchPoint> currClust = null;
 		boolean first = true;
+		MatchPoint tmp = null;
 		while(it.hasNext()){
-			MatchPoint tmp = it.next();
+			tmp = it.next();
 			if (first){
 				System.out.println("FIRST_VISIT = " +tmp.toString());
 				first = false;
@@ -307,10 +309,11 @@ public class PointChainer {
 			} else {
 				currClust = new TreeSet<MatchPoint>(xSort);
 				expandClusters(tmp, currClust);
-				kclumps.add(new KClump(currClust, MAX_RES));
+				kclumps.add(new KClump(currClust));
 			}
 			visited.add(tmp);
 		}
+		System.out.println("LAST_VISIT = "+tmp.toString());
 	}
 	
 	private void expandClusters(MatchPoint p, Set<MatchPoint> clust){

@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Stack;
+import java.util.TreeSet;
 
 public class MatchPoint {
 	double S = -1;
@@ -29,7 +30,7 @@ public class MatchPoint {
 		this.y = y;
 		this.inv = false;
 		neighborhood = new HashSet<MatchPoint>();
-		neighbors = new HashSet<MatchPoint>();
+		neighbors = new TreeSet<MatchPoint>(PointChainer.xSort);
 		this.incomings = new HashMap<MatchPoint, Double>();
 	}
 	/**
@@ -45,43 +46,7 @@ public class MatchPoint {
 		neighbors.add(p);
 	}
 	
-	/**
-	 * Computes the score of the maximal chain ending at this MatchPoint
-	 * 
-	 * @return the score of the maximal chain ending at this MatchPoint
-	 */
-	public double getScore(){
 		
-		if (S != -1) {
-			return S;
-		} else if (neighborhood.size()==0) {
-			S = 0;
-			return S;
-		} else {			
-			// find the predecessor that minimizes the deviation from a slope of 1
-			Iterator<MatchPoint> it = neighborhood.iterator();
-			double min = Double.POSITIVE_INFINITY;
-			double tmpScore = -1;
-			// find the minimum value
-			while(it.hasNext()){
-				MatchPoint tmp = it.next();
-//				if (tmp.x==394837 && tmp.y==430259)
-//					System.out.println(x+"\t"+y);
-				tmpScore = numGaps(tmp,this);
-				if (tmpScore < min){
-					min = tmpScore;
-					pred = tmp;
-				}
-			}
-			pred.incoming = this;
-			pred.incomings.put(this, min);
-			if (pred.x==394837 && pred.y==430259)
-				System.out.println(x+"\t"+y);
-			S = min;
-			return S;
-		}
-	}
-	
 	public void clearNeighborhoods(){
 		neighborhood = new HashSet<MatchPoint>();
 	}
@@ -120,7 +85,7 @@ public class MatchPoint {
 	 * @return a set of MatchPoints that comprise the connected component that this MatchPoint belongs to.
 	 */
 	public Set<MatchPoint> getCC(){
-		Set<MatchPoint> ret = new HashSet<MatchPoint>();
+		Set<MatchPoint> ret = new TreeSet<MatchPoint>(PointChainer.xSort);
 		return getCC(ret,this);	
 	}
 	
