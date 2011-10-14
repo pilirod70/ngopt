@@ -15,6 +15,8 @@ public class MatchPoint {
 	MatchPoint incoming = null;
 	Set<MatchPoint> neighborhood;
 	
+	Set<MatchPoint> neighbors;
+	
 	HashMap<MatchPoint,Double> incomings;
 	
 	/**
@@ -27,6 +29,7 @@ public class MatchPoint {
 		this.y = y;
 		this.inv = false;
 		neighborhood = new HashSet<MatchPoint>();
+		neighbors = new HashSet<MatchPoint>();
 		this.incomings = new HashMap<MatchPoint, Double>();
 	}
 	/**
@@ -36,6 +39,10 @@ public class MatchPoint {
 	 */
 	public void addNeighborhood(MatchPoint p){
 		neighborhood.add(p);
+	}
+	
+	public void addNeighbor(MatchPoint p){
+		neighbors.add(p);
 	}
 	
 	/**
@@ -75,8 +82,12 @@ public class MatchPoint {
 		}
 	}
 	
-	public void clearNeighborhood(){
+	public void clearNeighborhoods(){
 		neighborhood = new HashSet<MatchPoint>();
+	}
+	
+	public Set<MatchPoint> getNeighbors(){
+		return neighbors;
 	}
 	
 	public void invert(){
@@ -130,7 +141,7 @@ public class MatchPoint {
 	 * Return a String representation of this MatchPoint
 	 */
 	public String toString(){
-		return "("+x+","+y+") "+neighborhood.size();
+		return "("+x+","+y+")";
 	}
 	
 	/**

@@ -89,29 +89,7 @@ public class KClump {
 		return xLowerBnd < p.x() && p.x() < xUpperBnd && Math.abs(yfit - p.y()) < maxResid;
 	}
 	
-	/**
-	 * Add MatchPoint p to this KClump if it fits according to the function <code> fit(MatchPoint p) </code>
-	 * @param p
-	 * @return false if this point is already in this KClump, or if this point does not fit
-	 */
-	public boolean add(MatchPoint p){
-		if (points.contains(p))
-			return false;
-		if (fits(p)){
-			points.add(p);
-			if (p.x() > xMax)
-				xMax = p.x();
-			else if (p.x() < xMin)
-				xMin = p.x();
-			if (p.y() > yMax)
-				yMax = p.y();
-			else if (p.y() < yMin)
-				yMin = p.y();
-			return true;
-		} else {
-			return false;
-		}
-	}
+
 	/**
 	 * Returns the number of points in this KClump
 	 * @return the number of points in this KClump
@@ -157,4 +135,7 @@ public class KClump {
 		return kendall;
 	}
 	
+	public double density(){
+		return points.size()/((double)(xMax-xMin)*(yMax-yMin));
+	}
 }
