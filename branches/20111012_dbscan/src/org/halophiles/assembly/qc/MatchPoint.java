@@ -8,10 +8,8 @@ import java.util.Stack;
 import java.util.TreeSet;
 
 public class MatchPoint {
-	double S = -1;
 	private int x;
 	private int y;
-	private boolean inv;
 	MatchPoint pred = null;
 	MatchPoint incoming = null;
 	Set<MatchPoint> neighborhood;
@@ -28,37 +26,18 @@ public class MatchPoint {
 	public MatchPoint(int x, int y){
 		this.x = x;
 		this.y = y;
-		this.inv = false;
 		neighborhood = new HashSet<MatchPoint>();
 		neighbors = new TreeSet<MatchPoint>(PointChainer.xSort);
 		this.incomings = new HashMap<MatchPoint, Double>();
-	}
-	/**
-	 * Adds a new point to the set of neighborhoods that this MatchPoint is in
-	 * 
-	 * @param p the MatchPoint who's neighborhood this is in
-	 */
-	public void addNeighborhood(MatchPoint p){
-		neighborhood.add(p);
 	}
 	
 	public void addNeighbor(MatchPoint p){
 		neighbors.add(p);
 	}
 	
-		
-	public void clearNeighborhoods(){
-		neighborhood = new HashSet<MatchPoint>();
-	}
-	
 	public Set<MatchPoint> getNeighbors(){
 		return neighbors;
 	}
-	
-	public void invert(){
-		inv = !inv;
-	}
-	
 	
 	/**
 	 * Return the x coordinate for this MatchPoint
@@ -73,33 +52,11 @@ public class MatchPoint {
 	 * @return
 	 */
 	public int y(){
-		return (inv?-1:1)*y;
+		return y;
 	}
 	
 	public int hashCode(){
 		return x ^ y;
-	}
-	
-	/**
-	 * Build the connected component starting at this MatchPoint
-	 * @return a set of MatchPoints that comprise the connected component that this MatchPoint belongs to.
-	 */
-	public Set<MatchPoint> getCC(){
-		Set<MatchPoint> ret = new TreeSet<MatchPoint>(PointChainer.xSort);
-		return getCC(ret,this);	
-	}
-	
-	/**
-	 * A helper function for getCC()
-	 */
-	private Set<MatchPoint> getCC(Set<MatchPoint> points, MatchPoint p){
-		if (p.incoming == null) {
-			points.add(p);
-			return points;
-		} else {
-			points.add(p);
-			return getCC(points,p.incoming);
-		}
 	}
 	
 	/**
