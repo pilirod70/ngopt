@@ -655,7 +655,7 @@ public class MisassemblyBreaker {
 		 */	
 //		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
 		MAX_INTERPOINT_DIST = Math.max(2*PointChainer.MAX_RES,(int) (Math.log(ALPHA)/(-LAMBDA)));
-		PointChainer.EPS = Math.sqrt(2)*MAX_INTERPOINT_DIST;
+		PointChainer.EPS = MAX_INTERPOINT_DIST;
 		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
 		//MAX_INTERPOINT_DIST = 600;
 	}

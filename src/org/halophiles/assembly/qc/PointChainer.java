@@ -188,6 +188,7 @@ public class PointChainer {
 			
 			
 			if (xGap < EPS && yGap < EPS) {
+				System.out.println("Merging kclumps");
 				Set<MatchPoint> merged = new TreeSet<MatchPoint>(xSort);
 				merged.addAll(kcI.getMatchPoints());
 				merged.addAll(kcJ.getMatchPoints());
@@ -247,18 +248,19 @@ public class PointChainer {
 		 * 			j_y - i_y < MAX_INTERPOINT_DIST
 		 * 
 		 */
-		double R = EPS*Math.sqrt(2);
 		for( int i=0; i<matchpoints.length; i++){
 			// where is this point in x?
 			int i_in_x = xref.get(matchpoints[i]);
 			for(int j_x=i_in_x+1; j_x < x_order.length && 
-				euclidean(matchpoints[x_order[j_x]],matchpoints[i]) <= EPS; 
+				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= EPS; 
 																	j_x++)
+				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS)
 					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 			for(int j_x=i_in_x-1; j_x >= 0 && 
-				euclidean(matchpoints[x_order[j_x]],matchpoints[i]) <= EPS; 
+				matchpoints[i].x() - matchpoints[x_order[j_x]].x() <= EPS; 
 																	j_x--)
-				matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
+				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS)
+					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 		}
 	}
 	
@@ -274,7 +276,6 @@ public class PointChainer {
 			if (tmp.getNeighbors().size() < MIN_PTS){
 				noise.add(tmp);
 				assigned.add(tmp);
-				continue;
 			} else {
 				currClust = new TreeSet<MatchPoint>(xSort);
 				expandClusters(tmp, currClust);
@@ -295,7 +296,6 @@ public class PointChainer {
 				visited.add(tmp);
 				if (tmp.getNeighbors().size() >= MIN_PTS)
 					neighbors.addAll(tmp.getNeighbors());
-					
 			} 
 			if (!assigned.contains(tmp)){
 				clust.add(tmp);
