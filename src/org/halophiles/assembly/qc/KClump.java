@@ -6,8 +6,6 @@ import java.io.PrintStream;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.halophiles.tools.SummaryStats;
-
 public class KClump {
 	private static int COUNT = 0;
 	

@@ -5,9 +5,6 @@ import java.util.Comparator;
 import jsc.correlation.KendallCorrelation;
 import jsc.correlation.SpearmanCorrelation;
 import jsc.datastructures.PairedData;
-import org.apache.commons.math.linear.Array2DRowRealMatrix;
-import org.apache.commons.math.stat.correlation.SpearmansCorrelation; 
-import org.apache.commons.math.stat.ranking.NaturalRanking;
 
 public class SummaryStats {
 	

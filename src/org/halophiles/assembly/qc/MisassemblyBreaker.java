@@ -19,7 +19,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
-import java.util.TreeSet;
 import java.util.Vector;
 
 import org.halophiles.assembly.Contig;
@@ -301,50 +300,6 @@ public class MisassemblyBreaker {
 	}
 	
 	/**
-	 * Merge overlapping blocks, remove blocks that are less than MAX_BLOCK_LEN
-	 * and remove blocks that come from the end of the given Contig
-	 * 
-	 * @param contig the Contig that <code>blocks</code> belongs to
-	 * @param blocks
-	 */
-	private static void mergeAndFilterBlocks(Contig contig, Vector<int[]> blocks){
-		int i = 0;
-		int len = 0;
-		while (i < blocks.size()){
-			len = blocks.get(i)[1] - blocks.get(i)[0];
-			if (len < MIN_BLOCK_LEN || len > MAX_BLOCK_LEN)
-				blocks.remove(i);
-			else
-				i++;
-		}
-		Collections.sort(blocks, BLOCK_COMP);
-		int[] block1 = null;
-		int[] block2 = null;
-		i = 1;
-		while (i < blocks.size()){
-			block1 = blocks.get(i-1);
-			block2 = blocks.get(i);
-			if (block1[0] < block2[1] && block2[0] < block1[1]){
-				block1[0] = Math.min(block1[0], block2[0]);
-				block1[1] = Math.max(block1[1], block2[1]);
-				blocks.remove(i);
-			} else {
-				i++;
-			}
-		}
-		
-		// remove terminal blocks, we won't use these to break on
-		i = 0;
-		while (i < blocks.size()){
-			if (blocks.get(i)[1] < MAX_BLOCK_LEN || 
-					contig.len - blocks.get(i)[0] < MAX_BLOCK_LEN)
-				blocks.remove(i);
-			else
-				i++;
-		}
-		
-	}
-	/**
 	 * Remove segments that overlap by more than 50%
 	 * @param blocks
 	 */
@@ -593,17 +548,12 @@ public class MisassemblyBreaker {
 		 * compute key runtime parameters
 		 */
 		LAMBDA = Double.POSITIVE_INFINITY;
-		File covFile = new File(samFile.getParentFile(),"coverage.txt");
-		covFile.createNewFile();
-		PrintStream out = new PrintStream(covFile);
 		for (int i = 0; i < readCounts[1].length; i++){
 			if (readCounts[1][i] == 0)
 				continue;
 			if (LAMBDA > readCounts[1][i])
 				LAMBDA = readCounts[1][i];
-			out.println(readCounts[1][i]);
 		}
-		out.close();
 		LAMBDA = LAMBDA/MEAN_BLOCK_LEN;
 		
 		Iterator<String> ctgIt = ctgMBs.keySet().iterator();

@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
-import java.lang.String;
 
 public class ScaffoldExporter {
 
