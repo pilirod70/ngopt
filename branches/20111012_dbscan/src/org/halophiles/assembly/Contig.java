@@ -1,7 +1,7 @@
 package org.halophiles.assembly;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 
 public class Contig implements Comparable<Contig> {
 	private static int CTG_COUNT=0;

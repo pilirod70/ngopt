@@ -2,13 +2,10 @@ package org.halophiles.assembly.dcj;
 
 
 import java.io.PrintStream;
-
 import java.util.HashMap;
 import java.util.StringTokenizer;
 
 import org.halophiles.assembly.stat.LCB;
-//import java.util.Vector;
-//import java.util.regex.Pattern;
 
 
 public class Genome {

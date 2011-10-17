@@ -1,23 +1,19 @@
 package org.halophiles.assembly.qc;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.Stack;
-import java.util.TreeSet;
-import java.util.Vector;
-import java.util.HashMap;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.Integer;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.Vector;
 
 import org.halophiles.assembly.Contig;
-import org.halophiles.tools.SummaryStats;
 
 public class PointChainer {
 	
@@ -172,9 +168,6 @@ public class PointChainer {
 		while(i < v.size()-1){
 			KClump kcI = v.get(i);
 			KClump kcJ = v.get(i+1);
-//			if (kcI.xMin < kcJ.xMax && kcJ.xMin < kcI.xMax &&            // x locations overlap
-//				kcI.yMin < kcJ.yMax && kcJ.yMin < kcI.yMax &&            // y locations overlap
-//				Math.signum(kcI.slope()) == Math.signum(kcJ.slope())) {  // same orientation
 			int xGap = Integer.MAX_VALUE;
 			int yGap = Integer.MAX_VALUE;
 			if (kcI.xMax > kcJ.xMax )
@@ -185,16 +178,13 @@ public class PointChainer {
 				yGap = kcI.yMin - kcJ.yMax;
 			else
 				yGap = kcJ.yMin - kcI.yMax;
-			
-			
+
 			if (xGap < EPS && yGap < EPS) {
-				System.out.println("Merging kclumps");
 				Set<MatchPoint> merged = new TreeSet<MatchPoint>(xSort);
 				merged.addAll(kcI.getMatchPoints());
 				merged.addAll(kcJ.getMatchPoints());
 				v.remove(i);
 				v.set(i, new KClump(merged));
-				break;
 			} else{
 				i++;
 				currPoints.removeAll(kcI.getMatchPoints());
@@ -202,7 +192,6 @@ public class PointChainer {
 		}
 		
 	}
-	
 
 	/**
 	 * Return a set of mutually exclusive KClumps
@@ -304,10 +293,5 @@ public class PointChainer {
 			i++;
 		}
 	}
-	
-	private static double euclidean(MatchPoint p1, MatchPoint p2){
-		return Math.sqrt(Math.pow(p1.x()-p2.x(),2)+Math.pow(p1.y()-p2.y(),2));
-	}
-	
 	
 }
