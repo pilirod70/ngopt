@@ -62,7 +62,7 @@ public class MisassemblyBreaker {
 	
 	public static void main(String[] args){
 		if (args.length != 5 && args.length != 4){
-			System.err.println("Usage: java -jar A5qc.jar <sam_file> <contig_file> <output_base> <output_dir> <num_libs>");
+			System.err.println("Usage: java -jar A5qc.jar <sam_file> <contig_file> <output_file> <num_libs>");
 			System.exit(-1);
 		}
 		try{
@@ -71,12 +71,9 @@ public class MisassemblyBreaker {
 			NF.setMaximumFractionDigits(0);
 			NF.setGroupingUsed(false);
 			String samPath = args[0];
-			String base = args[2];
-			File outDir = new File(args[3]);
-			outDir.mkdirs();
 			int numLibs = 1;
-			if (args.length == 5){
-				numLibs = Integer.parseInt(args[4]);
+			if (args.length == 4){
+				numLibs = Integer.parseInt(args[3]);
 			}
 			System.out.println("[a5_qc] Reading "+samPath);
 			File samFile = new File(samPath);
@@ -123,23 +120,17 @@ public class MisassemblyBreaker {
 			Map<String,Vector<int[]>> blocks = new HashMap<String,Vector<int[]>>();
 			Vector<int[]> xBlocks = null;
 			Vector<int[]> yBlocks = null;
-			File matchDir = new File(outDir,base+".matches");
-			File densDir = new File(outDir,base+".dens");
-			matchDir.mkdirs();
-			densDir.mkdirs();
 			while(mbIt.hasNext()){
 				PointChainer pc = mbIt.next();
 				// get Vector for holding contig X blocks
 				xBlocks = new Vector<int[]>();
 				// get Vector for holding contig Y blocks
 				yBlocks = new Vector<int[]>();
-				pc.buildKClumps(new File(densDir,"dens."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
+				pc.buildKClumps();
 				addBlocks(pc, xBlocks, yBlocks);
-				pc.exportCurrState(new File(matchDir,"match."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
+				//pc.exportCurrState(new File(matchDir,"match."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
 				removeTerminalBlocks(pc.getContig1(), xBlocks);
 				removeTerminalBlocks(pc.getContig2(), yBlocks);
-		//		mergeAndFilterBlocks(pc.getContig1(), xBlocks);
-		//		mergeAndFilterBlocks(pc.getContig2(), yBlocks);
 				if (blocks.containsKey(pc.getContig1().name))
 					blocks.get(pc.getContig1().name).addAll(xBlocks);
 				else
@@ -184,7 +175,7 @@ public class MisassemblyBreaker {
 			/*
 			 *  break on regions of a minimum distance that are flanked by two blocks
 			 */
-			File brokenScafFile = new File(outDir, base+".broken.fasta");     
+			File brokenScafFile = new File(args[2]);     
 			brokenScafFile.createNewFile();
 			ScaffoldExporter out = new ScaffoldExporter(brokenScafFile); 
 			File ctgFile = new File(args[1]);

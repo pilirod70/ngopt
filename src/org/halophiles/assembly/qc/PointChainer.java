@@ -125,7 +125,7 @@ public class PointChainer {
 		return currPoints.add(new MatchPoint(x, y));
 	}
 	
-	public void buildKClumps(File densFile){
+	public void buildKClumps(){
 		int win = Math.max(1000,MisassemblyBreaker.MEAN_BLOCK_LEN);
 		int[][] grid = new int[ctg1.len/win+(ctg1.len%win==0?0:1)]
 		                       [ctg2.len/win+(ctg2.len%win==0?0:1)];
@@ -138,23 +138,14 @@ public class PointChainer {
 		}
 		double winDouble = win;
 		double minDens = Double.POSITIVE_INFINITY;
-		PrintStream out = null;
-		try {
-			out = new PrintStream(densFile);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			System.exit(-1);
-		}
+		
 		for (int i = 0; i < grid.length; i++){
 			for (int j = 0; j < grid[i].length; j++){
 				double tmp = grid[i][j]/(winDouble*winDouble);
-				if (tmp > 0)
-					out.println(grid[i][j]);
 				if (tmp > 0 && tmp < minDens)
 					minDens = tmp;
 			}
 		}
-		out.close();
 		
 		locateNeighbors();
 		runDBSCAN();
