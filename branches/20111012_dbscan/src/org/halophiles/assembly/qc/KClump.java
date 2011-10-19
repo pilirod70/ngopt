@@ -74,6 +74,10 @@ public class KClump {
 		return id;
 	}
 	
+	public String toString(){
+		return xMin+"-"+xMax +" <-> "+yMin+"-"+yMax;
+	}
+	
 	/**
 	 * Prints this KClump to the given file
 	 * 

@@ -1,7 +1,5 @@
 package org.halophiles.assembly.qc;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -10,11 +8,11 @@ public class MatchPoint {
 	private int y;
 	MatchPoint pred = null;
 	MatchPoint incoming = null;
-	Set<MatchPoint> neighborhood;
-	
 	Set<MatchPoint> neighbors;
 	
-	HashMap<MatchPoint,Double> incomings;
+	private boolean visited;
+	private boolean noise;
+	private boolean assigned;
 	
 	/**
 	 * Construct a new MatchPoint with the given points x and y
@@ -24,17 +22,23 @@ public class MatchPoint {
 	public MatchPoint(int x, int y){
 		this.x = x;
 		this.y = y;
-		neighborhood = new HashSet<MatchPoint>();
-		neighbors = new TreeSet<MatchPoint>(PointChainer.xSort);
-		this.incomings = new HashMap<MatchPoint, Double>();
+		visited = false;
+		noise = false;
+		assigned = false;
 	}
 	
 	public void addNeighbor(MatchPoint p){
+		if (neighbors == null)
+			neighbors = new TreeSet<MatchPoint>(PointChainer.xSort);
 		neighbors.add(p);
 	}
 	
 	public Set<MatchPoint> getNeighbors(){
 		return neighbors;
+	}
+	
+	public int size(){
+		return (neighbors == null) ? 0 : neighbors.size();
 	}
 	
 	/**
@@ -79,4 +83,27 @@ public class MatchPoint {
 		return (xDiff+yDiff+Math.abs(xDiff-yDiff)) / (2*MisassemblyBreaker.MAX_INTERPOINT_DIST) + 0.5;
 	}
 
+	public void setAssigned() {
+		this.assigned = true;
+	}
+
+	public boolean isAssigned() {
+		return assigned;
+	}
+	
+	public void setNoise(){
+		noise = true;
+	}
+
+	public boolean isNoise(){
+		return noise;
+	}
+	
+	public void setVisited(){
+		visited = true;
+	}
+	
+	public boolean isVisited(){
+		return visited;
+	}
 }
