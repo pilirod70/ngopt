@@ -1,7 +1,6 @@
 package org.halophiles.assembly.qc;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -19,10 +18,9 @@ public class PointChainer {
 	
 	static double EPS;
 	
-	static int MIN_PTS = 1;
+	static int MIN_PTS = 10;
 	
 	public static Comparator<MatchPoint> xSort = new Comparator<MatchPoint>(){
-
 		@Override
 		public int compare(MatchPoint arg0, MatchPoint arg1) {
 			if (arg0.x() == arg1.x())
@@ -30,16 +28,13 @@ public class PointChainer {
 			else 
 				return arg0.x() - arg1.x();
 		}
-		
 	};
 
 	public static Comparator<KClump> CLUST_COMP = new Comparator<KClump>(){
-
 		@Override
 		public int compare(KClump arg0, KClump arg1) {
 			return arg0.xMax - arg1.xMax;
 		}
-		
 	};
 	
 	/**
@@ -65,10 +60,6 @@ public class PointChainer {
 	 */
 	private Set<KClump> kclumps;
 	
-	private HashSet<MatchPoint> visited;
-	private HashSet<MatchPoint> noise;
-	private HashSet<MatchPoint> assigned;
-	
 	private class MatchComparator implements Comparator<Integer>{
 		public MatchComparator(int contig, MatchPoint[] matches){
 			this.contig = contig;
@@ -89,9 +80,6 @@ public class PointChainer {
 		this.ctg2 = contig2;
 		currPoints = new TreeSet<MatchPoint>(xSort);
 		kclumps = new TreeSet<KClump>(CLUST_COMP);
-		visited = new HashSet<MatchPoint>();
-		noise = new HashSet<MatchPoint>();
-		assigned = new HashSet<MatchPoint>();
 		numPoints = 0;
 	}
 	
@@ -146,42 +134,14 @@ public class PointChainer {
 					minDens = tmp;
 			}
 		}
-		
 		locateNeighbors();
 		runDBSCAN();
 		if (kclumps.isEmpty())
 			return;
 		System.out.println("[a5_qc] Found "+kclumps.size()+" initial blocks between contigs "+ctg1.getId()+" and "+ctg2.getId());
-		
-		// merge overlapping KClumps
-		Vector<KClump> v = new Vector<KClump>(kclumps);
-		int i = 0;
-		while(i < v.size()-1){
-			KClump kcI = v.get(i);
-			KClump kcJ = v.get(i+1);
-			int xGap = Integer.MAX_VALUE;
-			int yGap = Integer.MAX_VALUE;
-			if (kcI.xMax > kcJ.xMax )
-				xGap = kcI.xMin - kcJ.xMax;
-			else
-				xGap = kcJ.xMin - kcI.xMax;
-			if (kcI.yMax > kcJ.yMax )
-				yGap = kcI.yMin - kcJ.yMax;
-			else
-				yGap = kcJ.yMin - kcI.yMax;
-
-			if (xGap < EPS && yGap < EPS) {
-				Set<MatchPoint> merged = new TreeSet<MatchPoint>(xSort);
-				merged.addAll(kcI.getMatchPoints());
-				merged.addAll(kcJ.getMatchPoints());
-				v.remove(i);
-				v.set(i, new KClump(merged));
-			} else{
-				i++;
-				currPoints.removeAll(kcI.getMatchPoints());
-			}
-		}
-		
+		Iterator<KClump> kcIt = kclumps.iterator();
+		while(kcIt.hasNext())
+			System.out.println("        "+kcIt.next().toString());
 	}
 
 	/**
@@ -220,7 +180,7 @@ public class PointChainer {
 			x_order[i] = x_order_int[i];
 			xref.put(matchpoints[x_order[i]], i);
 		}
-		/* BUILD NEIGHBORHOODS
+		/* FIND NEIGHBORS
 		 * 
 		 * For each point in <code>matrix</code>, find all other points in <code>matrix</code> whose nieghborhood the point is in
 		 * point j is in the neighborhood of point i if
@@ -251,35 +211,35 @@ public class PointChainer {
 		MatchPoint tmp = null;
 		while(it.hasNext()){
 			tmp = it.next();
-			if (visited.contains(tmp))
+			if (tmp.isVisited())
 				continue;
-			if (tmp.getNeighbors().size() < MIN_PTS){
-				noise.add(tmp);
-				assigned.add(tmp);
+			if (tmp.size() < MIN_PTS){
+				tmp.setNoise();
+				tmp.setAssigned();
 			} else {
 				currClust = new TreeSet<MatchPoint>(xSort);
 				expandClusters(tmp, currClust);
 				kclumps.add(new KClump(currClust));
 			}
-			visited.add(tmp);
+			tmp.setVisited();
 		}
 	}
 	
 	private void expandClusters(MatchPoint p, Set<MatchPoint> clust){
 		clust.add(p);
-		assigned.add(p);
+		p.setAssigned();
 		Vector<MatchPoint> neighbors = new Vector<MatchPoint>(p.getNeighbors());
 		int i = 0;
 		while(i < neighbors.size()){
 			MatchPoint tmp = neighbors.get(i);
-			if (!visited.contains(tmp)) {
-				visited.add(tmp);
-				if (tmp.getNeighbors().size() >= MIN_PTS)
+			if (!tmp.isVisited()) {
+				tmp.setVisited();
+				if (tmp.size() >= MIN_PTS)
 					neighbors.addAll(tmp.getNeighbors());
 			} 
-			if (!assigned.contains(tmp)){
+			if (!tmp.isAssigned()){
 				clust.add(tmp);
-				assigned.add(tmp);
+				tmp.setAssigned();
 			}
 			i++;
 		}

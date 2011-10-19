@@ -219,17 +219,12 @@ public class MisassemblyBreaker {
 						out.export(tmpCtg, sb, left, right);
 						left = right+1;
 					} else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST) {
-						/*if (tmpAr[i-1][1] - left + 1 < MIN_CONTIG_LENGTH){
-							left = tmpAr[i][0];
-							continue;
-						}*/
+						
 						right = tmpAr[i-1][1];
 						System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
 						out.export(tmpCtg, sb, left, right);
 						left = tmpAr[i][0];
-					} else {
-						System.out.println(tmpAr[i][0]-tmpAr[i-1][1]);
-					}
+					} 
 				}
 				right = sb.length();
 				System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
@@ -422,9 +417,12 @@ public class MisassemblyBreaker {
 			}
 			line1 = br.readLine().split("\t");
 			line2 = br.readLine().split("\t");
+			line1[0] = trimPairNumber(line1[0]);
+			line2[0] = trimPairNumber(line2[0]);
 			while (!line1[0].equals(line2[0]) && br.ready()){
 				line1 = line2;
 				line2 = br.readLine().split("\t");				
+				line2[0] = trimPairNumber(line2[0]);
 			}
 			total++;
 			left1 = Integer.parseInt(line1[3]);
@@ -1011,6 +1009,13 @@ public class MisassemblyBreaker {
 		   dig++;
 	   }
 	   return mod;  
+	}
+	
+	private static String trimPairNumber(String s){
+		if (s.contains("/")){
+			return s.substring(0,s.indexOf("/"));
+		} else
+			return s;
 	}
 	
 }
