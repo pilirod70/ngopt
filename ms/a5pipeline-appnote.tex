@@ -41,13 +41,13 @@ of the algorithms being used.
 
 We introduce a new de novo genome assembly pipeline that requires no knowledge
 of the underlying algorithms to use. Using previously 
-published assembly software and short read tools, our pipeline, NGOpt, carries out
-most commonly taken steps during the genome assembly process. NGOpt starts with error correction
+published assembly software and short read tools, our pipeline, A5, carries out
+most commonly taken steps during the genome assembly process. A5 starts with error correction
 and removal of contaminant reads, assembles reads into contigs, and scaffolds
-contigs with paired reads. In addition to these steps, NGOpt performs an 
+contigs with paired reads. In addition to these steps, A5 performs an 
 error checking stage after scaffolding to identify and remove any potential misassemblies. 
-Our pipeline behaves comparably to many existing assemblers. Although NGOpt offers no improvement
-in assembly quality, time spent running NGOpt to obtain optimal results is minimal. 
+Our pipeline behaves comparably to many existing assemblers. Although A5 offers no improvement
+in assembly quality, time spent running A5 to obtain optimal results is minimal. 
 
 %De novo genome assembly involves many steps. A lot of software, each of which requires 
 %much manual tuning. Rapid growth of high throughput DNA sequence techonologies has made sequence 
@@ -58,7 +58,7 @@ in assembly quality, time spent running NGOpt to obtain optimal results is minim
 \section{Methods}
 \subsection{Material}
 
-We test the NGOpt pipeline on three datasets. Two of the three datasets were generated from
+We test the A5 pipeline on three datasets. Two of the three datasets were generated from
 previously published genomes, allowing for reference-based metrics. The first data set consists of a small insert 
 short paired read data from the halophilic archaea, \emph{Haloferax volcanii} DS2. Libraries
 were prepared by mechanical shearing using sonication, and reads were generated on
@@ -67,8 +67,7 @@ The third library consists of short paired read data from \emph{Escherichia
 coli} CC118. Libraries were prepared via transposase-catalyzed adaptor insertion and reads 
 were generated on the Illumina GAIIx platform. T
 
-
-\subsection{NGOpt pipeline}
+\subsection{A5 pipeline}
 
 Our pipeline consists of five stages: 1) read cleaning, 2) contiging, 3) scaffolding,
 4) misassembly checking, and 5) rescaffolding. For the first stage, we use two previously
@@ -87,41 +86,21 @@ instead of cleaned reads. Error correction can over estimate the number of erron
 the presence of repetetive sequence, leading to incorrect mapping location of corrected reads. 
 For this reason, raw reads are used at this and all future stages of the pipeline. 
 
-After contigs have been built and scaffolded, the NGOpt pipeline checks crude scaffolds for 
+After contigs have been built and scaffolded, the A5 pipeline checks crude scaffolds for 
 misassemblies. Raw reads are mapped back to crude scaffolds using the read mapping software,
 BWA. Ad hoc code is then used to extract all read pairs that are discordant with all other
-read-pairs. FISH is then used to chain these read pairs into colinear blocks of mapped read positions. 
-Scaffolds are broken at these blocks and then rescaffolded using SSPACE.
-
-%The genome assembly problem can be broken down into two main steps: 1) building
-%contigs and 2) scaffolding contigs. 
-
-%We separate building contigs into two steps. The first step in building contigs
-%is read error correction. For this step we use error correction tools from the
-%SGA software package to correct reads for sequencing errors. Error corrected reads
-%are then assembled into contigs using the assembler IDBA. (Do we discuss why we use IDBA?)  
-
-%After contigs are built, paired/mated libraries can be used to scaffold contigs 
-%together. For this stage, our pipeline uses the scaffolder SSPACE. A key 
-%parameter for scaffolding is the insert size of libraries. Using the read
-%mapping software package BWA, insert size estimations have been automated. 
-
-%After contigs have been scaffolded, reads are mapped back to scaffolds. The locations
-%of mapped reads and pairing information is used with FISH to identifiy putatively erroneous 
-%contigs. 
-
-
-
+read-pairs and spatial clustering is used to cluster these discordant read pairs into blocks of mapped read positions. 
+Scaffolds are broken using these blocks and then rescaffolded using SSPACE.
 \end{methods}
 
 \subsection{Automated parameter selection}
 
-Throughout the NGOpt pipeline and other assembly programs, there are many 
+Throughout the A5 pipeline and other assembly programs, there are many 
 parameters that must be tuned to individual datasets. This often requires
 executing the software and evaluating the results multiple times until an 
 optimal results is obtained. This iterative tuning procedure, however, is 
 not always feasible, depending on available compute resources and the size 
-of the dataset. The NGOpt pipeline circumvents this problem by using 
+of the dataset. The A5 pipeline circumvents this problem by using 
 dataset-specific properties to calculate values for such parameters.
 
 The first parameter in the pipeline that we automatically set is the maximum
@@ -133,34 +112,63 @@ two parameters are used during contig extension and scaffolding with SSPACE. The
 is the minimum overlap between a contig and a read during extension. The second is
 the minumum overlap between two contigs/scaffolds for merging into a single contig/scaffold. 
 For these two, we consult with Genomis, the Greek god of genomes. 
-
-
 \subsection{Automated misassembly quality control}
 
 After scaffolds have been built, our pipeline performs an automated quality control step.
-Reads are first mapped to scaffolds, and collinear blocks are identified using FISH. After mapping,
+Reads are first mapped to scaffolds, and then mapping points are spatially clustered. After mapping,
 connections between paired points that support the current assembly architecture, which we refer to as 
-\emph{proper connections}, must be removed before running FISH. Proper connections
+\emph{proper connections}, must be removed before spatial clustering. Proper connections
 can be identified using the insert size distribution of the library. However, shadow libraries from 
 mate-pair libraries and inherent noise in libraries will skew the mean and inflate the variance 
 estimates of the insert size distribution. To avoid including noise in mean and variance estimates, 
-we perform a round of EM-clustering of insert sizes before calculating sample statistics. Clusters
-with low variance are identified as true signal in the libraryi. Each cluster is then used to filter 
-pairs with inserts between the range $(\mu-ns,\mu+ns)$, where $\mu$ is the mean insert of pairs within
-the cluster, $s$ is the standard deviation, and $n = \min(\lfloor\frac{\mu}{s}\rfloor, 6)$. 
-After proper connections have been removed, the program FISH is used to chain remaining paired read 
-connections between and within scaffolds into blocks. Scaffolds are then broken at these block boundaries
-and rescaffolded using SSPACE.
-%After assembling genomes, an important step is quality control and validation
-%of "assembly connections". The final step in our pipeline is automated 
-%misassembly detection. For this step, we use FISH to identify erroneously
-%connected points in the genome. The FISH algorithm was orignally developed
-%to identify collinear segments of homology between two genomes. Here, we use
-%FISH to identify collinear segments of paired read connections between two contigs
-%or within a single contig. First, reads are mapped onto scaffolds using BWA and 
-%connected segments are identified using 
-%FISH. Scaffolds are then broken at the boundaries of these segments and the 
-%resulting contigs/scaffolds are rescaffolded using SSPACE as described above.
+we perform a round of EM-clustering of insert sizes before calculating sample statistics. Choice of $K$ in
+the EM-clustering algorithm is determined by an initial estimation of the library insert size. Libraries with an 
+insert size greater than 1000 bp are assumed to have been constructed using a mate-pair protocol, and therefore
+contain a paired-end short insert shadow library in addition to the large insert mate-pair library. To separate the short insert library
+from the large insert library, $K$ is set to 3, one cluster for non-proper connections, one cluster for the short insert
+library, and one for the large insert library. If the initial insert size estimation is less than 1000 bp, the library
+is assumed to have been constructed using a paired-end protocol, and $K$ is set to 2, one for non-proper connections
+and one for the short-insert library. Clusters returned from EM-clustering are identified as non-proper connections if 
+they have high-variance, or $s > \mu$, and proper connections if they have low-variance $s < \mu$, where $\mu$ is the mean insert of pairs within
+the cluster, and $s$ is the standard deviation. Each low-variance cluster is then used to filter 
+pairs with inserts between the range $(\mu-ns,\mu+ns)$, where $n = \min(\lfloor\frac{\mu}{s}\rfloor, 6)$.  
+
+After proper connections have been removed, misassemblies are identified by locating blocks with excessive 
+paired read connections between pairs of scaffolds. To identify these blocks, we use the spatial clustering algorithm DBSCAN 
+to cluster points in 2-dimensional space. The two key parameters to DBSCAN are $\varepsilon$, the maximum distance between 
+two points and \emph{MinPts}, the minimum number of points allowed in a cluster. The first parameter is used used to locate 
+the neighboring points of each point, where a point $b$ is considered a neighbor of point $a$ if $|a_x - b_x| < \varepsilon 
+~~\mbox{and}~~ |a_y - b_y| < \varepsilon$. We set $\varepsilon$ by modelling read mapping positions as a Bernoulli process. 
+The probability of success $p$ in the Bernoulli process is set by calculating a minimum frequency of read mapping positions
+in windows of length $L$, where $L = max(1000,\mu)$ for a library with mean insert $\mu$. Assuming read mapping positions 
+follow a Bernoulli process, the distance between two read mapping points follows a geometric distribution with parameter $p$.
+The maximum distance between two mapping points then becomes $\frac{ln(\alpha)}{ln(1-p)}$, for some $\alpha < 1$. In the A5 
+pipeline, $\alpha$ is set to 0.001. The second parameter of the DBSCAN algorithm, \emph{MinPts}, is then set to be 
+$2p\varepsilon$.  
+
+Regions containing misassemblies are then identified as regions within individual scaffolds that are flanked by two blocks.
+The length distribution of blocks flanking misassemblies is assumed to follow the same distribution as the insert size of the
+library. We also assume that points are uniformly distributed across these blocks. Then for a block of length $\mu$ the probability 
+that a read maps to the $k$th position or before in this block is
+\begin{equation}
+	Pr(x \le k) = \begin{cases} 
+					\dfrac{k+1}{\mu} & \text{for }k \le \mu \\
+					1 & \text{for }k > \mu \\
+				  \end{cases}
+\end{equation} 
+Furthermore, for $n$ mapping points $X_1,...,X_n$, if $M_n = min(X_1,...,X_n)$, then 
+\begin{equation}
+	Pr(M_n \le k) = \begin{cases} 
+					\left ( \dfrac{k+1}{\mu} \right )^n & \text{for }k \le \mu \\
+					1 & \text{for }k > \mu \\
+				  \end{cases}
+\end{equation}
+Then, for some $\alpha < 1$, the maximum for $M_n$ is calculated using the following equation  
+\begin{equation} 
+	\mu*(1-\alpha)^\frac{1}{n} - 1 
+\end{equation}
+Because the uniform distribution is symmetric, we double this quantity to get the maximum distance between two blocks
+flanking a misassembly. 
 
 \begin{table}[!t]
 \processtable{ Reference-based assembly metrics on crude and error-checked assemblies.
@@ -186,14 +194,14 @@ Intact CDS        & \% & \% & \% & \% \\
 \processtable{ Metrics on crude and error-checked assemblies 
 \label{Tab:01}}
 {\begin{tabular}{l|cccc}\toprule
-Metric           &  volcS & volcV & volcNGOpt & volcNGOpt-noQC\\\midrule
+Metric           &  volcS & volcV & volcA5 & volcA5-noQC\\\midrule
 Scaffold count   & & & & \\
 N50              & & & & \\
 Mean contig len  & & & & \\
 Max contig len   & & & & \\
 Min contig len   & & & & \\
 Total bases      & & & & \\
-Num unkowns      & & & & \\
+Num unknowns      & & & & \\
 \botrule \\
 \end{tabular}}{}
 \end{table}
@@ -205,7 +213,7 @@ Can't you see, this software is the bomb!
 \begin{figure}[t]
 \includegraphics[width=3.5in]{a5pipeline-diagram.pdf}
 \vspace{-1cm}
-\caption{Diagram of pipeline. }\label{fig:01}
+\caption{Diagram of A5 pipeline. }\label{fig:01}
 \end{figure}
 
 \begin{figure}[t]
@@ -215,9 +223,8 @@ Can't you see, this software is the bomb!
 Red, green, and blue lines connect aligned regions. Black connecting lines represent real paired read 
 connections between contigs and orange connecting lines represent erroneous connections. \textbf{Right:}A plot 
 of connected points between Contig X and Contig Y. Black and orange dots correspond
-to black and orange connections lines from right figure, respectively. Dotted lines correspond
-to misassembly breakpoints. The gray circle highlights the set of points that is chained together
-by FISH. }\label{fig:02}
+to black and orange connections lines from left figure, respectively. Dotted lines correspond
+to misassembly breakpoints. The gray circle highlights the set of points that are clustered by DBSCAN. }\label{fig:02}
 \end{figure}
 
 
