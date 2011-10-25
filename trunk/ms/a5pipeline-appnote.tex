@@ -112,6 +112,7 @@ two parameters are used during contig extension and scaffolding with SSPACE. The
 is the minimum overlap between a contig and a read during extension. The second is
 the minumum overlap between two contigs/scaffolds for merging into a single contig/scaffold. 
 For these two, we consult with Genomis, the Greek god of genomes. 
+
 \subsection{Automated misassembly quality control}
 
 After scaffolds have been built, our pipeline performs an automated quality control step.
@@ -129,46 +130,27 @@ from the large insert library, $K$ is set to 3, one cluster for non-proper conne
 library, and one for the large insert library. If the initial insert size estimation is less than 1000 bp, the library
 is assumed to have been constructed using a paired-end protocol, and $K$ is set to 2, one for non-proper connections
 and one for the short-insert library. Clusters returned from EM-clustering are identified as non-proper connections if 
-they have high-variance, or $s > \mu$, and proper connections if they have low-variance $s < \mu$, where $\mu$ is the mean insert of pairs within
+they have high-variance, or $s > \mu$, and proper connections if they have low-variance, or $s \le \mu$, where $\mu$ is the mean insert of pairs within
 the cluster, and $s$ is the standard deviation. Each low-variance cluster is then used to filter 
 pairs with inserts between the range $(\mu-ns,\mu+ns)$, where $n = \min(\lfloor\frac{\mu}{s}\rfloor, 6)$.  
 
 After proper connections have been removed, misassemblies are identified by locating blocks with excessive 
 paired read connections between pairs of scaffolds. To identify these blocks, we use the spatial clustering algorithm DBSCAN 
 to cluster points in 2-dimensional space. The two key parameters to DBSCAN are $\varepsilon$, the maximum distance between 
-two points and \emph{MinPts}, the minimum number of points allowed in a cluster. The first parameter is used used to locate 
+two points and $MinPts$, the minimum number of points allowed in a cluster. The first parameter is used used to locate 
 the neighboring points of each point, where a point $b$ is considered a neighbor of point $a$ if $|a_x - b_x| < \varepsilon 
 ~~\mbox{and}~~ |a_y - b_y| < \varepsilon$. We set $\varepsilon$ by modelling read mapping positions as a Bernoulli process. 
 The probability of success $p$ in the Bernoulli process is set by calculating a minimum frequency of read mapping positions
 in windows of length $L$, where $L = max(1000,\mu)$ for a library with mean insert $\mu$. Assuming read mapping positions 
 follow a Bernoulli process, the distance between two read mapping points follows a geometric distribution with parameter $p$.
-The maximum distance between two mapping points then becomes $\frac{ln(\alpha)}{ln(1-p)}$, for some $\alpha < 1$. In the A5 
-pipeline, $\alpha$ is set to 0.001. The second parameter of the DBSCAN algorithm, \emph{MinPts}, is then set to be 
-$2p\varepsilon$.  
-
-Regions containing misassemblies are then identified as regions within individual scaffolds that are flanked by two blocks.
-The length distribution of blocks flanking misassemblies is assumed to follow the same distribution as the insert size of the
-library. We also assume that points are uniformly distributed across these blocks. Then for a block of length $\mu$ the probability 
-that a read maps to the $k$th position or before in this block is
+The maximum distance between two mapping points is then calculated using the following equation
 \begin{equation}
-	Pr(x \le k) = \begin{cases} 
-					\dfrac{k+1}{\mu} & \text{for }k \le \mu \\
-					1 & \text{for }k > \mu \\
-				  \end{cases}
+	d(p) = \dfrac{\ln(\alpha)}{\ln(1-p)}
 \end{equation} 
-Furthermore, for $n$ mapping points $X_1,...,X_n$, if $M_n = min(X_1,...,X_n)$, then 
-\begin{equation}
-	Pr(M_n \le k) = \begin{cases} 
-					\left ( \dfrac{k+1}{\mu} \right )^n & \text{for }k \le \mu \\
-					1 & \text{for }k > \mu \\
-				  \end{cases}
-\end{equation}
-Then, for some $\alpha < 1$, the maximum for $M_n$ is calculated using the following equation  
-\begin{equation} 
-	\mu*(1-\alpha)^\frac{1}{n} - 1 
-\end{equation}
-Because the uniform distribution is symmetric, we double this quantity to get the maximum distance between two blocks
-flanking a misassembly. 
+for some $\alpha < 1$. In practice, $alpha = 0.001$ and $\varepsilon = max(d(p),l_r)$ where $l_r$ is the read length.
+The second parameter of the DBSCAN algorithm, $MinPts$, is then set to be $2p\varepsilon$.
+Regions of length $\le 2\mu$ within individual scaffolds that are flanked by two blocks are identified as containing
+misassemblies and are clipped out, breaking the scaffold into two subscaffolds.
 
 \begin{table}[!t]
 \processtable{ Reference-based assembly metrics on crude and error-checked assemblies.
