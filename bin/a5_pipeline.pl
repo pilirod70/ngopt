@@ -156,6 +156,7 @@ if ($start <= 5 && $need_qc) {
 	$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs,1);
 	`mv $scafs $OUTBASE.final.scaffolds.fasta`;
 } 
+print STDERR "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
 print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
 
 sub sga_assemble {
@@ -213,10 +214,10 @@ sub sga_clean {
 	system("$DIR/$cmd");
 	die "[a5] Error preprocessing reads with SGA\n" if( $? != 0 );
 	my $sga_ind = "";
-	my $sga_ind_kb = 4000000;
+	my $sga_ind_kb = int($AVAILMEM/2);
 	my $err_file = "$WD/index.err";
 	do{
-		$cmd = "sga index -d $AVAILMEM -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
+		$cmd = "sga index -d $sga_ind_kb -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
 		print STDERR "[a5] $cmd\n";
 		$sga_ind = `$DIR/$cmd`;
 		$sga_ind = read_file($err_file);
