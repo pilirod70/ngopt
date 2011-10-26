@@ -2,7 +2,6 @@ package org.halophiles.tools;
 
 public class SummaryStats {
 	
-	
 	public static double mean(double[] dat) {
 		return sum(dat) / ((double)dat.length);
 	}
@@ -88,7 +87,7 @@ public class SummaryStats {
 		}
 		return (total / ((double)(dat1.length-1)))/Math.sqrt(variance(dat1,mean1)*variance(dat2,mean2));
 	}
-	
+
 	public static double covariance(int[] dat1, int[] dat2){
 		int mean1 = mean(dat1);
 		int mean2 = mean(dat2);

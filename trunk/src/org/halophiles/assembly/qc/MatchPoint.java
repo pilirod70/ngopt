@@ -1,18 +1,19 @@
 package org.halophiles.assembly.qc;
 
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
-import java.util.Stack;
+import java.util.TreeSet;
 
 public class MatchPoint {
-	double S = -1;
 	private int x;
 	private int y;
 	MatchPoint pred = null;
 	MatchPoint incoming = null;
-	Set<MatchPoint> neighborhood;
-	Set<MatchPoint> tbEdges;
+	Set<MatchPoint> neighbors;
+	
+	private boolean visited;
+	private boolean noise;
+	private boolean assigned;
+	
 	/**
 	 * Construct a new MatchPoint with the given points x and y
 	 * @param x the point in contig 1 
@@ -21,47 +22,23 @@ public class MatchPoint {
 	public MatchPoint(int x, int y){
 		this.x = x;
 		this.y = y;
-		neighborhood = new HashSet<MatchPoint>();
-		tbEdges = new HashSet<MatchPoint>();
-	}
-	/**
-	 * Adds a new point to the set of neighborhoods that this MatchPoint is in
-	 * 
-	 * @param p the MatchPoint who's neighborhood this is in
-	 */
-	public void addNeighborhood(MatchPoint p){
-		neighborhood.add(p);
+		visited = false;
+		noise = false;
+		assigned = false;
 	}
 	
-	/**
-	 * Computes the score of the maximal chain ending at this MatchPoint
-	 * 
-	 * @return the score of the maximal chain ending at this MatchPoint
-	 */
-	public double getScore(){
-		if (S != -1) {
-			return S;
-		} else if (neighborhood.size()==0) {
-			S = 0;
-			return S;
-		} else {			
-			// find the predecessor that minimizes the deviation from a slope of 1
-			Iterator<MatchPoint> it = neighborhood.iterator();
-			double min = Double.POSITIVE_INFINITY;
-			double tmpScore = -1;
-			// find the minimum value
-			while(it.hasNext()){
-				MatchPoint tmp = it.next();
-				tmpScore = numGaps(tmp,this);
-				if (tmpScore < min){
-					min = tmpScore;
-					pred = tmp;
-				}
-			}
-			pred.incoming = this;
-			S = min - 1;
-			return S;
-		}
+	public void addNeighbor(MatchPoint p){
+		if (neighbors == null)
+			neighbors = new TreeSet<MatchPoint>(PointChainer.xSort);
+		neighbors.add(p);
+	}
+	
+	public Set<MatchPoint> getNeighbors(){
+		return neighbors;
+	}
+	
+	public int size(){
+		return (neighbors == null) ? 0 : neighbors.size();
 	}
 	
 	/**
@@ -78,28 +55,6 @@ public class MatchPoint {
 	 */
 	public int y(){
 		return y;
-	}
-	
-	/**
-	 * Build the connected component starting at this MatchPoint
-	 * @return a set of MatchPoints that comprise the connected component that this MatchPoint belongs to.
-	 */
-	public Stack<MatchPoint> getCC(){
-		Stack<MatchPoint> ret = new Stack<MatchPoint>();
-		return getCC(ret,this);	
-	}
-	
-	/**
-	 * A helper function for getCC()
-	 */
-	private Stack<MatchPoint> getCC(Stack<MatchPoint> points, MatchPoint p){
-		if (p.incoming == null) {
-			points.push(p);
-			return points;
-		} else {
-			points.push(p);
-			return getCC(points,p.incoming);
-		}
 	}
 	
 	/**
@@ -124,4 +79,27 @@ public class MatchPoint {
 				/ 2*MisassemblyBreaker.MAX_INTERPOINT_DIST + 0.5);
 	}
 
+	public void setAssigned() {
+		this.assigned = true;
+	}
+
+	public boolean isAssigned() {
+		return assigned;
+	}
+	
+	public void setNoise(){
+		noise = true;
+	}
+
+	public boolean isNoise(){
+		return noise;
+	}
+	
+	public void setVisited(){
+		visited = true;
+	}
+	
+	public boolean isVisited(){
+		return visited;
+	}
 }

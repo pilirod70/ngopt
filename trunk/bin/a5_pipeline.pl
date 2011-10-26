@@ -12,9 +12,10 @@ use File::Basename;
 use Cwd 'abs_path';
 use Getopt::Long;
 
+
+my $AVAILMEM = 4000000;
 my $def_up_id="upReads";
 my @KEYS = ("id","p1","p2","shuf","up","rc","ins","err","nlibs","libfile");
-
 my $usage= "Usage: ".basename($0)." [--begin=1-5] [--preprocessed] <lib_file> <out_base>\n".
            "\n".
            "If --preprocessed is used, <lib_file> is expected to be the library file\n".
@@ -29,6 +30,18 @@ GetOptions( 'begin=i' => \$start,
 			'preprocessed' => \$preproc);
 
 die $usage if (@ARGV < 2);
+if ($^O =~ m/darwin/) {
+	my $inf = `/usr/sbin/system_profiler SPHardwareDataType | grep Memory`;
+	if ($inf =~ /      Memory: (\d+) GB/){
+		$AVAILMEM = $1 * 1048576;
+	}
+} else {
+	my $inf = `cat /proc/meminfo | grep MemTotal`;
+	if ($inf =~ /MemTotal:     (\d+) kB/){
+		$AVAILMEM = $1;
+	}
+}
+print $AVAILMEM."\n";
 
 
 my $libfile = $ARGV[0];
@@ -203,7 +216,7 @@ sub sga_clean {
 	my $sga_ind_kb = 4000000;
 	my $err_file = "$WD/index.err";
 	do{
-		$cmd = "sga index -d $sga_ind_kb -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
+		$cmd = "sga index -d $AVAILMEM -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
 		print STDERR "[a5] $cmd\n";
 		$sga_ind = `$DIR/$cmd`;
 		$sga_ind = read_file($err_file);
