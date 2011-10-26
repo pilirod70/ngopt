@@ -408,6 +408,7 @@ public class MisassemblyBreaker {
 		int total = 0;
 		int index = 0;
 		long before = System.currentTimeMillis();
+		int rdLen = 0;
 		
 		while (br.ready()){
 			currPos = fis.getChannel().position()-start;
@@ -433,6 +434,13 @@ public class MisassemblyBreaker {
 			
 			ctg1 = ctgs.get(line1[2]);
 			ctg2 = ctgs.get(line2[2]);
+
+			int tmpLen = cigarLength(line1[5]);
+			if (tmpLen > rdLen)
+				rdLen = tmpLen;
+			tmpLen = cigarLength(line2[5]);
+			if (tmpLen > rdLen)
+				rdLen = tmpLen;
 			
 			/* begin: tally these read positions */
 			offset = coordOffset.get(ctg1.name);
@@ -531,7 +539,7 @@ public class MisassemblyBreaker {
 		System.out.println("..100%... done!... Took "+(after-before)/1000+" seconds.");
 		perc = (double) numKeep / total * 100;
 		System.out.println("[a5_qc] Keeping "+NF.format(perc)+"% ("+numKeep+"/"+total+") of reads.");
-		
+		KClump.RDLEN = rdLen;
 		/*
 		 * Set LAMDBA, our Poisson rate parameter. We will use this to 
 		 * compute key runtime parameters
@@ -543,7 +551,7 @@ public class MisassemblyBreaker {
 			if (LAMBDA > readCounts[1][i])
 				LAMBDA = readCounts[1][i];
 		}
-		LAMBDA = LAMBDA/MEAN_BLOCK_LEN;
+		LAMBDA = LAMBDA/windowLen;
 		
 		Iterator<String> ctgIt = ctgMBs.keySet().iterator();
 		Set<String> ctgToRm = new HashSet<String>();
@@ -566,13 +574,40 @@ public class MisassemblyBreaker {
 	 * @param ranges <code>[ mean, sd, n, nSd , min, max ]</code>
 	 */
 	private static void setParameters(double[][] ranges){
+		int maxSd = 0;
 		for (int i = 0; i < ranges.length; i++)
-//			if (ranges[i][1]*ranges[i][3] > PointChainer.MAX_RES)
-//				PointChainer.MAX_RES = (int) (ranges[i][1]*ranges[i][3]);
-			if (ranges[i][1] > PointChainer.MAX_RES)
-				PointChainer.MAX_RES = (int) (ranges[i][1]);
-		setMAXINTERPOINTDIST();
-		setMAXINTERBLOCKDIST();
+			if (ranges[i][1] > maxSd)
+				maxSd = (int) (ranges[i][1]);
+		/*
+		 * By modelling read mapping points as a Poisson process, the distance
+		 * between points is exponential. Take the 1-ALPHA quantile to get
+		 * a maximum distance between two points.
+		 *
+		 * LAMBDA Rate of mapping points (Poisson rate parameter)
+		 */	
+//		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
+		MAX_INTERPOINT_DIST = Math.max(KClump.RDLEN, (int) (Math.log(ALPHA)/Math.log(Math.max(1-LAMBDA,0)))-1);
+//		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/Math.log(1-LAMBDA));
+		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
+		//MAX_INTERPOINT_DIST = 600;
+		/*
+		 * apply some extreme value theory to get the minimum of points 
+		 * randomly sampled uniformally across an interval of MAX_BLOCK_LEN
+		 * 
+		 * MAX_INTERBLOCK_DIST = 2*((1-ALPHA)^(1/EXP_POINTS) * MAX_BLOCK_LEN)
+		 * 
+		 */
+		MAX_INTERBLOCK_DIST = (int)(2*(Math.pow(1-ALPHA, 1/(LAMBDA*MEAN_BLOCK_LEN))*MEAN_BLOCK_LEN-1));
+		MAX_INTERBLOCK_DIST = 2*MEAN_BLOCK_LEN;
+//		double tmp = Math.pow(1-ALPHA, 1/(LAMBDA*MEAN_BLOCK_LEN));
+//		tmp = 1 - tmp;
+//		tmp = tmp*MEAN_BLOCK_LEN;
+//		tmp = tmp - 1;
+//		tmp = MEAN_BLOCK_LEN - tmp;
+//		tmp = 2*tmp;
+//		MAX_INTERBLOCK_DIST = (int)tmp;
+		PointChainer.MIN_PTS = (int) (LAMBDA * MIN_BLOCK_LEN);
+		PointChainer.EPS = MAX_INTERPOINT_DIST;
 	}
 	
 	private static void setMAXBLOCKLEN(double[][] ranges){
@@ -584,32 +619,6 @@ public class MisassemblyBreaker {
 		}
 	}
 	
-	private static void setMAXINTERPOINTDIST(){
-		/*
-		 * By modelling read mapping points as a Poisson process, the distance
-		 * between points is exponential. Take the 1-ALPHA quantile to get
-		 * a maximum distance between two points.
-		 *
-		 * LAMBDA Rate of mapping points (Poisson rate parameter)
-		 */	
-//		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
-		MAX_INTERPOINT_DIST = Math.max(2*PointChainer.MAX_RES,(int) (Math.log(ALPHA)/(-LAMBDA)));
-		PointChainer.EPS = MAX_INTERPOINT_DIST;
-		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
-		//MAX_INTERPOINT_DIST = 600;
-	}
-	
-	private static void setMAXINTERBLOCKDIST(){
-		/*
-		 * apply some extreme value theory to get the minimum of points 
-		 * randomly sampled uniformally across an interval of MAX_BLOCK_LEN
-		 * 
-		 * MAX_INTERBLOCK_DIST = 2*((1-ALPHA)^(1/EXP_POINTS) * MAX_BLOCK_LEN)
-		 * 
-		 */
-		MAX_INTERBLOCK_DIST = (int)(2*(Math.pow(1-ALPHA, 1/(LAMBDA*MEAN_BLOCK_LEN))*MEAN_BLOCK_LEN));
-	}
-	
 	private static void printParams(){
 		System.out.println("[a5_qc] parameters:");
 		System.out.println("        LAMBDA              = " + LAMBDA);
@@ -618,8 +627,10 @@ public class MisassemblyBreaker {
 		System.out.println("        MAX_BLOCK_LEN       = " + MAX_BLOCK_LEN);
 		System.out.println("        MAX_INTERBLOCK_DIST = " + MAX_INTERBLOCK_DIST);
 		System.out.println("        MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
-		System.out.println("        MAX_RESIDUAL        = " + PointChainer.MAX_RES);
 		System.out.println("        EPSILON             = " + PointChainer.EPS);
+		System.out.println("        MIN_POINTS          = " + PointChainer.MIN_PTS);
+//		System.out.println("        Geometric           = " + (int)(Math.log(ALPHA)/Math.log(1-LAMBDA)));
+//		System.out.println("        Exponential         = " + (int)(Math.log(ALPHA)/-LAMBDA));
 	}
 	
 	private static void setOrientation(Collection<ReadPair> reads){
@@ -708,7 +719,6 @@ public class MisassemblyBreaker {
 		 *        a point to a KClump (see KClump.fit(MatchPoint)) 
 		 */
 		Vector<ReadSet> signal = new Vector<ReadSet>();
-		PointChainer.MAX_RES = 0;
 		for (int i = 0; i < clusters.length; i++){
 			NF.setMaximumFractionDigits(0);
 			System.out.print("[a5_qc] cluster"+NF.format(clusters[i].getId())+": mu="+pad(NF.format(clusters[i].mean()),10)+

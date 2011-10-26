@@ -37,11 +37,6 @@ public class PointChainer {
 		}
 	};
 	
-	/**
-	 *  maximum residual for adding a MatchPoint to a KClump
-	 */ 
-	static int MAX_RES;
-	
 	private Contig ctg1;
 	
 	private Contig ctg2;
