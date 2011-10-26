@@ -56,9 +56,9 @@ public class MisassemblyBreaker {
 	static int MIN_BLOCK_LEN;
 	static int MAX_BLOCK_LEN;
 	
-	private static Collection<MatchBuilder> matches;
+	private static Collection<PointChainer> matches;
 	
-	private static Map<String,int[]> points;
+//	private static Map<String,int[]> points;
 	
 	public static void main(String[] args){
 		if (args.length != 5 && args.length != 4){
@@ -116,13 +116,12 @@ public class MisassemblyBreaker {
 			printParams();
 			
 			// collect all of our blocks for each contig
-			Iterator<MatchBuilder> mbIt = matches.iterator();
+			Iterator<PointChainer> mbIt = matches.iterator();
 			Map<String,Vector<int[]>> blocks = new HashMap<String,Vector<int[]>>();
 			Vector<int[]> xBlocks = null;
 			Vector<int[]> yBlocks = null;
 			while(mbIt.hasNext()){
-				MatchBuilder mb = mbIt.next();
-				//mb.print(new File(samFile.getParentFile(),"match."+mb.getContig1().getId()+"v"+mb.getContig2().getId()+".txt"));
+				PointChainer pc = mbIt.next();
 				// get Vector for holding contig X blocks
 				xBlocks = new Vector<int[]>();
 				// get Vector for holding contig Y blocks
@@ -135,12 +134,12 @@ public class MisassemblyBreaker {
 				if (blocks.containsKey(pc.getContig1().name))
 					blocks.get(pc.getContig1().name).addAll(xBlocks);
 				else
-					blocks.put(mb.getContig1().name, xBlocks);
+					blocks.put(pc.getContig1().name, xBlocks);
 				
-				if (blocks.containsKey(mb.getContig2().name))
-					blocks.get(mb.getContig2().name).addAll(yBlocks);
+				if (blocks.containsKey(pc.getContig2().name))
+					blocks.get(pc.getContig2().name).addAll(yBlocks);
 				else
-					blocks.put(mb.getContig2().name, yBlocks);
+					blocks.put(pc.getContig2().name, yBlocks);
 				
 			}
 			
@@ -157,6 +156,13 @@ public class MisassemblyBreaker {
 					toRm.add(tmpCtg);
 				else 
 					Collections.sort(tmpBlocks, BLOCK_COMP);
+				Iterator<int[]> blockIt = tmpBlocks.iterator();
+				while(blockIt.hasNext()){
+					int[] tmp = blockIt.next();
+					System.out.println("        "+tmp[0]+" - "+tmp[1]);
+					
+				}
+				
 				
 			}
 			removeKeys(blocks, toRm);
@@ -195,11 +201,7 @@ public class MisassemblyBreaker {
 				}
 				
 				Vector<int[]> tmpBlks = blocks.get(tmpCtg);
-				/*System.out.print(tmpCtg+"\t"+tmpBlks.get(0)[0]+"-"+tmpBlks.get(0)[1]);
-				for (int i = 1; i < tmpBlks.size(); i++){
-					System.out.print(", "+tmpBlks.get(i)[0]+"-"+tmpBlks.get(i)[1]);
-				}
-				System.out.println(); */
+
 				if (tmpBlks.size() < 2){
 					out.export(tmpCtg, sb);
 					continue;
@@ -246,18 +248,19 @@ public class MisassemblyBreaker {
 		for (int i = 0; i < kclumps.length; i++){
 			xlen = kclumps[i].xMax-kclumps[i].xMin;
 			ylen = kclumps[i].yMax-kclumps[i].yMin;
-			if (xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN) {
-				x=  new int[2];
-				x[0] = kclumps[i].xMin;
-				x[1] = kclumps[i].xMax;
-				y = new int[2];
+			double xden = ((double)kclumps[i].size())/xlen;
+			double yden = ((double)kclumps[i].size())/ylen;
+			
+			x = new int[2];
+			x[0] = kclumps[i].xMin;
+			x[1] = kclumps[i].xMax;
+			y = new int[2];
+			if (kclumps[i].yMin < 0){
+				y[0] = Math.abs(kclumps[i].yMax);
+				y[1] = Math.abs(kclumps[i].yMin);
+			} else {
 				y[0] = kclumps[i].yMin;
 				y[1] = kclumps[i].yMax;
-				xBlocks.add(x);
-				yBlocks.add(y);
-//				kclumps[i].print(new File(outDir,pathBase+"."+kclumps[i].id+".txt"));
-//				System.out.println(kclumps[i].id+"  "+mb.getContig1().name+" "+x[0]+"-"+x[1]+"\t"+
-//						mb.getContig2().name+" "+y[0]+"-"+y[1]+" "+kclumps[i].size()+" "+kclumps[i].density()+"     1");
 			}
 			if (xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN) {
 				xBlocks.add(x);
@@ -299,7 +302,7 @@ public class MisassemblyBreaker {
 				double union = block2[1] - block1[0];
 				if (intersection/union > 0.5){
 					blocks.remove(i);
-					blocks.remove(i+1);
+					blocks.remove(i);
 				} else
 					i++;
 			} else
@@ -338,10 +341,9 @@ public class MisassemblyBreaker {
 		for (int i = 0; i < ranges.length; i++)
 			System.out.println("[a5_qc] Filtering read pairs with inserts between "+
 					NF.format(ranges[i][0])+"-"+NF.format(ranges[i][1]));
-		Map<String,TreeSet<Integer>> mapPoints = new HashMap<String,TreeSet<Integer>>();
-		Map<String,MatchBuilder> matchBldrs = new HashMap<String,MatchBuilder>();
+		Map<String,PointChainer> chainers = new HashMap<String,PointChainer>();
 		Map<String,Vector<String>> ctgMBs = new HashMap<String,Vector<String>>();
-		TreeSet<Integer> tmpPts = null;
+		Map<String,Integer> counts = new HashMap<String,Integer>();
 		Vector<String> tmpMBs = null;
 
 		File samFile = new File(samPath);
@@ -394,7 +396,7 @@ public class MisassemblyBreaker {
 		int left2 = 0;
 		String ctgStr = null;
 		String tmp = null;
-		MatchBuilder mb = null;
+		PointChainer pc = null;
 		Contig ctg1 = null;
 		Contig ctg2 = null;
 		int ctgNameComp = -10;
@@ -406,6 +408,7 @@ public class MisassemblyBreaker {
 		int total = 0;
 		int index = 0;
 		long before = System.currentTimeMillis();
+		int rdLen = 0;
 		
 		while (br.ready()){
 			currPos = fis.getChannel().position()-start;
@@ -431,6 +434,13 @@ public class MisassemblyBreaker {
 			
 			ctg1 = ctgs.get(line1[2]);
 			ctg2 = ctgs.get(line2[2]);
+
+			int tmpLen = cigarLength(line1[5]);
+			if (tmpLen > rdLen)
+				rdLen = tmpLen;
+			tmpLen = cigarLength(line2[5]);
+			if (tmpLen > rdLen)
+				rdLen = tmpLen;
 			
 			/* begin: tally these read positions */
 			offset = coordOffset.get(ctg1.name);
@@ -448,77 +458,88 @@ public class MisassemblyBreaker {
 			
 			ctgNameComp = line1[2].compareTo(line2[2]);
 			
+			if (line1[11].equals("XT:A:R")||line2[11].equals("XT:A:R")){
+				continue;
+			}
+			
 			/*
 			 * if this pair spans two different contigs, we need to sort the names
 			 * for consistency before we add the match
 			 */
-			if (ctgNameComp < 0){
-				ctgStr = line1[2]+"-"+line2[2];
-				if (matchBldrs.containsKey(ctgStr))
-					mb = matchBldrs.get(ctgStr);
-				else {
-					mb = new MatchBuilder(ctg1, ctg2);
-					matchBldrs.put(ctgStr, mb);
+			if (ctgNameComp != 0){
+				if (ctgNameComp < 0){
+					ctgStr = line1[2]+"-"+line2[2];
+					if (chainers.containsKey(ctgStr))
+						pc = chainers.get(ctgStr);
+					else {
+						pc = new PointChainer(ctg1, ctg2);
+						chainers.put(ctgStr, pc);
+					}
+					pc.addMatch(left1, left2);
+				} else {
+					ctgStr = line2[2]+"-"+line1[2];
+					if (chainers.containsKey(ctgStr))
+						pc = chainers.get(ctgStr);
+					else { 
+						pc = new PointChainer(ctg2, ctg1);
+						chainers.put(ctgStr, pc);
+					}
+					pc.addMatch(left2, left1);
 				}
-				mb.addMatch(left1, left2);
-			} else if (ctgNameComp > 0) {
-				ctgStr = line2[2]+"-"+line1[2];
-				if (matchBldrs.containsKey(ctgStr))
-					mb = matchBldrs.get(ctgStr);
-				else { 
-					mb = new MatchBuilder(ctg2, ctg1);
-					matchBldrs.put(ctgStr, mb);
-				}
-				mb.addMatch(left2, left1);
+				if (counts.containsKey(ctg1.name))
+					counts.put(ctg1.name, counts.get(ctg1.name)+2);
+				else
+					counts.put(ctg1.name, 2);
+				if (counts.containsKey(ctg2.name))
+					counts.put(ctg2.name, counts.get(ctg2.name)+2);
+				else
+					counts.put(ctg2.name, 2);
 			} else { // same contig, so check to see it's within the given ranges
 				int ins = (left2 > left1 ? left2+cigarLength(line2[5])-left1 : left1+cigarLength(line1[5])-left2);
 				if (inRange(ranges,ins)) 
 						continue;
 				
 				ctgStr = line2[2]+"-"+line1[2];
-				if (matchBldrs.containsKey(ctgStr))
-					mb = matchBldrs.get(ctgStr);
+				if (chainers.containsKey(ctgStr))
+					pc = chainers.get(ctgStr);
 				else { 
-					mb = new MatchBuilder(ctg2, ctg1);
-					matchBldrs.put(ctgStr, mb);
+					pc = new PointChainer(ctg2, ctg1);
+					chainers.put(ctgStr, pc);
 				}
 				if (left2 < left1) // order for consistency
-					mb.addMatch(left2, left1);
+					pc.addMatch(left2, left1);
 				else 
-					mb.addMatch(left1, left2);				
+					pc.addMatch(left1, left2);
+				if (counts.containsKey(ctg1.name)){
+					counts.put(ctg1.name, counts.get(ctg1.name)+2);
+				} else {
+					counts.put(ctg1.name, 2);
+				}
+				
 			}
-			
 			// add point for contig1, and keep track of which MatchBuilders are associated with contig1
-			if (mapPoints.containsKey(ctg1.name)){
-				tmpPts = mapPoints.get(ctg1.name);
+			if (ctgMBs.containsKey(ctg1.name)){
 				tmpMBs = ctgMBs.get(ctg1.name);
 			} else {
-				tmpPts = new TreeSet<Integer>();
-				mapPoints.put(ctg1.name, tmpPts);
 				tmpMBs = new Vector<String>();
 				ctgMBs.put(ctg1.name, tmpMBs);
 			}
-			tmpPts.add(new Integer(left1));
 			tmpMBs.add(ctgStr);
 			// add point for contig2, and keep track of which MatchBuilders are associated with contig2
-			if (mapPoints.containsKey(ctg2.name)){
-				tmpPts = mapPoints.get(ctg2.name);
+			if (ctgMBs.containsKey(ctg2.name)){
 				tmpMBs = ctgMBs.get(ctg2.name);
 			} else {
-				tmpPts = new TreeSet<Integer>();
-				mapPoints.put(ctg2.name, tmpPts);
 				tmpMBs = new Vector<String>();
 				ctgMBs.put(ctg2.name, tmpMBs);
 			}
 			tmpMBs.add(ctgStr);
-			tmpPts.add(new Integer(left2));
 			numKeep++;
 		}
 		long after = System.currentTimeMillis();
 		System.out.println("..100%... done!... Took "+(after-before)/1000+" seconds.");
 		perc = (double) numKeep / total * 100;
 		System.out.println("[a5_qc] Keeping "+NF.format(perc)+"% ("+numKeep+"/"+total+") of reads.");
-		
+		KClump.RDLEN = rdLen;
 		/*
 		 * Set LAMDBA, our Poisson rate parameter. We will use this to 
 		 * compute key runtime parameters
@@ -530,32 +551,22 @@ public class MisassemblyBreaker {
 			if (LAMBDA > readCounts[1][i])
 				LAMBDA = readCounts[1][i];
 		}
-		LAMBDA = LAMBDA/MEAN_BLOCK_LEN;
+		LAMBDA = LAMBDA/windowLen;
 		
-		Iterator<String> ctgIt = mapPoints.keySet().iterator();
+		Iterator<String> ctgIt = ctgMBs.keySet().iterator();
 		Set<String> ctgToRm = new HashSet<String>();
 		Set<String> psPairsToRm = new HashSet<String>();
-		points = new HashMap<String,int[]>();
 		while(ctgIt.hasNext()){
 			tmp = ctgIt.next();
-			tmpPts = mapPoints.get(tmp);
-			if (tmpPts.size() < MIN_PTS) {
+			if (counts.get(tmp) < MIN_PTS) {
 				ctgToRm.add(tmp);
 				psPairsToRm.addAll(ctgMBs.get(tmp));
-			} else {
-				int[] ar = new int[tmpPts.size()];
-				Iterator<Integer> ptsIterator = tmpPts.iterator();
-				for (int p = 0; p < ar.length; p++){
-					ar[p] = ptsIterator.next();
-				}
-				points.put(tmp, ar);
-			}
+			} 
 		}
 		removeKeys(ctgs, ctgToRm);
-		removeKeys(mapPoints, ctgToRm);
-		removeKeys(matchBldrs, psPairsToRm);
+		removeKeys(chainers, psPairsToRm);
 	
-		matches = matchBldrs.values();
+		matches = chainers.values();
 	}
 	
 	/**
@@ -563,13 +574,40 @@ public class MisassemblyBreaker {
 	 * @param ranges <code>[ mean, sd, n, nSd , min, max ]</code>
 	 */
 	private static void setParameters(double[][] ranges){
+		int maxSd = 0;
 		for (int i = 0; i < ranges.length; i++)
-//			if (ranges[i][1]*ranges[i][3] > PointChainer.MAX_RES)
-//				PointChainer.MAX_RES = (int) (ranges[i][1]*ranges[i][3]);
-			if (ranges[i][1] > PointChainer.MAX_RES)
-				PointChainer.MAX_RES = (int) (ranges[i][1]);
-		setMAXINTERPOINTDIST();
-		setMAXINTERBLOCKDIST();
+			if (ranges[i][1] > maxSd)
+				maxSd = (int) (ranges[i][1]);
+		/*
+		 * By modelling read mapping points as a Poisson process, the distance
+		 * between points is exponential. Take the 1-ALPHA quantile to get
+		 * a maximum distance between two points.
+		 *
+		 * LAMBDA Rate of mapping points (Poisson rate parameter)
+		 */	
+//		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
+		MAX_INTERPOINT_DIST = Math.max(KClump.RDLEN, (int) (Math.log(ALPHA)/Math.log(Math.max(1-LAMBDA,0)))-1);
+//		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/Math.log(1-LAMBDA));
+		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
+		//MAX_INTERPOINT_DIST = 600;
+		/*
+		 * apply some extreme value theory to get the minimum of points 
+		 * randomly sampled uniformally across an interval of MAX_BLOCK_LEN
+		 * 
+		 * MAX_INTERBLOCK_DIST = 2*((1-ALPHA)^(1/EXP_POINTS) * MAX_BLOCK_LEN)
+		 * 
+		 */
+		MAX_INTERBLOCK_DIST = (int)(2*(Math.pow(1-ALPHA, 1/(LAMBDA*MEAN_BLOCK_LEN))*MEAN_BLOCK_LEN-1));
+		MAX_INTERBLOCK_DIST = 2*MEAN_BLOCK_LEN;
+//		double tmp = Math.pow(1-ALPHA, 1/(LAMBDA*MEAN_BLOCK_LEN));
+//		tmp = 1 - tmp;
+//		tmp = tmp*MEAN_BLOCK_LEN;
+//		tmp = tmp - 1;
+//		tmp = MEAN_BLOCK_LEN - tmp;
+//		tmp = 2*tmp;
+//		MAX_INTERBLOCK_DIST = (int)tmp;
+		PointChainer.MIN_PTS = (int) (LAMBDA * MIN_BLOCK_LEN);
+		PointChainer.EPS = MAX_INTERPOINT_DIST;
 	}
 	
 	private static void setMAXBLOCKLEN(double[][] ranges){
@@ -581,32 +619,6 @@ public class MisassemblyBreaker {
 		}
 	}
 	
-	private static void setMAXINTERPOINTDIST(){
-		/*
-		 * By modelling read mapping points as a Poisson process, the distance
-		 * between points is exponential. Take the 1-ALPHA quantile to get
-		 * a maximum distance between two points.
-		 *
-		 * LAMBDA Rate of mapping points (Poisson rate parameter)
-		 */	
-//		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
-		MAX_INTERPOINT_DIST = Math.max(2*PointChainer.MAX_RES,(int) (Math.log(ALPHA)/(-LAMBDA)));
-		PointChainer.EPS = MAX_INTERPOINT_DIST;
-		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
-		//MAX_INTERPOINT_DIST = 600;
-	}
-	
-	private static void setMAXINTERBLOCKDIST(){
-		/*
-		 * apply some extreme value theory to get the minimum of points 
-		 * randomly sampled uniformally across an interval of MAX_BLOCK_LEN
-		 * 
-		 * MAX_INTERBLOCK_DIST = 2*((1-ALPHA)^(1/EXP_POINTS) * MAX_BLOCK_LEN)
-		 * 
-		 */
-		MAX_INTERBLOCK_DIST = (int)(2*(Math.pow(1-ALPHA, 1/(LAMBDA*MEAN_BLOCK_LEN))*MEAN_BLOCK_LEN));
-	}
-	
 	private static void printParams(){
 		System.out.println("[a5_qc] parameters:");
 		System.out.println("        LAMBDA              = " + LAMBDA);
@@ -616,6 +628,9 @@ public class MisassemblyBreaker {
 		System.out.println("        MAX_INTERBLOCK_DIST = " + MAX_INTERBLOCK_DIST);
 		System.out.println("        MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
 		System.out.println("        EPSILON             = " + PointChainer.EPS);
+		System.out.println("        MIN_POINTS          = " + PointChainer.MIN_PTS);
+//		System.out.println("        Geometric           = " + (int)(Math.log(ALPHA)/Math.log(1-LAMBDA)));
+//		System.out.println("        Exponential         = " + (int)(Math.log(ALPHA)/-LAMBDA));
 	}
 	
 	private static void setOrientation(Collection<ReadPair> reads){
@@ -704,7 +719,6 @@ public class MisassemblyBreaker {
 		 *        a point to a KClump (see KClump.fit(MatchPoint)) 
 		 */
 		Vector<ReadSet> signal = new Vector<ReadSet>();
-		PointChainer.MAX_RES = 0;
 		for (int i = 0; i < clusters.length; i++){
 			NF.setMaximumFractionDigits(0);
 			System.out.print("[a5_qc] cluster"+NF.format(clusters[i].getId())+": mu="+pad(NF.format(clusters[i].mean()),10)+
