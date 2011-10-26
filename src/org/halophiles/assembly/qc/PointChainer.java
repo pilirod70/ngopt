@@ -6,8 +6,9 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.Vector;
 
 import org.halophiles.assembly.Contig;
@@ -20,8 +21,11 @@ public class PointChainer {
 	
 	public static Comparator<MatchPoint> xSort = new Comparator<MatchPoint>(){
 		@Override
-		public int compare(KClump arg0, KClump arg1) {
-			return arg1.id - arg0.id;
+		public int compare(MatchPoint arg0, MatchPoint arg1) {
+			if (arg0.x() == arg1.x())
+				return arg0.y() - arg1.y();
+			else 
+				return arg0.x() - arg1.x();
 		}
 	};
 
@@ -32,21 +36,10 @@ public class PointChainer {
 		}
 	};
 	
-	/**
-	 *  maximum residual for adding a MatchPoint to a KClump
-	 */ 
-	static int MAX_RES;
+	private Contig ctg1;
+	
+	private Contig ctg2;
 
-	/**
-	 * The KClumps resulting from chaining points
-	 */
-	private KClump[] kclumps;
-	
-	/**
-	 * The matrix of points to use for calculating KClumps 
-	 */
-	MatchPoint[][] matrix;
-	
 	/**
 	 * All points in <code>matrix</code>
 	 */
@@ -55,12 +48,9 @@ public class PointChainer {
 	private int numPoints; 
 	
 	/**
-	 * Constructs a new PointChainer. Builds the matrix of MatchPoints and runs
-	 * dynamic programming algorithm. 
+	 * The KClumps resulting from chaining points.
+	 * KClumps should be mutually exclusive
 	 * 
-	 * @param p1 a sorted array of points in contig 1 
-	 * @param p2 a sorted array of points in contig 2
-	 * @param matches an array of length 2 arrays. each array contains the point in each contig that comprise this match
 	 */
 	private Set<KClump> kclumps;
 	
@@ -93,26 +83,16 @@ public class PointChainer {
 		Iterator<MatchPoint> it = currPoints.iterator();
 		while(it.hasNext()){
 			MatchPoint tmp = it.next();
-			//tmp.print(System.out);
-			if (tmp.pred == null) {
-				Stack<MatchPoint> cc = tmp.getCC();
-				if (cc.size() < 10)
-					continue;
-				kclumpSet.add(new KClump(new HashSet<MatchPoint>(cc), MAX_RES));
-			}
+			out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t0");
 		}
-		// now collect all points that look like they belong to this line.
-		Iterator<KClump> kcIt = kclumpSet.iterator();
-		while (kcIt.hasNext()) {
+		
+		Iterator<KClump> kcIt = kclumps.iterator();
+		while(kcIt.hasNext()){
 			KClump tmpKc = kcIt.next();
-			if(tmpKc.id == 11)
-				System.out.print("");
-			if(tmpKc.id == 9)
-				System.out.print("");
-			it = points.iterator();
-			while (it.hasNext()) {
+			it = tmpKc.getMatchPoints().iterator();
+			while(it.hasNext()){
 				MatchPoint tmp = it.next();
-				tmpKc.add(tmp);
+				out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t"+tmpKc.id);
 			}
 		}
 		out.close();
@@ -158,8 +138,14 @@ public class PointChainer {
 			System.out.println("        "+kcIt.next().toString());
 	}
 
+	/**
+	 * Return a set of mutually exclusive KClumps
+	 * @return a set of mutually exclusive KClumps
+	 */
 	public KClump[] getKClumps() {
-		return kclumps;
+		KClump[] ar = new KClump[kclumps.size()];
+		kclumps.toArray(ar);
+		return ar;
 	}
 	
 	public Contig getContig1(){
@@ -252,4 +238,5 @@ public class PointChainer {
 			i++;
 		}
 	}
+	
 }

@@ -3,12 +3,13 @@ package org.halophiles.assembly.qc;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 
 public class KClump {
 	private static int COUNT = 0;
+	
+	static int RDLEN = 50;
 	
 	int xMax;
 	int xMin;
@@ -16,7 +17,7 @@ public class KClump {
 	int yMin;
 	
 	
-	private Collection<MatchPoint> points;
+	private Set<MatchPoint> points;
 	
 	final int id;
 	
@@ -32,25 +33,19 @@ public class KClump {
 		xMin = Integer.MAX_VALUE;
 		yMax = Integer.MIN_VALUE;
 		yMin = Integer.MAX_VALUE;
-		double[] x = new double[points.size()];
-		double[] y = new double[points.size()];
 		Iterator<MatchPoint> it = points.iterator();
 		int i = 0;
 		while(it.hasNext()){
 			MatchPoint tmp = it.next();
-			x[i] = tmp.x();
-			y[i] = tmp.y();
-			if (x[i] > xMax)
-				xMax = (int) x[i];
-			if (x[i] < xMin)
-				xMin = (int) x[i];
-			if (y[i] > yMax)
-				yMax = (int) y[i];
-			if (y[i] < yMin)
-				yMin = (int) y[i];			
-			if (i==0){
-			//	ctgX = tmp.
-			}
+			if (tmp.x()+RDLEN > xMax)
+				xMax = tmp.x()+RDLEN;
+			if (tmp.x() < xMin)
+				xMin = tmp.x();
+			if (tmp.y()+RDLEN > yMax)
+				yMax = tmp.y()+RDLEN;
+			if (tmp.y() < yMin)
+				yMin = tmp.y();			
+			
 			i++;
 		}	
 		this.points = points;
@@ -69,7 +64,7 @@ public class KClump {
 	 * Return the points in this KClump
 	 * @return the points in this KClump
 	 */
-	public Collection<MatchPoint> getMatchPoints(){
+	public Set<MatchPoint> getMatchPoints(){
 		return points;
 	}
 	
