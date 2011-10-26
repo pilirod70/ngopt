@@ -1,22 +1,34 @@
 package org.halophiles.assembly.qc;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Stack;
 import java.util.Vector;
+
+import org.halophiles.assembly.Contig;
 
 public class PointChainer {
 	
-	/**
-	 * A Comparator for sorting KClumps by their id.
-	 */
-	private static Comparator<KClump> COMP = new Comparator<KClump>() {
+	static double EPS;
+	
+	static int MIN_PTS = 10;
+	
+	public static Comparator<MatchPoint> xSort = new Comparator<MatchPoint>(){
 		@Override
 		public int compare(KClump arg0, KClump arg1) {
 			return arg1.id - arg0.id;
+		}
+	};
+
+	public static Comparator<KClump> CLUST_COMP = new Comparator<KClump>(){
+		@Override
+		public int compare(KClump arg0, KClump arg1) {
+			return arg0.xMax - arg1.xMax;
 		}
 	};
 	
@@ -38,7 +50,9 @@ public class PointChainer {
 	/**
 	 * All points in <code>matrix</code>
 	 */
-	Collection<MatchPoint> points;
+	private TreeSet<MatchPoint> currPoints;
+	
+	private int numPoints; 
 	
 	/**
 	 * Constructs a new PointChainer. Builds the matrix of MatchPoints and runs
@@ -48,15 +62,36 @@ public class PointChainer {
 	 * @param p2 a sorted array of points in contig 2
 	 * @param matches an array of length 2 arrays. each array contains the point in each contig that comprise this match
 	 */
-	public PointChainer(int[] p1, int[] p2, int[][] matches) {
-		matrix = new MatchPoint[p1.length][p2.length];
-		points = buildMatrix(matrix, p1, p2, matches);
-		buildNeighborHoods(matrix, p1, p2);
-		getScores(matrix);
-		// first find our Kclumps
-		Vector<KClump> kclumpSet = new Vector<KClump>();
-		Iterator<MatchPoint> it = points.iterator();
-		while (it.hasNext()) {
+	private Set<KClump> kclumps;
+	
+	private class MatchComparator implements Comparator<Integer>{
+		public MatchComparator(int contig, MatchPoint[] matches){
+			this.contig = contig;
+			this.matches = matches;
+		}
+		public int compare(Integer a, Integer b){
+			if (contig==0)
+				return matches[a.intValue()].x()-matches[b.intValue()].x();
+			else 
+				return matches[a.intValue()].y()-matches[b.intValue()].y();
+		}
+		int contig;
+		MatchPoint[] matches;
+	}
+	
+	public PointChainer(Contig contig1, Contig contig2){
+		this.ctg1 = contig1;
+		this.ctg2 = contig2;
+		currPoints = new TreeSet<MatchPoint>(xSort);
+		kclumps = new TreeSet<KClump>(CLUST_COMP);
+		numPoints = 0;
+	}
+	
+	public void exportCurrState(File file) throws IOException{
+		file.createNewFile();
+		PrintStream out = new PrintStream(file);
+		Iterator<MatchPoint> it = currPoints.iterator();
+		while(it.hasNext()){
 			MatchPoint tmp = it.next();
 			//tmp.print(System.out);
 			if (tmp.pred == null) {
@@ -80,125 +115,141 @@ public class PointChainer {
 				tmpKc.add(tmp);
 			}
 		}
+		out.close();
+	}
+	
+	public int numPoints(){
+		return numPoints;
+	}
+	
+	public boolean addMatch(int x, int y){
+		numPoints++;
+		return currPoints.add(new MatchPoint(x, y));
+	}
+	
+	public void buildKClumps(){
+		int win = Math.max(1000,MisassemblyBreaker.MEAN_BLOCK_LEN);
+		int[][] grid = new int[ctg1.len/win+(ctg1.len%win==0?0:1)]
+		                       [ctg2.len/win+(ctg2.len%win==0?0:1)];
+		Iterator<MatchPoint> it = currPoints.iterator();
+		while(it.hasNext()){
+			MatchPoint tmp = it.next();
+			int xIdx = tmp.x()/win+(tmp.x()%win==0?-1:0);
+			int yIdx = tmp.y()/win+(tmp.y()%win==0?-1:0); 
+			grid[xIdx][yIdx]++;
+		}
+		double winDouble = win;
+		double minDens = Double.POSITIVE_INFINITY;
 		
-		this.kclumps = new KClump[kclumpSet.size()];
-		kclumpSet.toArray(this.kclumps);
-		Arrays.sort(this.kclumps, COMP);
+		for (int i = 0; i < grid.length; i++){
+			for (int j = 0; j < grid[i].length; j++){
+				double tmp = grid[i][j]/(winDouble*winDouble);
+				if (tmp > 0 && tmp < minDens)
+					minDens = tmp;
+			}
+		}
+		locateNeighbors();
+		runDBSCAN();
+		if (kclumps.isEmpty())
+			return;
+		System.out.println("[a5_qc] Found "+kclumps.size()+" initial blocks between contigs "+ctg1.getId()+" and "+ctg2.getId());
+		Iterator<KClump> kcIt = kclumps.iterator();
+		while(kcIt.hasNext())
+			System.out.println("        "+kcIt.next().toString());
 	}
 
 	public KClump[] getKClumps() {
 		return kclumps;
 	}
 	
-	/**
-	 * Fills a matrix with MatchPoints corresponding to matches in <code>matches</code>
-	 * 
-	 * @param matrix The matrix to fill
-	 * @param p1 the points in contig 1
-	 * @param p2 the points in contig 2
-	 * @param matches matching points between <code>p1</code> and <code>p2</code>
-	 * @return the points that are now in <code>matrix</code>
-	 */
-	private static Collection<MatchPoint> buildMatrix(MatchPoint[][] matrix, int[] p1, int[] p2, int[][] matches) {
-		Collection<MatchPoint> points = new Vector<MatchPoint>();
-		for (int i = 0; i < matches.length; i++) {
-			// Find the index of each point in match i
-			int x = Arrays.binarySearch(p1, matches[i][0]);
-			int y = Arrays.binarySearch(p2, matches[i][1]);
-			if (x < 0) {
-				System.err.println("[a5_qc] Can't find " + matches[i][0]
-						+ " in map file");
-			}
-			if (y < 0) {
-				System.err.println("[a5_qc] Can't find " + matches[i][1]
-						+ " in map file");
-			}
-			matrix[x][y] = new MatchPoint(matches[i][0], matches[i][1]);
-			points.add(matrix[x][y]);
-		}
-		return points;
+	public Contig getContig1(){
+		return ctg1;
 	}
 	
-	/**
-	 * For each point in <code>matrix</code>, find all other points in <code>matrix</code> whose nieghborhood the point is in
-	 * point j is in the neighborhood of point i if
-	 * 			j_x - i_x < MAX_INTERPOINT_DIST and
-	 * 			j_y - i_y < MAX_INTERPOINT_DIST
-	 * 
-	 * @param matrix the matrix of points to build neighborhoods for
-	 * @param p1 the points in contig 1
-	 * @param p2 the points in contig 2
-	 */
-	private static void buildNeighborHoods(MatchPoint[][] matrix, int[] p1, int[] p2){
-		for (int i = 0; i < matrix.length; i++) {
-			for (int j = 0; j < matrix[i].length; j++) {
-				if (matrix[i][j] == null)
-					continue;
-				for (int y = 1; j + y < matrix[i].length
-						&& p2[j + y] - p2[j] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; y++) {
-					if (matrix[i][j + y] == null)
-						continue;
-					matrix[i][j + y].addNeighborhood(matrix[i][j]);
-				}
-				for (int y = 1; j - y >= 0
-						&& p2[j] - p2[j - y] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; y++) {
-					if (matrix[i][j - y] == null)
-						continue;
-					matrix[i][j - y].addNeighborhood(matrix[i][j]);
-				}
-
-				// stay in i,j's column, and go up
-				for (int y = 1; j + y < matrix[i].length && 
-						p2[j + y] - p2[j] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; y++) {
-					
-					if (matrix[i][j + y] == null)
-						continue;
-					matrix[i][j + y].addNeighborhood(matrix[i][j]);
-				}
-				// now go down
-				for (int y = 1; j - y >= 0 && 
-						p2[j] - p2[j - y] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; y++) {
-					
-					if (matrix[i][j - y] == null)
-						continue;
-					matrix[i][j - y].addNeighborhood(matrix[i][j]);
-				}
-
-				for (int x = 1; i + x < matrix.length
-						&& p1[i + x] - p1[i] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; x++) {
-
-					// start at i,j's current row, and add all points within
-					// MisassemblyBreaker.MAX_DIST up
-					for (int y = 0; j + y < matrix[i + x].length
-							&& p2[j + y] - p2[j] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; y++) {
-						if (matrix[i + x][j + y] == null)
-							continue;
-						matrix[i + x][j + y].addNeighborhood(matrix[i][j]);
-					}
-					// now go down
-					for (int y = 0; j - y >= 0
-							&& p2[j] - p2[j - y] <= MisassemblyBreaker.MAX_INTERPOINT_DIST; y++) {
-						if (matrix[i + x][j - y] == null)
-							continue;
-						matrix[i + x][j - y].addNeighborhood(matrix[i][j]);
-					}
-
-				}
-
-			}
+	public Contig getContig2(){
+		return ctg2;
+	}
+	
+	private void locateNeighbors(){
+		MatchPoint[] matchpoints = new MatchPoint[currPoints.size()];
+		Integer[] x_order_int = new Integer[matchpoints.length];
+		Iterator<MatchPoint> it = currPoints.iterator();
+		int[] x_order = new int[matchpoints.length];
+		HashMap<MatchPoint, Integer> xref = new HashMap<MatchPoint, Integer>();
+		for(int i=0; i<matchpoints.length; i++){
+			matchpoints[i] = it.next();
+			x_order_int[i]=i;
+		}
+		MatchComparator mcx = new MatchComparator(0, matchpoints);
+		
+		Arrays.sort(x_order_int, mcx);
+				
+		for(int i=0; i<x_order.length; i++){
+			x_order[i] = x_order_int[i];
+			xref.put(matchpoints[x_order[i]], i);
+		}
+		/* FIND NEIGHBORS
+		 * 
+		 * For each point in <code>matrix</code>, find all other points in <code>matrix</code> whose nieghborhood the point is in
+		 * point j is in the neighborhood of point i if
+		 * 			j_x - i_x < MAX_INTERPOINT_DIST and
+		 * 			j_y - i_y < MAX_INTERPOINT_DIST
+		 * 
+		 */
+		for( int i=0; i<matchpoints.length; i++){
+			// where is this point in x?
+			int i_in_x = xref.get(matchpoints[i]);
+			for(int j_x=i_in_x+1; j_x < x_order.length && 
+				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= EPS; 
+																	j_x++)
+				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS)
+					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
+			for(int j_x=i_in_x-1; j_x >= 0 && 
+				matchpoints[i].x() - matchpoints[x_order[j_x]].x() <= EPS; 
+																	j_x--)
+				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS)
+					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 		}
 	}
-	/**
-	 * A function to compute scores (i.e. run dynamic programming algorithm)
-	 * @param matrix the matrix of points to compute scores for
-	 */
-	private static void getScores(MatchPoint[][] matrix){
-		for (int i = 0; i < matrix.length; i++) {
-			for (int j = 0; j < matrix[i].length - 1; j++) {
-				if (matrix[i][j] == null)
-					continue;
-				matrix[i][j].getScore();
+	
+	
+	private void runDBSCAN(){
+		Iterator<MatchPoint> it = currPoints.iterator();
+		Set<MatchPoint> currClust = null;
+		MatchPoint tmp = null;
+		while(it.hasNext()){
+			tmp = it.next();
+			if (tmp.isVisited())
+				continue;
+			if (tmp.size() < MIN_PTS){
+				tmp.setNoise();
+				tmp.setAssigned();
+			} else {
+				currClust = new TreeSet<MatchPoint>(xSort);
+				expandClusters(tmp, currClust);
+				kclumps.add(new KClump(currClust));
 			}
+			tmp.setVisited();
+		}
+	}
+	
+	private void expandClusters(MatchPoint p, Set<MatchPoint> clust){
+		clust.add(p);
+		p.setAssigned();
+		Vector<MatchPoint> neighbors = new Vector<MatchPoint>(p.getNeighbors());
+		int i = 0;
+		while(i < neighbors.size()){
+			MatchPoint tmp = neighbors.get(i);
+			if (!tmp.isVisited()) {
+				tmp.setVisited();
+				if (tmp.size() >= MIN_PTS)
+					neighbors.addAll(tmp.getNeighbors());
+			} 
+			if (!tmp.isAssigned()){
+				clust.add(tmp);
+				tmp.setAssigned();
+			}
+			i++;
 		}
 	}
 }

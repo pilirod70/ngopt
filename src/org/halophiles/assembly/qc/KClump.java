@@ -7,22 +7,14 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.halophiles.tools.SummaryStats;
-
 public class KClump {
 	private static int COUNT = 0;
-	
-	private int maxResid;
-	private int xLowerBnd;
-	private int xUpperBnd;
 	
 	int xMax;
 	int xMin;
 	int yMax;
 	int yMin;
 	
-	private double slope;
-	private double intercept;
 	
 	private Collection<MatchPoint> points;
 	
@@ -34,7 +26,7 @@ public class KClump {
 	 * @param points the points in this KClump
 	 * @param maxResid the maximum residual for calling a point a member of this KClump
 	 */
-	public KClump(Set<MatchPoint> points, int maxResid){
+	public KClump(Set<MatchPoint> points){
 		id = ++COUNT;
 		xMax = Integer.MIN_VALUE;
 		xMin = Integer.MAX_VALUE;
@@ -60,51 +52,11 @@ public class KClump {
 			//	ctgX = tmp.
 			}
 			i++;
-		}
-		double mu_x = SummaryStats.mean(x);
-		double mu_y = SummaryStats.mean(y);
-		// compute the linear regression coefficients
-		slope = SummaryStats.covariance(x,mu_x,y,mu_y)/SummaryStats.variance(x,mu_x);
-		intercept = mu_y - slope*mu_x;
-		// set upper and lower x limits for this KClump
-		xLowerBnd = xMin - MisassemblyBreaker.MAX_INTERPOINT_DIST; 
-		xUpperBnd = xMax + MisassemblyBreaker.MAX_INTERPOINT_DIST;
-		this.maxResid = maxResid;
+		}	
 		this.points = points;
 	}
 	
-	/**
-	 * Determines if MatchPoint p fits in this KClump
-	 * @param p the point to fit
-	 * @return true if within x limits and residual is small enough
-	 */
-	public boolean fits(MatchPoint p){
-		double yfit = slope*p.x()+intercept;
-		return xLowerBnd < p.x() && p.x() < xUpperBnd && Math.abs(yfit - p.y()) < maxResid;
-	}
 	
-	/**
-	 * Add MatchPoint p to this KClump if it fits according to the function <code> fit(MatchPoint p) </code>
-	 * @param p
-	 * @return
-	 */
-	public boolean add(MatchPoint p){
-		if (fits(p)){
-			points.add(p);
-			if (p.x() > xMax)
-				xMax = p.x();
-			else if (p.x() < xMin)
-				xMin = p.x();
-			if (p.y() > yMax)
-				yMax = p.y();
-			else if (p.y() < yMin)
-				yMin = p.y();
-			//System.out.println("Adding point "+p.toString()+" to k-clump "+id);
-			return true;
-		} else {
-			return false;
-		}
-	}
 	/**
 	 * Returns the number of points in this KClump
 	 * @return the number of points in this KClump
@@ -119,6 +71,14 @@ public class KClump {
 	 */
 	public Collection<MatchPoint> getMatchPoints(){
 		return points;
+	}
+	
+	public int hashCode(){
+		return id;
+	}
+	
+	public String toString(){
+		return xMin+"-"+xMax +" <-> "+yMin+"-"+yMax;
 	}
 	
 	/**
@@ -138,4 +98,7 @@ public class KClump {
 		out.close();
 	}
 	
+	public double density(){
+		return points.size()/((double)(xMax-xMin)*(yMax-yMin));
+	}
 }

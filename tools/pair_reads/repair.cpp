@@ -8,6 +8,12 @@
 
 using namespace std;
 
+bool fastq;
+int pair_reads_call = 0;
+double p = 1.0;
+map<string,struct read> pair1;
+map<string,struct read> pair2;
+
 struct read {
 	string hdr;
 	string seq;
@@ -15,11 +21,37 @@ struct read {
 	int pair;
 };
 
-bool fastq;
-int pair_reads_call = 0;
-double p = 1.0;
-map<string,struct read> pair1;
-map<string,struct read> pair2;
+
+struct printer {
+	ofstream* p1; 
+	ofstream* p2; 
+	bool print_fasta;
+	bool revcomp;
+		
+	printer(string prefix, string base, string suffix, bool print_fasta, bool revcomp, bool shuf){
+		if (shuf) {
+			p1 = new ofstream((prefix+base+"_shuf"+suffix).c_str());
+			p2 = p1; 
+		} else {
+			p1 = new ofstream((prefix+base+"_p1"+suffix).c_str());
+			p2 = new ofstream((prefix+base+"_p2"+suffix).c_str());
+		}
+	}
+	
+	void print(read& r1, read& r2){
+		if (fastq && !print_fasta) {
+			p1out << "@" << r1->hdr << "\n" << r1->seq << "\n+" << r1->hdr << "\n" << r1->qual << endl;
+			p2out << "@" << r2->hdr << "\n" << r2->seq << "\n+" << r2->hdr << "\n" << r2->qual << endl;
+		} else {
+			p1out << ">" << r1->hdr << "\n" << r1->seq << endl;
+			p2out << ">" << r2->hdr << "\n" << r2->seq << endl;
+
+		}
+	
+	}
+
+}
+
 
 char comp(char b) {
     switch(b){
@@ -124,7 +156,13 @@ void pair_reads(istream& in, bool fastq){
 			r.pair = 2;
 			pair2[key] = r;
 		} else {
-			cerr << "Unable to pair read: >>" << r.hdr << "<<" << endl;
+			if (pair1.find(key) == pair1.end()){
+				r.pair = 1;
+				pair1[key] = r;
+			} else {
+				r.pair = 2;
+				pair2[key] = r;
+			}
 		}
 	}
 }
