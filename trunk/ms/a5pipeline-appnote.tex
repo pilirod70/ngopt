@@ -93,6 +93,13 @@ read-pairs and spatial clustering is used to cluster these discordant read pairs
 Scaffolds are broken using these blocks and then rescaffolded using SSPACE.
 \end{methods}
 
+
+\begin{figure}[t]
+\includegraphics[width=3.5in]{a5pipeline-diagram.pdf}
+\vspace{-1cm}
+\caption{Diagram of A5 pipeline. }\label{fig:01}
+\end{figure}
+
 \subsection{Automated parameter selection}
 
 Throughout the A5 pipeline and other assembly programs, there are many 
@@ -116,9 +123,9 @@ For these two, we consult with Genomis, the Greek god of genomes.
 \subsection{Automated misassembly quality control}
 
 After scaffolds have been built, our pipeline performs an automated quality control step.
-Reads are first mapped to scaffolds, and then mapping points are spatially clustered. After mapping,
-connections between paired points that support the current assembly architecture, which we refer to as 
-\emph{proper connections}, must be removed before spatial clustering. Proper connections
+As exemplified in Figure 2, reads are first mapped to scaffolds, and then mapping points are spatially clustered.
+After mapping, connections between paired points that support the current assembly architecture, which we 
+refer to as \emph{proper connections}, must be removed before spatial clustering. Proper connections
 can be identified using the insert size distribution of the library. However, shadow libraries from 
 mate-pair libraries and inherent noise in libraries will skew the mean and inflate the variance 
 estimates of the insert size distribution. To avoid including noise in mean and variance estimates, 
@@ -134,6 +141,18 @@ they have high-variance, or $s > \mu$, and proper connections if they have low-v
 the cluster, and $s$ is the standard deviation. Each low-variance cluster is then used to filter 
 pairs with inserts between the range $(\mu-ns,\mu+ns)$, where $n = \min(\lfloor\frac{\mu}{s}\rfloor, 6)$.  
 
+
+\begin{figure}[t]
+\includegraphics[width=3.5in]{fish-qc.pdf}
+\vspace{-1cm}
+\caption{\textbf{Left:}  A whole genome alignment of example assembly containing misassemblies to actual genome. 
+Red, green, and blue lines connect aligned regions. Black connecting lines represent real paired read 
+connections between contigs and orange connecting lines represent erroneous connections. \textbf{Right:}A plot 
+of connected points between Contig X and Contig Y. Black and orange dots correspond
+to black and orange connections lines from left figure, respectively. Dotted lines correspond
+to misassembly breakpoints. The gray circle highlights the set of points that are clustered by DBSCAN. }\label{fig:02}
+\end{figure}
+
 After proper connections have been removed, misassemblies are identified by locating blocks with excessive 
 paired read connections between pairs of scaffolds. To identify these blocks, we use the spatial clustering algorithm DBSCAN 
 to cluster points in 2-dimensional space. The two key parameters to DBSCAN are $\varepsilon$, the maximum distance between 
@@ -147,16 +166,16 @@ The maximum distance between two mapping points is then calculated using the fol
 \begin{equation}
 	d(p) = \dfrac{\ln(\alpha)}{\ln(1-p)}
 \end{equation} 
-for some $\alpha < 1$. In practice, $alpha = 0.001$ and $\varepsilon = max(d(p),l_r)$ where $l_r$ is the read length.
+for some $\alpha < 1$. In practice, $\alpha = 0.001$ and $\varepsilon = max(d(p),l_r)$ where $l_r$ is the read length.
 The second parameter of the DBSCAN algorithm, $MinPts$, is then set to be $2p\varepsilon$.
-Regions of length $\le 2\mu$ within individual scaffolds that are flanked by two blocks are identified as containing
+Finally, regions of length $\le 2\mu$ within individual scaffolds that are flanked by two blocks are identified as containing
 misassemblies and are clipped out, breaking the scaffold into two subscaffolds.
 
 \begin{table}[!t]
 \processtable{ Reference-based assembly metrics on crude and error-checked assemblies.
 \label{Tab:01}}
 {\begin{tabular}{l|cccc}\toprule
-Metric            & Ecol & Ecol-noQC & Hvol & Hvol-noQC\\\midrule
+Metric            & volcS & volcA5-noQC &  & \\\midrule
 Scaffold count    &  &  &  & 608 \\
 N50               &  &  &  & 12735   \\
 Miscalled bases   &  &  &  & 201 \\
@@ -190,24 +209,7 @@ Num unknowns      & & & & \\
 
 \section{Discussion}
 
-Can't you see, this software is the bomb!
-
-\begin{figure}[t]
-\includegraphics[width=3.5in]{a5pipeline-diagram.pdf}
-\vspace{-1cm}
-\caption{Diagram of A5 pipeline. }\label{fig:01}
-\end{figure}
-
-\begin{figure}[t]
-\includegraphics[width=3.5in]{fish-qc.pdf}
-\vspace{-1cm}
-\caption{\textbf{Left:}  A whole genome alignment of example assembly containing misassemblies to actual genome. 
-Red, green, and blue lines connect aligned regions. Black connecting lines represent real paired read 
-connections between contigs and orange connecting lines represent erroneous connections. \textbf{Right:}A plot 
-of connected points between Contig X and Contig Y. Black and orange dots correspond
-to black and orange connections lines from left figure, respectively. Dotted lines correspond
-to misassembly breakpoints. The gray circle highlights the set of points that are clustered by DBSCAN. }\label{fig:02}
-\end{figure}
+The pipeline we describe here illustrates some things about genome assem
 
 
 
