@@ -4,7 +4,7 @@
 # (c) 2011 Andrew Tritt and Aaron Darling
 # This is free software licensed under the GPL
 #
-# Usage: a5_pipeline.pl <library file> <output base>
+# Usage: a5_pipeline.pl <library file> <output directory or basename>
 #
 use strict;
 use warnings;
@@ -12,15 +12,77 @@ use File::Basename;
 use Cwd 'abs_path';
 use Getopt::Long;
 
+=pod
+
+=head1 NAME
+
+a5_pipeline -- Assemble isolate genomes from Illumina data with ease
+
+=head1 SYNOPSIS
+
+a5_pipeline takes FastQ format sequence reads directly from the Illumina base-calling software and cleans, filters, and assembles them.
+For example the command:
+
+a5_pipeline read1.fastq read2.fastq my_assembly
+
+Will assemble the paired reads in read1.fastq and read2.fastq and store the result in files whose names begin with "my_assembly".
+The final scaffolded assembly will be named my_assembly.final.scaffolds.fasta
+
+=head1 DESCRIPTION
+
+The flow of execution is roughly:
+   1) Clean up the sequence data
+      - Error correct, trim adapter, quality trim
+   2) Build contigs on error-corrected reads
+   3) Scaffold contigs using paired-read and mate-pair information
+   4) Detect any misassemblies and break contigs/scaffolds
+   5) Rescaffold the broken contigs/scaffolds
+
+Throughout the pipeline there are various steps used to estimate
+alignment parameters
+
+=head1 EXAMPLES
+
+With a single paired-end illumina library:
+a5_pipeline <read1.fastq> <read2.fastq> <output directory or basename>
+
+With two or more libraries:
+a5_pipeline <library file> <output directory or basename>
+
+=head1 AUTHORS
+
+Andrew Tritt <atritt@ucdavis.edu>
+Aaron Darling <aarondarling@ucdavis.edu>
+
+=head1 AVAILABILITY
+
+http://ngopt.googlecode.com
+
+=head1 COPYRIGHT
+
+Copyright 2010, 2011
+This software is licensed under the terms of the GPLv3
+
+=cut
 
 my $AVAILMEM = 4000000;
 my $def_up_id="upReads";
 my @KEYS = ("id","p1","p2","shuf","up","rc","ins","err","nlibs","libfile");
-my $usage= "Usage: ".basename($0)." [--begin=1-5] [--preprocessed] <lib_file> <out_base>\n".
-           "\n".
-           "If --preprocessed is used, <lib_file> is expected to be the library file\n".
-           "created before step 3, named <out_base>.preproc.libs. Note that this flag\n".
-           "only applies if beginning pipeline after step 2.\n";
+my $pname = basename($0);
+my $usage= qq{
+Usage: $pname [--begin=1-5] [--preprocessed] <lib_file> <out_base>
+
+Or: $pname <Read 1 FastQ> <Read 2 FastQ> <out_base>
+
+<out_base> is the base file name for all output files. When assembling from 
+a single library, the fastq files may be given directly on the command line.
+If using more than one library, a library file must be given as <lib_file>.
+The library file must contain the filenames of all read files.
+
+If --preprocessed is used, <lib_file> is expected to be the library file
+created during step 2 of the pipeline, named <out_base>.preproc.libs. Note 
+that this flag only applies if beginning pipeline after step 2.
+};
 die $usage if ! @ARGV;
 
 Getopt::Long::Configure(qw{no_auto_abbrev no_ignore_case_always pass_through});
@@ -30,22 +92,26 @@ GetOptions( 'begin=i' => \$start,
 			'preprocessed' => \$preproc);
 
 die $usage if (@ARGV < 2);
-if ($^O =~ m/darwin/) {
-	my $inf = `/usr/sbin/system_profiler SPHardwareDataType | grep Memory`;
-	if ($inf =~ /      Memory: (\d+) GB/){
-		$AVAILMEM = $1 * 1048576;
-	}
-} else {
-	my $inf = `cat /proc/meminfo | grep MemTotal`;
-	if ($inf =~ /MemTotal:     (\d+) kB/){
-		$AVAILMEM = $1;
-	}
-}
-print $AVAILMEM."\n";
 
+$AVAILMEM = get_availmem();
+print $AVAILMEM."\n";
 
 my $libfile = $ARGV[0];
 my $OUTBASE = $ARGV[1];
+
+if(@ARGV==3){
+	# assume the user provided two FastQ files instead of a library file
+	$OUTBASE = $ARGV[2];
+	open(TMPLIBFILE, ">$OUTBASE.tmplibs");
+	print TMPLIBFILE "[LIB]\n";
+	print TMPLIBFILE "p1=$ARGV[0]\n";
+	print TMPLIBFILE "p2=$ARGV[1]\n";
+	close TMPLIBFILE;
+	$libfile = "$OUTBASE.tmplibs";
+}else{
+	$libfile = $ARGV[0];
+	$OUTBASE = $ARGV[1];
+}
 
 my $DIR = dirname(abs_path($0));
 my %RAW_LIBS = read_lib_file($libfile);
@@ -158,6 +224,36 @@ if ($start <= 5 && $need_qc) {
 } 
 print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
 
+
+
+
+
+
+#
+# Begin subroutines
+#
+#
+
+# reads total installed memory in a platform-dependent way
+sub get_availmem {
+	my $mem = 4000000;
+	if ($^O =~ m/darwin/) {
+		my $inf = `/usr/sbin/system_profiler SPHardwareDataType | grep Memory`;
+		if ($inf =~ /      Memory: (\d+) GB/){
+			$mem = $1 * 1048576;
+		}
+	} else {
+		my $inf = `cat /proc/meminfo | grep MemTotal`;
+		if ($inf =~ /MemTotal:\s+(\d+) kB/){
+			$mem = $1;
+		}
+	}
+	return $mem
+}
+
+
+# assemble contigs using SGA
+# experimental! not fine-tuned!
 sub sga_assemble {
 	my $r1fq = shift;
 	my $r2fq = shift;
@@ -173,6 +269,7 @@ sub sga_assemble {
 	`$DIR/sga assemble -x 10 -b 5 -r 20 $outbase.pp.ec.qcpass.rmdup.asqg.gz`;
 }
 
+#
 sub sga_clean {
 	my $outbase = shift;
 	my $libsref = shift;
@@ -216,7 +313,7 @@ sub sga_clean {
 	my $sga_ind_kb = 4000000;
 	my $err_file = "$WD/index.err";
 	do{
-		$cmd = "sga index -d $AVAILMEM -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
+		$cmd = "sga index -d ".($AVAILMEM/2)." -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
 		print STDERR "[a5] $cmd\n";
 		$sga_ind = `$DIR/$cmd`;
 		$sga_ind = read_file($err_file);
@@ -465,7 +562,8 @@ sub preprocess_libs {
 				# scaffold with the previous insert....
 				# combine libraries if necessary, and return just one library hash
 				$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
-				$run_lib->{"libfile"} = print_libfile("$OUTBASE.library_$libraryI.txt", $run_lib);
+				$run_lib->{"libfile"} = print_libfile("$OUTBASE.library_$libraryI.txt", $run_lib, $run_lib->{"err"});
+				print_libfile("$OUTBASE.library_$libraryI.txt.strict", $run_lib, $run_lib->{"err"}/2);
 				for my $key (keys %$run_lib){
 					$processed{$run_lib->{"id"}}{$key} = $run_lib->{$key};
 				}
@@ -481,7 +579,8 @@ sub preprocess_libs {
 		$prev_lib = $lib;
 	}
 	$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
-	$run_lib->{"libfile"} = print_libfile("$OUTBASE.library_$libraryI.txt", $run_lib);
+	$run_lib->{"libfile"} = print_libfile("$OUTBASE.library_$libraryI.txt", $run_lib, $run_lib->{"err"});
+	print_libfile("$OUTBASE.library_$libraryI.txt.strict", $run_lib, $run_lib->{"err"}/2);
 	open(LIB,">$OUTBASE.preproc.libs");
 	print STDERR "[a5] Printing preprocessed library file to $OUTBASE.preproc.libs\n";
 	for my $key (keys %$run_lib){
@@ -529,11 +628,12 @@ sub aggregate_libs {
 sub print_libfile {
 	my $file = shift;
 	my $libref = shift;
+	my $err_estimate = shift;
 	#open( LIBRARY, ">$WD/library_$libraryI.txt" );
 	open( LIBRARY, ">$file" );
 	#print LIBRARY "$curr_lib $fq1 $fq2 $ins_mean $ins_err $outtie\n";
 	print LIBRARY $libref->{"id"}." ".$libref->{"p1"}." ".$libref->{"p2"}." ".
-                  $libref->{"ins"}." ".$libref->{"err"}." ".$libref->{"rc"}."\n";
+                  $libref->{"ins"}." $err_estimate ".$libref->{"rc"}."\n";
 	close LIBRARY;
 	return $file;
 }
@@ -593,6 +693,7 @@ sub break_all_misasms {
 	my $genome_size = get_genome_size($ctgs);
 	# sort libraries by insert so we break with larger inserts first.
 	for my $lib (sort { $libs{$b}{"ins"} <=> $libs{$a}{"ins"} } keys %libs) {
+		next unless $libs{$lib}{"ins"} > 2000;	#AED: only use large inserts for now
 		my $ins = $libs{$lib}{"ins"};
 		my $fq1 = $libs{$lib}{"p1"};
 		my $fq2 = $libs{$lib}{"p2"};
@@ -718,15 +819,16 @@ sub run_sspace {
 	if(defined($rescaffold)&&$rescaffold==1){
 		# when rescaffolding we want to pick up the low coverage
 		# and small pieces that were cut out from misassembled regions
-		$sspace_a = 0.3; # be stringent here -- do not want more misassembly
-		$sspace_k -= 2;
+		$sspace_a = 0.2; # be stringent here -- do not want more misassembly
+		$sspace_k -= 2 if( $insert_size > 1500 );
 		$sspace_x = 0; # do not extend contigs -- risks further misassembly
+		$libfile .= ".strict";
 	}
 
 	# require at least 1 link
 	$sspace_k = $sspace_k < 1 ? 1 : $sspace_k;
 
-	my $sspace_cmd = "SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a $sspace_a -o 1 -x 0 ".
+	my $sspace_cmd = "SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a $sspace_a -o 1 -x $sspace_x ".
                                         "-l $libfile -s $input_fa -b $outbase -d $WD";
 	if (@_) {
 		print STDERR "[a5] Running SSPACE with unpaired reads\n";
