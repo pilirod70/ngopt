@@ -14,8 +14,12 @@ use warnings;
 use File::Basename;
 
 # variables that may need to be changed:
+# path to node-local temporary storage
 my $tmpdir = "/state/partition1/koadman/tnpclean.".$ENV{"JOB_ID"};
+# path to the e. coli reference db
 my $ecoli_db = "/home/koadman/data/ecoli_bl21.fasta";
+# minimum number of matching sites to consider the read as e. coli.
+my $coli_match_threshold = 40;
 
 die("Usage: colifilter.pl <read1file> <read1 suffix> <output dir>") unless @ARGV==3;
 
@@ -67,6 +71,14 @@ sub bwasamse
 		chomp $line;
 		my @samline = split(/\t/, $line);
 		my $rname = $samline[0];		
+		my $cigar = $samline[5];
+		my $matches = 0;
+		my $indels = -1;
+		while($cigar =~ s/(\d+)M//g){
+			$matches += $1;
+			$indels++;
+		}
+		next unless $matches >= $coli_match_threshold;
 		$rname =~ s/\#0\/3$/\#0\/2/g;
 		$rname =~ s/\#0$/\#0\/1/g;
 		print OUT "@"."$rname\n";
