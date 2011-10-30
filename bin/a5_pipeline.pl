@@ -563,7 +563,8 @@ sub preprocess_libs {
 				# combine libraries if necessary, and return just one library hash
 				$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
 				$run_lib->{"libfile"} = print_libfile("$OUTBASE.library_$libraryI.txt", $run_lib, $run_lib->{"err"});
-				print_libfile("$OUTBASE.library_$libraryI.txt.strict", $run_lib, $run_lib->{"err"}/2);
+				print_libfile("$OUTBASE.library_$libraryI.txt.strict", $run_lib, $run_lib->{"err"});
+#				print_libfile("$OUTBASE.library_$libraryI.txt.strict", $run_lib, $run_lib->{"err"}/2);
 				for my $key (keys %$run_lib){
 					$processed{$run_lib->{"id"}}{$key} = $run_lib->{$key};
 				}
@@ -580,7 +581,8 @@ sub preprocess_libs {
 	}
 	$run_lib = aggregate_libs(\@curr_lib_file,$curr_lib,$ctgs);
 	$run_lib->{"libfile"} = print_libfile("$OUTBASE.library_$libraryI.txt", $run_lib, $run_lib->{"err"});
-	print_libfile("$OUTBASE.library_$libraryI.txt.strict", $run_lib, $run_lib->{"err"}/2);
+	print_libfile("$OUTBASE.library_$libraryI.txt.strict", $run_lib, $run_lib->{"err"});
+#	print_libfile("$OUTBASE.library_$libraryI.txt.strict", $run_lib, $run_lib->{"err"}/2);
 	open(LIB,">$OUTBASE.preproc.libs");
 	print STDERR "[a5] Printing preprocessed library file to $OUTBASE.preproc.libs\n";
 	for my $key (keys %$run_lib){
@@ -629,9 +631,7 @@ sub print_libfile {
 	my $file = shift;
 	my $libref = shift;
 	my $err_estimate = shift;
-	#open( LIBRARY, ">$WD/library_$libraryI.txt" );
 	open( LIBRARY, ">$file" );
-	#print LIBRARY "$curr_lib $fq1 $fq2 $ins_mean $ins_err $outtie\n";
 	print LIBRARY $libref->{"id"}." ".$libref->{"p1"}." ".$libref->{"p2"}." ".
                   $libref->{"ins"}." $err_estimate ".$libref->{"rc"}."\n";
 	close LIBRARY;
@@ -670,7 +670,7 @@ sub merge_libraries {
 		print STDERR "[a5] Piping ".$sublib->{"p2"}."\n"; 
 		open($fq,"<",$sublib->{"p2"});
 		pipe_fastq($fq,$fq2h,$sublib->{"rc"});
-		if (defined($sublib->{"up"})){  # build and unpaired file if there are unpaired reads
+		if (defined($sublib->{"up"})){  # build an unpaired file if there are unpaired reads
 			if (defined($uph)){
 				open($uph,">","$up");
 			}
@@ -691,9 +691,12 @@ sub break_all_misasms {
 	my $outbase = shift;
 	my @lib_files;
 	my $genome_size = get_genome_size($ctgs);
+	my $broken = 0;
 	# sort libraries by insert so we break with larger inserts first.
 	for my $lib (sort { $libs{$b}{"ins"} <=> $libs{$a}{"ins"} } keys %libs) {
-		next unless $libs{$lib}{"ins"} > 2000;	#AED: only use large inserts for now
+		#AED: only use large inserts for now, or the largest of the small insert libraries
+		next unless ($libs{$lib}{"ins"} > 2000 || $broken==0);
+		$broken = 1;
 		my $ins = $libs{$lib}{"ins"};
 		my $fq1 = $libs{$lib}{"p1"};
 		my $fq2 = $libs{$lib}{"p2"};
@@ -728,7 +731,8 @@ sub break_misasms {
 	`mv $outbase.sorted.sam $sam`;
 	`rm $ctgs.* $sai`;
 	`rm $outbase.sort*` if -f "$outbase.sort*";
-	my $mem = "2000m";
+	# Let Java use 2/3 of available memory
+	my $mem = (int((($AVAILMEM)*0.66)/1024))."m";
 	my $cmd = "A5qc.jar $sam $ctgs $WD/$outbase.broken.fasta $nlibs > $WD/$outbase.qc.out";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
 	`java -Xmx$mem -jar $DIR/$cmd`;
@@ -819,8 +823,8 @@ sub run_sspace {
 	if(defined($rescaffold)&&$rescaffold==1){
 		# when rescaffolding we want to pick up the low coverage
 		# and small pieces that were cut out from misassembled regions
-		$sspace_a = 0.2; # be stringent here -- do not want more misassembly
-		$sspace_k -= 2 if( $insert_size > 1500 );
+		$sspace_a = 0.3; # be stringent here -- do not want more misassembly
+		$sspace_k -= 2; # if( $insert_size > 1500 );
 		$sspace_x = 0; # do not extend contigs -- risks further misassembly
 		$libfile .= ".strict";
 	}
