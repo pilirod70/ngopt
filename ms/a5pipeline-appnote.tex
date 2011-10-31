@@ -189,17 +189,17 @@ by in vitro transposition and was generated on an Illumina HiSeq2000 for sequenc
 \processtable{ Reference-based assembly metrics on crude and error-checked assemblies.
 \label{Tab:01}}
 {\begin{tabular}{l|ccccc}\toprule
-Assembly            & volcSOAP & volcA5-noQC & volcA5  \\\midrule
-Scaffold count      & 229      & 470         & 322     \\
-N50                 & 126007   & 24779       & 14508   \\
-Miscalled bases     & 507      & 221         & 238     \\
-Uncalled bases      & 4929     & 1295        & 2305    \\
-Extra bases         & 12284    & 21432       & 15640   \\
-Missing bases       & 138619   & 116931      & 112760  \\
-Extra segments      & 92       & 5           & 6       \\
-Missing segments    & 1        & 0           & 0       \\
-DCJ Distance        & 139      & 486         & 325     \\
-LCB Count           & 13       & 52          & 28      \\
+Assembly           & vSOAPctg & vSOAPscaf & volcA5ctg & vA5scaf-noQC & volcA5scaf  \\\midrule
+Sequence count     & 20630    & 229       & 853       & 470          & 322         \\
+N50                & 2551     & 126007    & 8173      & 24779        & 14508       \\
+Miscalled bases    & 420      & 507       & 159       & 221          & 238         \\
+Uncalled bases     & 0        & 4929      & 0         & 1295         & 2305        \\
+Extra bases        & 38545    & 12284     & 14591     & 21432        & 15640       \\
+Missing bases      & 168214   & 138619    & 128375    & 116931       & 112760      \\
+Extra sequences    & 18107    & 92        & 31        & 5            & 6           \\
+Missing replicons  & 1        & 1         & 0         & 0            & 0           \\
+DCJ Distance       & 2523     & 139       & 839       & 486          & 325         \\
+LCB Count          & 8        & 13        & 47        & 52           & 28          \\
 \botrule \\
 \end{tabular}}{}
 \end{table}
@@ -209,20 +209,20 @@ LCB Count           & 13       & 52          & 28      \\
 \processtable{ Non-reference based metrics on five assemblies.  
 \label{Tab:01}}
 {\begin{tabular}{l|ccccc}\toprule
-Assembly            & TnSOAP & TnA5-noQC & TnA5    \\\midrule
-Scaffold count      & 197     & 194     & 190     \\
-N50                 & 83067   & 48105   & 46350   \\
-Mean contig len     & 22647   & 22982   & 23274   \\
-Max contig len      & 200327  & 192996  & 149710  \\
-Total bases         & 4461465 & 4458514 & 4421972 \\
-Num unknowns        & 26290   & 110     & 1189    \\
+Assembly        & TnSOAPctg & TnSOAPscaf  & TnA5ctg   & TnA5-noQC & TnA5    \\\midrule
+Sequence count  & 4348      & 197         &  325      & 194       & 190     \\
+N50             & 12825     & 83067       &  27846    & 48105     & 46350   \\
+Mean seq len    & 1056      & 22647       &  13715    & 22982     & 23274   \\
+Max seq len     & 44949     & 200327      &  113049   & 192996    & 149710  \\
+Total bases     & 4590705   & 4461465     &  4457419  & 4458514   & 4421972 \\
+Uncalled bases  & 0         & 26290       &  0        & 110       & 1189    \\
 \botrule \\
 \end{tabular}}{}
 \end{table}
 
-We executed A5 and SOAPdenovo for each data set. Table 1 reports the assembly performance for Volc assemblies.
-Default parameters were used for SOAPdenovo. Table 2 reports the assembly performance for Tn assemblies. The parameters 
-use for SOAPdenovo are:
+We executed A5 and SOAP for each data set. Table 1 reports the assembly performance for Volc assemblies.
+Default parameters were used for SOAP. Table 2 reports the assembly performance for Tn assemblies. The parameters 
+use for SOAP are:
 \begin{itemize}
 \item Volc: $K = 27$, $d = 2$.
 \item Tn: $K = 27$, $d = 1$, $D = 1$
@@ -248,6 +248,6 @@ feature of the misassembly is a false adjacency between two bases, and that cove
 This work was supported by National Science Foundation award ER 0949453.
 
 \bibliographystyle{natbib}
-\bibliography{ngopt-appnote}
+\bibliography{a5pipeline-appnote.bib}
 
 \end{document}
