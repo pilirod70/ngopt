@@ -17,6 +17,12 @@ $^{4}$ Biomedical Engineering, University of California-Davis, Davis, CA 95616.}
 \maketitle
 
 \begin{abstract}
+High throughput DNA sequencing technologies have drastically altered the field of de novo genome assembly. Analyzing
+raw sequence data to obtain draft genomes is a complex process, requiring many steps to be taken to produce high
+quality assemblies. Carrying out many of these steps requires intimate knowledge of the algorithms and software. 
+We present an assembly pipeline that simplifies this process through automated parameter selection. When little
+knowledge is known the target genome and the protocols used to construct DNA libraries, our pipeline produces
+higher quality draft genomes than previously published software. 
 
 \section{Summary:}
 \section{Availability:}
@@ -65,7 +71,7 @@ were prepared by mechanical shearing using sonication, and reads were generated 
 the Illumina GAIIx platform. The second data set was downloaded from Illumina's website. 
 The third library consists of short paired read data from \emph{Escherichia 
 coli} CC118. Libraries were prepared via transposase-catalyzed adaptor insertion and reads 
-were generated on the Illumina GAIIx platform. T
+were generated on the Illumina GAIIx platform. 
 
 \subsection{A5 pipeline}
 
@@ -171,47 +177,71 @@ The second parameter of the DBSCAN algorithm, $MinPts$, is then set to be $2p\va
 Finally, regions of length $\le 2\mu$ within individual scaffolds that are flanked by two blocks are identified as containing
 misassemblies and are clipped out, breaking the scaffold into two subscaffolds.
 
+\section{Results}
+
+We evaluated the performance of A5 using two real Illumina data sets and compared them to
+SOAP. The first data set is a paired-end short insert library constructed using sonication 
+and was generated on an Illumina GAIIx for sequencing \emph{Haloferax volcanii} DS2 (Volc). 
+The second data set, obtained by Adey \emph{et al.}, 2010, is a paired-end library constructed 
+by in vitro transposition and was generated on an Illumina HiSeq2000 for sequencing \emph{Escherichia coli} CC118 (Tn). 
+
 \begin{table}[!t]
 \processtable{ Reference-based assembly metrics on crude and error-checked assemblies.
 \label{Tab:01}}
-{\begin{tabular}{l|cccc}\toprule
-Metric            & volcS & volcA5-noQC &  & \\\midrule
-Scaffold count    &  &  &  & 608 \\
-N50               &  &  &  & 12735   \\
-Miscalled bases   &  &  &  & 201 \\
-Uncalled bases    &  &  &  & 984 \\
-Extra bases       & \% & \% & \% & 0.369\% \\
-Missing bases     & \% & \% & \% & 3.004\% \\
-Extra segments    &  & & & 41 \\
-Missing segments  &  & & & 0 \\
-DCJ Distance      &  & & & 584 \\
-Intact CDS        & \% & \% & \% & \% \\
+{\begin{tabular}{l|ccccc}\toprule
+Assembly            & volcSOAP & volcA5-noQC & volcA5  \\\midrule
+Scaffold count      & 229      & 470         & 322     \\
+N50                 & 126007   & 24779       & 14508   \\
+Miscalled bases     & 507      & 221         & 238     \\
+Uncalled bases      & 4929     & 1295        & 2305    \\
+Extra bases         & 12284    & 21432       & 15640   \\
+Missing bases       & 138619   & 116931      & 112760  \\
+Extra segments      & 92       & 5           & 6       \\
+Missing segments    & 1        & 0           & 0       \\
+DCJ Distance        & 139      & 486         & 325     \\
+LCB Count           & 13       & 52          & 28      \\
 \botrule \\
 \end{tabular}}{}
 \end{table}
 
 
 \begin{table}[!t]
-\processtable{ Metrics on crude and error-checked assemblies 
+\processtable{ Non-reference based metrics on five assemblies.  
 \label{Tab:01}}
-{\begin{tabular}{l|cccc}\toprule
-Metric           &  volcS & volcV & volcA5 & volcA5-noQC\\\midrule
-Scaffold count   & & & & \\
-N50              & & & & \\
-Mean contig len  & & & & \\
-Max contig len   & & & & \\
-Min contig len   & & & & \\
-Total bases      & & & & \\
-Num unknowns      & & & & \\
+{\begin{tabular}{l|ccccc}\toprule
+Assembly            & TnSOAP & TnA5-noQC & TnA5    \\\midrule
+Scaffold count      & 197     & 194     & 190     \\
+N50                 & 83067   & 48105   & 46350   \\
+Mean contig len     & 22647   & 22982   & 23274   \\
+Max contig len      & 200327  & 192996  & 149710  \\
+Total bases         & 4461465 & 4458514 & 4421972 \\
+Num unknowns        & 26290   & 110     & 1189    \\
 \botrule \\
 \end{tabular}}{}
 \end{table}
 
+We executed A5 and SOAPdenovo for each data set. Table 1 reports the assembly performance for Volc assemblies.
+Default parameters were used for SOAPdenovo. Table 2 reports the assembly performance for Tn assemblies. The parameters 
+use for SOAPdenovo are:
+\begin{itemize}
+\item Volc: $K = 27$, $d = 2$.
+\item Tn: $K = 27$, $d = 1$, $D = 1$
+\end{itemize}
+
+
 \section{Discussion}
 
-The pipeline we describe here illustrates some things about genome assem
+Although SOAP out performs A5 in scaffold count and N50, the A5 pipeline produces fewer miscalled bases. This is to
+be expected, as the A5 pipeline first performs error corrections before building contigs. Running SOAP to
+obtain the presented results required multiple rounds of trial-and-error to determine optimal parameters, while A5 required
+only a single run of the pipeline. When little is known about the data being assembled, A5 produces higher quality assemblies 
+than SOAP.
 
-
+The strategy used for detection of misassmblies demonstrates the utility of paired-end data for improving draft genome assemblies.
+In addition to identifying misassemblies after scaffolding, paired-reads may also be used to identify repetitve regions.   
+Although misassembly detection does not remove all misassemblies, it can still improve the connectivity of draft assemblies.
+A limitation to misassembly detection is the underlying assumptions about the structure of misassemblies. We assume that the only
+feature of the misassembly is a false adjacency between two bases, and that coverage is uniform around this false adjacency. 
 
 
 \section*{Acknowledgements}
