@@ -847,6 +847,9 @@ public class MisassemblyBreaker {
 			line1 = lines[0];
 			line2 = lines[1];
 			left1 = Integer.parseInt(line1[3]);
+			if (line2.length < 4){
+				System.out.print("");
+			}
 			left2 = Integer.parseInt(line2[3]);
 			// if pair didn't map, just jump to next line instead of jumping a full step
 			if (left1 == 0 || left2 == 0) continue;
@@ -929,8 +932,14 @@ public class MisassemblyBreaker {
 				line1 = line2;
 				line2 = tok.nextToken().split("\t");
 				tokLeft--;
+				if (!tok.hasMoreTokens())
+					resetTok();
 			}
 			String[][] ret = {line1,line2};
+			if (line1.length < 11) 
+				System.out.print("");
+			if ( line2.length < 4)
+				System.out.print("");
 			currChunkSize++;
 			return ret;
 		}
@@ -948,7 +957,7 @@ public class MisassemblyBreaker {
 			raf.read(buf);
 			tok = new StringTokenizer(new String(buf),"\n");
 			tok.nextToken(); // make sure we're at the beginning of a line
-			tokLeft = tok.countTokens();
+			tokLeft = tok.countTokens()-1;
 		}
 	}
 	
