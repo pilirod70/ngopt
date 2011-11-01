@@ -32,9 +32,6 @@ GPL source code and a usage tutorial is at \href{http://ngopt.googlecode.com}{ht
 \end{abstract}
 
 \section{Introduction}
-%De novo genome assembly involves piecing together long sequences from many short sequences.
-%These short sequences are often highly erroneous, and target long sequences often contain repetitive 
-%elements. 
 Advances in high throughput DNA sequencing have lead to an increased demand for de novo 
 genome assembly. Numerous pieces of software have been developed for solving this task; 
 however, despite many efforts, the task still remains non-trivial. There are many 
@@ -43,11 +40,9 @@ there exists a plethora of software. However, because of the complexity of the a
 running such software can be laboreous, as obtaining the optimal result requires manual tuning of parameters.
 In addition to being time consuming, parameter tuning often requires the user to understand the details
 of the algorithms being used. 
-%Despite many efforts to solve the problem of genome assembly, the task still remains non-trivial. 
 
-We introduce a new de novo genome assembly pipeline that requires no knowledge
-of the underlying algorithms to use. Using previously 
-published assembly software and short read tools, our pipeline, A5, carries out
+We introduce a new de novo genome assembly pipeline that requires no knowledge of the underlying algorithms to use. 
+Using previously published assembly software and short read tools, our pipeline, A5, carries out
 most commonly taken steps during the genome assembly process. A5 starts with error correction
 and removal of contaminant reads, assembles reads into contigs, and scaffolds
 contigs with paired reads. In addition to these steps, A5 performs an 
@@ -55,10 +50,6 @@ error checking stage after scaffolding to identify and remove any potential misa
 Our pipeline behaves comparably to many existing assemblers. Although A5 offers no improvement
 in assembly quality, time spent running A5 to obtain optimal results is minimal. 
 
-%De novo genome assembly involves many steps. A lot of software, each of which requires 
-%much manual tuning. Rapid growth of high throughput DNA sequence techonologies has made sequence 
-%data readily available. Analyzing this data is difficult, in part because 
-%assembly algorithms have many parameters that are not easily optimized. 
 
 \begin{methods}
 \section{Methods}
@@ -177,6 +168,41 @@ The second parameter of the DBSCAN algorithm, $MinPts$, is then set to be $2p\va
 Finally, regions of length $\le 2\mu$ within individual scaffolds that are flanked by two blocks are identified as containing
 misassemblies and are clipped out, breaking the scaffold into two subscaffolds.
 
+\begin{table*}[!t]
+\processtable{ Reference-based assembly metrics on crude and error-checked assemblies.
+\label{Tab:01}}
+{\begin{tabular}{l|cccccc}\toprule
+Assembly           & vSOAPctg & vSOAPscaf & vA5ctg & vA5ctgQC & vA5scaf-noQC & vA5scaf  \\\midrule
+Sequence count     & 20630    & 229       & 853       & 869         & 470          & 322         \\
+N50                & 2551     & 126007    & 8173      & 8041        & 24779        & 14508       \\
+Miscalled bases    & 420      & 507       & 159       & 160         & 221          & 238         \\
+Uncalled bases     & 0        & 4929      & 0         & 0           & 1295         & 2305        \\
+Extra bases        & 38545    & 12284     & 14591     & 11121       & 21432        & 15640       \\
+Missing bases      & 168214   & 138619    & 128375    & 130728      & 116931       & 112760      \\
+Extra sequences    & 18107    & 92        & 31        & 40          & 5            & 6           \\
+Missing replicons  & 1        & 1         & 0         & 0           & 0            & 0           \\
+DCJ Distance       & 2523     & 139       & 839       & 833         & 486          & 325         \\
+LCB Count          & 8        & 13        & 47        & 15          & 52           & 28          \\
+\botrule \\
+\end{tabular}}{}
+\end{table*}
+
+
+\begin{table*}[!t]
+\processtable{ Non-reference based metrics on five assemblies.  
+\label{Tab:01}}
+{\begin{tabular}{l|cccccc}\toprule
+Assembly        & TnSOAPctg & TnSOAPscaf  & TnA5ctg   & TnA5ctgQC & TnA5-noQC & TnA5    \\\midrule
+Sequence count  & 4348      & 197         &  325      &  & 194       & 190     \\
+N50             & 12825     & 83067       &  27846    &  & 48105     & 46350   \\
+Mean seq len    & 1056      & 22647       &  13715    &  & 22982     & 23274   \\
+Max seq len     & 44949     & 200327      &  113049   &  & 192996    & 149710  \\
+Total bases     & 4590705   & 4461465     &  4457419  &  & 4458514   & 4421972 \\
+Uncalled bases  & 0         & 26290       &  0        &  & 110       & 1189    \\
+\botrule \\
+\end{tabular}}{}
+\end{table*}
+
 \section{Results}
 
 We evaluated the performance of A5 using two real Illumina data sets and compared them to
@@ -185,44 +211,9 @@ and was generated on an Illumina GAIIx for sequencing \emph{Haloferax volcanii} 
 The second data set, obtained by Adey \emph{et al.}, 2010, is a paired-end library constructed 
 by in vitro transposition and was generated on an Illumina HiSeq2000 for sequencing \emph{Escherichia coli} CC118 (Tn). 
 
-\begin{table}[!t]
-\processtable{ Reference-based assembly metrics on crude and error-checked assemblies.
-\label{Tab:01}}
-{\begin{tabular}{l|ccccc}\toprule
-Assembly           & vSOAPctg & vSOAPscaf & volcA5ctg & vA5scaf-noQC & volcA5scaf  \\\midrule
-Sequence count     & 20630    & 229       & 853       & 470          & 322         \\
-N50                & 2551     & 126007    & 8173      & 24779        & 14508       \\
-Miscalled bases    & 420      & 507       & 159       & 221          & 238         \\
-Uncalled bases     & 0        & 4929      & 0         & 1295         & 2305        \\
-Extra bases        & 38545    & 12284     & 14591     & 21432        & 15640       \\
-Missing bases      & 168214   & 138619    & 128375    & 116931       & 112760      \\
-Extra sequences    & 18107    & 92        & 31        & 5            & 6           \\
-Missing replicons  & 1        & 1         & 0         & 0            & 0           \\
-DCJ Distance       & 2523     & 139       & 839       & 486          & 325         \\
-LCB Count          & 8        & 13        & 47        & 52           & 28          \\
-\botrule \\
-\end{tabular}}{}
-\end{table}
-
-
-\begin{table}[!t]
-\processtable{ Non-reference based metrics on five assemblies.  
-\label{Tab:01}}
-{\begin{tabular}{l|ccccc}\toprule
-Assembly        & TnSOAPctg & TnSOAPscaf  & TnA5ctg   & TnA5-noQC & TnA5    \\\midrule
-Sequence count  & 4348      & 197         &  325      & 194       & 190     \\
-N50             & 12825     & 83067       &  27846    & 48105     & 46350   \\
-Mean seq len    & 1056      & 22647       &  13715    & 22982     & 23274   \\
-Max seq len     & 44949     & 200327      &  113049   & 192996    & 149710  \\
-Total bases     & 4590705   & 4461465     &  4457419  & 4458514   & 4421972 \\
-Uncalled bases  & 0         & 26290       &  0        & 110       & 1189    \\
-\botrule \\
-\end{tabular}}{}
-\end{table}
 
 We executed A5 and SOAP for each data set. Table 1 reports the assembly performance for Volc assemblies.
-Default parameters were used for SOAP. Table 2 reports the assembly performance for Tn assemblies. The parameters 
-use for SOAP are:
+Table 2 reports the assembly performance for Tn assemblies. The parameters used for SOAP are:
 \begin{itemize}
 \item Volc: $K = 27$, $d = 2$.
 \item Tn: $K = 27$, $d = 1$, $D = 1$
