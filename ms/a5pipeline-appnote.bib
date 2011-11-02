@@ -40,7 +40,35 @@ eprint = {http://bioinformatics.oxfordjournals.org/content/27/4/578.full.pdf+htm
 journal = {Bioinformatics} 
 }
 
+@article{Simpson2010,
+author = {Simpson, Jared T. and Durbin, Richard}, 
+title = {Efficient construction of an assembly string graph using the FM-index}, 
+volume = {26}, 
+number = {12}, 
+pages = {i367-i373}, 
+year = {2010}, 
+doi = {10.1093/bioinformatics/btq217}, 
+abstract ={Motivation: Sequence assembly is a difficult problem whose importance has grown again recently as the cost of sequencing has dramatically dropped. Most new sequence assembly software has started by building a de Bruijn graph, avoiding the overlap-based methods used previously because of the computational cost and complexity of these with very large numbers of short reads. Here, we show how to use suffix array-based methods that have formed the basis of recent very fast sequence mapping algorithms to find overlaps and generate assembly string graphs asymptotically faster than previously described algorithms.Results: Standard overlap assembly methods have time complexity O(N2), where N is the sum of the lengths of the reads. We use the Ferragina–Manzini index (FM-index) derived from the Burrows–Wheeler transform to find overlaps of length at least τ among a set of reads. As well as an approach that finds all overlaps then implements transitive reduction to produce a string graph, we show how to output directly only the irreducible overlaps, significantly shrinking memory requirements and reducing compute time to O(N), independent of depth. Overlap-based assembly methods naturally handle mixed length read sets, including capillary reads or long reads promised by the third generation sequencing technologies. The algorithms we present here pave the way for overlap-based assembly approaches to be developed that scale to whole vertebrate genome de novo assembly.Contact: js18@sanger.ac.uk}, 
+URL = {http://bioinformatics.oxfordjournals.org/content/26/12/i367.abstract}, 
+eprint = {http://bioinformatics.oxfordjournals.org/content/26/12/i367.full.pdf+html}, 
+journal = {Bioinformatics} 
+}
+
 @article{Peng2010, title={IDBA - A Practical Iterative de Bruijn Graph De Novo Assembler}, volume={6044}, url={http://www.springerlink.com/index/622866948LH233G7.pdf}, journal={Computer}, publisher={Springer}, author={Peng, Yu and Leung, Henry and Yiu, S M and Chin, Francis Y L}, year={2010}, pages={426--440}}
+
+@article{Lassmann2009,
+author = {Lassmann, Timo and Hayashizaki, Yoshihide and Daub, Carsten O.}, 
+title = {TagDust—a program to eliminate artifacts from next generation sequencing data}, 
+volume = {25}, 
+number = {21}, 
+pages = {2839-2840}, 
+year = {2009}, 
+doi = {10.1093/bioinformatics/btp527}, 
+abstract ={Motivation: Next-generation parallel sequencing technologies produce large quantities of short sequence reads. Due to experimental procedures various types of artifacts are commonly sequenced alongside the targeted RNA or DNA sequences. Identification of such artifacts is important during the development of novel sequencing assays and for the downstream analysis of the sequenced libraries.Results: Here we present TagDust, a program identifying artifactual sequences in large sequencing runs. Given a user-defined cutoff for the false discovery rate, TagDust identifies all reads explainable by combinations and partial matches to known sequences used during library preparation. We demonstrate the quality of our method on sequencing runs performed on Illumina's Genome Analyzer platform.Availability: Executables and documentation are available from http://genome.gsc.riken.jp/osc/english/software/.Contact: timolassmann@gmail.com}, 
+URL = {http://bioinformatics.oxfordjournals.org/content/25/21/2839.abstract}, 
+eprint = {http://bioinformatics.oxfordjournals.org/content/25/21/2839.full.pdf+html}, 
+journal = {Bioinformatics} 
+}
 
 @article{Yang2010,
 author = {Yang, Xiao and Dorman, Karin S. and Aluru, Srinivas}, 
@@ -227,6 +255,41 @@ eprint = {http://bioinformatics.oxfordjournals.org/content/25/16/2071.full.pdf+h
 journal = {Bioinformatics} 
 }
 
+@article{Li2010,
+author = {Li, Ruiqiang and Zhu, Hongmei and Ruan, Jue and Qian, Wubin and Fang, Xiaodong and Shi, Zhongbin and Li, Yingrui and Li, Shengting and Shan, Gao and Kristiansen, Karsten and Li, Songgang and Yang, Huanming and Wang, Jian and Wang, Jun}, 
+title = {De novo assembly of human genomes with massively parallel short read sequencing}, 
+volume = {20}, 
+number = {2}, 
+pages = {265-272}, 
+year = {2010}, 
+doi = {10.1101/gr.097261.109}, 
+abstract ={Next-generation massively parallel DNA sequencing technologies provide ultrahigh throughput at a substantially lower unit data cost; however, the data are very short read length sequences, making de novo assembly extremely challenging. Here, we describe a novel method for de novo assembly of large genomes from short read sequences. We successfully assembled both the Asian and African human genome sequences, achieving an N50 contig size of 7.4 and 5.9 kilobases (kb) and scaffold of 446.3 and 61.9 kb, respectively. The development of this de novo short read assembly method creates new opportunities for building reference sequences and carrying out accurate analyses of unexplored genomes in a cost-effective way.}, 
+URL = {http://genome.cshlp.org/content/20/2/265.abstract}, 
+eprint = {http://genome.cshlp.org/content/20/2/265.full.pdf+html}, 
+journal = {Genome Research} 
+}
+
+@ONLINE{SASSY,
+author = {Imelfort, Michael},
+title = {The {SaSSY} manual, retrieved from {https://github.com/minillinim/SaSSY/blob/master/SaSSY\_manual.pdf}},
+month = June,
+year = {2011},
+url = {https://github.com/minillinim/SaSSY/blob/master/SaSSY_manual.pdf}
+}
+
+@article{Gnerre2011,
+author = {Gnerre, Sante and MacCallum, Iain and Przybylski, Dariusz and Ribeiro, Filipe J. and Burton, Joshua N. and Walker, Bruce J. and Sharpe, Ted and Hall, Giles and Shea, Terrance P. and Sykes, Sean and Berlin, Aaron M. and Aird, Daniel and Costello, Maura and Daza, Riza and Williams, Louise and Nicol, Robert and Gnirke, Andreas and Nusbaum, Chad and Lander, Eric S. and Jaffe, David B.}, 
+title = {High-quality draft assemblies of mammalian genomes from massively parallel sequence data}, 
+volume = {108}, 
+number = {4}, 
+pages = {1513-1518}, 
+year = {2011}, 
+doi = {10.1073/pnas.1017351108}, 
+abstract ={Massively parallel DNA sequencing technologies are revolutionizing genomics by making it possible to generate billions of relatively short (~100-base) sequence reads at very low cost. Whereas such data can be readily used for a wide range of biomedical applications, it has proven difficult to use them to generate high-quality de novo genome assemblies of large, repeat-rich vertebrate genomes. To date, the genome assemblies generated from such data have fallen far short of those obtained with the older (but much more expensive) capillary-based sequencing approach. Here, we report the development of an algorithm for genome assembly, ALLPATHS-LG, and its application to massively parallel DNA sequence data from the human and mouse genomes, generated on the Illumina platform. The resulting draft genome assemblies have good accuracy, short-range contiguity, long-range connectivity, and coverage of the genome. In particular, the base accuracy is high (≥99.95%) and the scaffold sizes (N50 size = 11.5 Mb for human and 7.2 Mb for mouse) approach those obtained with capillary-based sequencing. The combination of improved sequencing technology and improved computational methods should now make it possible to increase dramatically the de novo sequencing of large genomes. The ALLPATHS-LG program is available at http://www.broadinstitute.org/science/programs/genome-biology/crd.}, 
+URL = {http://www.pnas.org/content/108/4/1513.abstract}, 
+eprint = {http://www.pnas.org/content/108/4/1513.full.pdf+html}, 
+journal = {Proceedings of the National Academy of Sciences} 
+}
 @article{Li01032008,
 author = {Li, Ruiqiang and Li, Yingrui and Kristiansen, Karsten and Wang, Jun}, 
 title = {SOAP: short oligonucleotide alignment program}, 
@@ -240,8 +303,18 @@ URL = {http://bioinformatics.oxfordjournals.org/content/24/5/713.abstract},
 eprint = {http://bioinformatics.oxfordjournals.org/content/24/5/713.full.pdf+html}, 
 journal = {Bioinformatics} 
 }
+@article{Darling2011,
+author = {Darling, Aaron and Tritt, Andrew and Eisen, Jonathan A. and Facciotti, Marc T.}, 
+title = {Mauve Assembly Metrics}, 
+year = {2011}, 
+doi = {10.1093/bioinformatics/btr451}, 
+abstract ={Summary: High throughput DNA sequencing technologies have spurred the development of numerous novel methods for genome assembly. With few exceptions, these algorithms are heuristic and require one or more parameters to be manually set by the user. One approach to parameter tuning involves assembling data from an organism with an available high quality reference genome, and measuring assembly accuracy using some metrics.We developed a system to measure assembly quality under several scoring metrics, and to compare assembly quality across a variety of assemblers, sequence data types, and parameter choices. When used in conjunction with training data such as a high quality reference genome and sequence reads from the same organism, our program can be used to manually identify an optimal sequencing and assembly strategy for de novo sequencing of related organisms.Availability: GPL source code and a usage tutorial is at http://ngopt.googlecode.comContact: aarondarling@ucdavis.edu}, 
+URL = {http://bioinformatics.oxfordjournals.org/content/early/2011/08/02/bioinformatics.btr451.abstract}, 
+eprint = {http://bioinformatics.oxfordjournals.org/content/early/2011/08/02/bioinformatics.btr451.full.pdf+html}, 
+journal = {Bioinformatics} 
+}
 @Article{Adey2010,
-AUTHOR = {Adey, Andrew and Morrison, Hilary and Asan,  and Xun, Xu and Kitzman, Jacob and Turner, Emily and Stackhouse, Bethany and MacKenzie, Alexandra and Caruccio, Nicholas and Zhang, Xiuqing and Shendure, Jay},
+AUTHOR = {Adey, Andrew and Morrison, Hilary and Asan and Xun, Xu and Kitzman, Jacob and Turner, Emily and Stackhouse, Bethany and MacKenzie, Alexandra and Caruccio, Nicholas and Zhang, Xiuqing and Shendure, Jay},
 TITLE = {Rapid, low-input, low-bias construction of shotgun fragment libraries by high-density in vitro transposition},
 JOURNAL = {Genome Biology},
 VOLUME = {11},
