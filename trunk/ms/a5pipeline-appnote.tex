@@ -5,7 +5,7 @@
 \begin{document}
 \firstpage{1}
 
-\title[a5]{A User-friendly Pipeline for De Novo Assembly of Microbial Genomes}
+\title[a5]{A User-friendly Pipeline for de Novo Assembly of Microbial Genomes}
 \author[Tritt \textit{et~al}]{Andrew Tritt\,$^{1}$ Jonathan A. Eisen\,$^{1,2,3}$ Marc T. Facciotti\,$^{1,4}$ and Aaron E. Darling,$^{1}$\footnote{to whom correspondence should be addressed}}
 \address{$^{1}$Genome Center, $^{2}$ Dept. of Evolution and Ecology, $^{3}$ Medical Microbiology and Immunology, 
 $^{4}$ Biomedical Engineering, University of California-Davis, Davis, CA 95616.}
@@ -53,48 +53,56 @@ in assembly quality, time spent running A5 to obtain optimal results is minimal.
 
 \begin{methods}
 \section{Methods}
-\subsection{Material}
+\subsection{Materials}
 
-We test the A5 pipeline on three datasets. Two of the three datasets were generated from
-previously published genomes, allowing for reference-based metrics. The first data set consists of a small insert 
-short paired read data from the halophilic archaea, \emph{Haloferax volcanii} DS2. Libraries
-were prepared by mechanical shearing using sonication, and reads were generated on
-the Illumina GAIIx platform. The second data set was downloaded from Illumina's website. 
-The third library consists of short paired read data from \emph{Escherichia 
+We compare results obtained using the A5 pipeline to those using SOAPdenovo on two datasets. 
+The first data set consists of a small insert 
+short paired read data from the halophilic archaeon, \emph{Haloferax volcanii} DS2. 
+A high quality reference genome for \emph{Haloferax volcanii} DS2 was recently published~\citep{Hartman2010},
+and this genome was subject to extensive finishing and quality control work, allowing us to apply
+reference-based assembly accuracy metrics~\citep{Darling2011} with this dataset.
+Illumina libraries were prepared by mechanical shearing using sonication, and reads were generated on
+the Illumina GAIIx platform. 
+The second dataset we use for assembler comparison consists of Illumina paired-end read data from \emph{Escherichia 
 coli} CC118. Libraries were prepared via transposase-catalyzed adaptor insertion and reads 
-were generated on the Illumina GAIIx platform. 
+were generated on the Illumina GAIIx platform~\citep{Adey2010}. Reads from this dataset were obtained from
+the NCBI Short Read Archive, accession \#\#\#\#\#\#. \textbf{FIXME}.
 
 \subsection{A5 pipeline}
 
-Our pipeline consists of five stages: 1) read cleaning, 2) contiging, 3) scaffolding,
-4) misassembly checking, and 5) rescaffolding. For the first stage, we use two previously
+The A5 pipeline consists of five stages: 1) read cleaning, 2) contigging, 3) scaffolding,
+4) misassembly checking, and 5) rescaffolding. Figure~\ref{fig:01} provides an overview of these stages. 
+For the first stage A5 uses two previously
 published programs. First, reads are corrected for sequencing errors using error correction tools 
-from the SGA software package. Second, Tagdust is used to remove any contaminating sequence introduced
-during library preparation. Currently, reads are screened for sequence coming from adapters
-used in the standard Illumina and Nextera Transposase library preparation protocols. Additonal 
-sequence to screen for can be added easily. After reads are cleaned, contigs are built
-using these reads with the the assembler IDBA. We chose IDBA because of its ability to produce 
-high quality contigs and its novel and efficient approach to setting the assembly parameter k-mer length. 
-Many deBruijn assemblers require the user to specify a single k-mer length; however, different k-mer
-lengths are optimal for different reasons which will not be addressed here. IDBA allows the user to specify
-a range of k-mer lengths, allowing the user to exploit the benefits of high and low kmer lengths.
-Contigs are then scaffolded and extended using the software SSPACE. At this stage, we use original reads
-instead of cleaned reads. Error correction can over estimate the number of erroneous base calls in 
-the presence of repetetive sequence, leading to incorrect mapping location of corrected reads. 
-For this reason, raw reads are used at this and all future stages of the pipeline. 
+from the SGA software package~\citep{Simpson2010}.  Although many read error correction packages have been published,
+we found the implementation in SGA to be particularly memory-efficient compared to others while also providing 
+good accuracy.  Second, the pipeline applies Tagdust~\citep{Lassmann2009} to remove any 
+sequencing adapter contamination that may be present in the data. The default set of adapter sequences used for screening
+include the standard Illumina TruSeq adapters and those used in Epicentre Nextera (transposon-catalyzed) library preparation protocols~\citep{Adey2010}. 
+User-specified adapter sequences can be screened by adding them to a FastA file. 
 
-After contigs have been built and scaffolded, the A5 pipeline checks crude scaffolds for 
-misassemblies. Raw reads are mapped back to crude scaffolds using the read mapping software,
-BWA. Ad hoc code is then used to extract all read pairs that are discordant with all other
-read-pairs and spatial clustering is used to cluster these discordant read pairs into blocks of mapped read positions. 
-Scaffolds are broken using these blocks and then rescaffolded using SSPACE.
+Using the newly cleaned reads, stage 2 of the pipeline builds contigs
+with the the assembler IDBA~\citep{Peng2010}. Although many contigging softwares existed at the time we developed the A5 pipeline, we selected IDBA due 
+to its ability to produce long contigs in the presence of inconsistent depth of sequence coverage more robustly than other methods (data not shown).
+A further advantage of IDBA lies in its ability to automatically use a wide range of $k$-mer lengths when simplifying the \emph{de Bruijn} graph during contig generation.
+Many \emph{de Bruijn}-based assemblers require the user to specify a single $k$-mer length, and the optimal choice of $k$ depends intimately
+on characteristics of the genome being assembled.  Moreover it is possible that for a particular dataset with given read lengths and error profiles, different regions of the same genome may be optimally reconstructed by different values of $k$. IDBA simply requires a minimum and maximum value of $k$ to
+use when constructing the \emph{de Bruijn} graph and simplifying it into contigs. One final factor entering into the choice of IDBA was its ability to generate highly contiguous sequence even with unpaired sequence reads. Although assemblers using paired-end read information during contigging can often produce exceptional results~\citep{Gnerre2011, SASSY}, we did not want to impose the requirement of paired reads (or multiple libraries with different insert sizes) upon users of the pipeline. This keeps applicability of our pipeline as broad as possible.
+
+In stage 3 of the A5 pipeline, contigs are scaffolded and extended using the software SSPACE~\citep{Boetzer2011}. At this stage, we use the original full set of sequence reads instead of cleaned reads. 
+Error correction can overestimate the number of erroneous base calls in the presence of repetitive sequence, leading to an incorrect mapping location of corrected reads. \textbf{FIXME: if the incorrectly called bases went into contigging of repeats, it's not clear how using the original reads will help them map to the right place}  For this reason, the original set of reads are used at this and all future stages of the pipeline. 
+
+An undesirable side-effect of using a contigging algorithm that is unaware of read pairing information is that misassemblies can occur in contigs that could have been avoided if the longer-range linkage information present in read pairs (or long reads) had been used.  As described in Results below, we observe occasional misassemblies in the contigs generated by IDBA. Although the version of IDBA currently incorporated into A5 (v0.20) has an option to use pairing information, in our experience it has little effect on the assembly. In stage 4 of the A5 pipeline, crude scaffolds are subjected to a quality control check for misassemblies. Raw reads are mapped back to crude scaffolds using the read mapping software,
+BWA~\citep{bwa}. Custom code (described in detail below in the Results section) is then used to extract all read pairs that are discordant with the crude scaffold assembly and spatial clustering (\textbf{FIXME: add citation}) is used to identify clusters of discordant read pairs that are suggestive of a misassembly. The A5 pipeline then breaks the crude scaffolds at the estimated position of the misassembly.
+
+Finally, in stage 5 the broken-up scaffolds are rescaffolded using SSPACE.
 \end{methods}
 
 
 \begin{figure}[t]
 \includegraphics[width=3.5in]{a5pipeline-diagram.pdf}
 \vspace{-1cm}
-\caption{Diagram of A5 pipeline. }\label{fig:01}
+\caption{Overview of the stages in the A5 pipeline}\label{fig:01}
 \end{figure}
 
 \subsection{Automated parameter selection}
@@ -190,7 +198,7 @@ LCB Count          & 8        & 13        & 47        & 15          & 52        
 
 \begin{table*}[!t]
 \processtable{ Non-reference based metrics on five assemblies.  
-\label{Tab:01}}
+\label{Tab:02}}
 {\begin{tabular}{l|cccccc}\toprule
 Assembly        & TnSOAPctg & TnSOAPscaf  & TnA5ctg   & TnA5ctgQC & TnA5-noQC & TnA5    \\\midrule
 Sequence count  & 4348      & 197         &  325      &  & 194       & 190     \\
@@ -205,11 +213,11 @@ Uncalled bases  & 0         & 26290       &  0        &  & 110       & 1189    \
 
 \section{Results}
 
-We evaluated the performance of A5 using two real Illumina data sets and compared them to
-SOAP. The first data set is a paired-end short insert library constructed using sonication 
-and was generated on an Illumina GAIIx for sequencing \emph{Haloferax volcanii} DS2 (Volc). 
-The second data set, obtained by Adey \emph{et al.}, 2010, is a paired-end library constructed 
-by in vitro transposition and was generated on an Illumina HiSeq2000 for sequencing \emph{Escherichia coli} CC118 (Tn). 
+We evaluated the performance of the A5 pipeline using two real Illumina data sets and compared the results to
+those obtained when running SOAPdenovo v1.05~\citep{Li2010} on the same datasets. The first data set (called \textbf{Volc}) is a paired-end short insert library constructed from \emph{Haloferax volcanii} DS2 genomic DNA 
+using sonication followed by adapter ligation, and was sequenced on an Illumina GAIIx instrument. 
+The second data set, called \textbf{Tn} and previously published by \citet{Adey2010}, is a paired-end library constructed from \emph{Escherichia coli} CC118 genomic DNA
+using transposon-catalyzed adapter ligation (Nextera) and was sequenced on an Illumina HiSeq2000 instrument. 
 
 
 We executed A5 and SOAP for each data set. Table 1 reports the assembly performance for Volc assemblies.
@@ -222,7 +230,7 @@ Table 2 reports the assembly performance for Tn assemblies. The parameters used 
 
 \section{Discussion}
 
-Although SOAP out performs A5 in scaffold count and N50, the A5 pipeline produces fewer miscalled bases. This is to
+Although SOAPdenovo out performs A5 in scaffold count and N50, the A5 pipeline produces fewer miscalled bases. This is to
 be expected, as the A5 pipeline first performs error corrections before building contigs. Running SOAP to
 obtain the presented results required multiple rounds of trial-and-error to determine optimal parameters, while A5 required
 only a single run of the pipeline. When little is known about the data being assembled, A5 produces higher quality assemblies 
@@ -239,6 +247,6 @@ feature of the misassembly is a false adjacency between two bases, and that cove
 This work was supported by National Science Foundation award ER 0949453.
 
 \bibliographystyle{natbib}
-\bibliography{a5pipeline-appnote.bib}
+\bibliography{a5pipeline-appnote}
 
 \end{document}
