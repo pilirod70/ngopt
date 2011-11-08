@@ -167,7 +167,8 @@ pairs represent improper connections and may contain clusters suggestive of misa
 \begin{figure}[t]
 \includegraphics[width=3.5in]{fish-qc.pdf}
 \vspace{-1cm}
-\caption{\textbf{Upper Left:}  A hypothetical whole genome alignment of an assembly containing misassemblies relative to the true genome and the 
+\caption{\textbf{Upper Left:}  A hypothetical whole genome alignment of an assembly containing misassemblies relative to the true genome,
+consisting of three circular chromosomes, and the 
 resulting broken assembly. Red, green, and blue lines connect aligned regions. Black connecting lines represent real paired read 
 connections between contigs and orange connecting lines represent erroneous connections. Black boxes in the broken assembly highlight
 blocks identified by the DBSCAN algorithm. \textbf{Upper Right and Bottom Row:} Plots of connected points between contigs. Black and orange dots 
@@ -196,7 +197,8 @@ coverage, we ensure sensitivity to detect misassemblies in low-coverage regions.
 
 Assuming the positions of mapped reads  
 follow a Bernoulli process, the distance between two independent reads in a sequence follows a geometric distribution with parameter $p$.
-Using the geometric distribution we derive a maximum distance between two points (mapped reads) in one sequence using the following equation
+We derive a maximum distance, $d(p)$, between two points (mapped reads) in one sequence by selecting the
+$1-\alpha$ quantile of a geometric distribution with parameter $p$.
 \begin{eqnarray}
 	1 - (1-p)^{d(p)} = 1-\alpha \nonumber \\
 	(1-p)^{d(p)} = \alpha  \nonumber \\ 
@@ -204,7 +206,10 @@ Using the geometric distribution we derive a maximum distance between two points
 	d(p) = \dfrac{\ln(\alpha)}{\ln(1-p)} 
 \end{eqnarray} 
 for some $\alpha < 1$. In practice we set $\alpha = 0.001$, to select the 99.9 quantile, and $\varepsilon = max(d(p),l_r)$ where $l_r$ is the read length.
-The second parameter of the DBSCAN algorithm, $MinPts$, is then set to be $3p\varepsilon$.
+The second parameter of the DBSCAN algorithm, $MinPts$, is then set by first calculating a minimum block length. Assuming a block will consist of
+3 points at minimum and allowing a maximum distance between consecutive points to be $\varepsilon$, we set the minimum block length to be 
+$L_{min} = \lfloor2\varepsilon\rfloor$. We then calculate the expected number of points in a window of length $L_{min}$ given that the probability of
+a read mapping to a single position is $p$, setting $MinPts = \lfloor{L_{min}p}\rfloor$
 
 Finally, regions of length $\le 2\mu$ within individual scaffolds that are flanked by two blocks are identified as containing
 misassemblies and are removed from the assembly, breaking the scaffold into two subscaffolds. The removed region contains the 
@@ -274,7 +279,7 @@ This work was supported by National Science Foundation award ER 0949453.
 \begin{table*}[!t] 
 \processtable{ Reference-based assembly metrics on crude and error-corrected assemblies.
 \label{Tab:01}}
-{\begin{tabular}{l|cccccc}\toprule
+{\begin{tabular}{l|cccccccc}\toprule
 Assembly           & vSOAPctgMaxN50 & vSOAPscafMaxN50 & vSOAPctgMinLCB & vSOAPscafMinLCB & vA5ctg & vA5ctgQC & vA5scaf-noQC & vA5scaf  \\\midrule
 Sequence count     & 10258          & 212             & 19508          & 226             & 853       & 864         & 470          & 321         \\
 N50                & 4775           & 125739          & 2832           & 107081          & 8173      & 8056        & 14698        & 25153       \\
