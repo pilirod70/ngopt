@@ -229,12 +229,12 @@ Table 2 reports the assembly performance for Tn assemblies. The parameters used 
 \end{itemize}
 SOAP was first ran with default parameters; however, the resulting assemblies were extremely poor quality. For \textbf{Volc}, there were
 280985 contigs (N50 = 76) and 14433 scaffolds (N50 = 209), and for \textbf{Tn}, there were 1572720 contigs (N50 = 76) and 8144 scaffolds (N50 = 121). 
-To select suitable parameters, we ran SOAP with different combinations of parameters and selected combinations that maximized scaffold N50 . For \textbf{Volc},
+To select suitable parameters, we ran SOAP with different combinations of parameters and selected combinations that maximized scaffold N50. For \textbf{Volc},
 we also present the parameter combination that minimized LCB count between the assembly and the reference. The parameter space queried was $S_K \bigoplus S_d$,
 where $S_K = \{23,25,27,29,31\}$ is the set of values over which $K$ was varied, and $S_d = \{1,2,...,9,10\}$ is the set of values over which $d$
 was varied.
 
-\textbf{FIXME: in the interest of reproducibility, need to state exactly which revision from the svn repository generated the above results.}
+Data present were generated using code from revision 577
 
 \section{Discussion}
 
@@ -268,37 +268,41 @@ This work was supported by National Science Foundation award ER 0949453.
 \bibliography{a5pipeline-appnote}
 
 
+% vSOAP__MaxN50 : K = 27, d = 2
+% vSOAP__MinLCB : K = 27, d = 1
 
 \begin{table*}[!t] 
 \processtable{ Reference-based assembly metrics on crude and error-corrected assemblies.
 \label{Tab:01}}
 {\begin{tabular}{l|cccccc}\toprule
-Assembly           & vSOAPctg & vSOAPscaf & vA5ctg & vA5ctgQC & vA5scaf-noQC & vA5scaf  \\\midrule
-Sequence count     & 20630    & 229       & 853       & 869         & 470          & 322         \\
-N50                & 2551     & 126007    & 8173      & 8041        & 24779        & 14508       \\
-Miscalled bases    & 420      & 507       & 159       & 160         & 221          & 238         \\
-Uncalled bases     & 0        & 4929      & 0         & 0           & 1295         & 2305        \\
-Extra bases        & 38545    & 12284     & 14591     & 11121       & 21432        & 15640       \\
-Missing bases      & 168214   & 138619    & 128375    & 130728      & 116931       & 112760      \\
-Extra sequences    & 18107    & 92        & 31        & 40          & 5            & 6           \\
-Missing replicons  & 1        & 1         & 0         & 0           & 0            & 0           \\
-DCJ Distance       & 2523     & 139       & 839       & 833         & 486          & 325         \\
-LCB Count          & 8        & 13        & 47        & 15          & 52           & 28          \\
+Assembly           & vSOAPctgMaxN50 & vSOAPscafMaxN50 & vSOAPctgMinLCB & vSOAPscafMinLCB & vA5ctg & vA5ctgQC & vA5scaf-noQC & vA5scaf  \\\midrule
+Sequence count     & 10258          & 212             & 19508          & 226             & 853       & 864         & 470          & 321         \\
+N50                & 4775           & 125739          & 2832           & 107081          & 8173      & 8056        & 14698        & 25153       \\
+Miscalled bases    & 270            & 395             & 409            & 377             & 146       & 150         & 204          & 200         \\
+Uncalled bases     & 0              & 11430           & 0              & 13304           & 0         & 0           & 1295         & 2138        \\
+Extra bases        & 27069          & 14295           & 32797          & 19732           & 14088     & 15578       & 21723        & 15378       \\
+Missing bases      & 148291         & 142017          & 160773         & 156254          & 129629    & 127313      & 117258       & 113286      \\
+Extra sequences    & 8604           & 76              & 17194          & 95              & 36        & 31          & 5            & 5           \\
+Missing replicons  & 0              & 0               & 1              & 1               & 0         & 0           & 0            & 0           \\
+DCJ Distance       & 1656           & 140             & 2317           & 134             & 835       & 843         & 487          & 327         \\
+LCB Count          & 9              & 14              & 7              & 10              & 46        & 47          & 52           & 31          \\
 \botrule \\
 \end{tabular}}{}
 \end{table*}
+
+% TnSOAP__MaxN50 : K = 27, d = 2
 
 \begin{table*}[!t]
 \processtable{ Non-reference based metrics on five assemblies.  
 \label{Tab:02}}
 {\begin{tabular}{l|cccccc}\toprule
 Assembly        & TnSOAPctg & TnSOAPscaf  & TnA5ctg   & TnA5ctgQC & TnA5-noQC & TnA5    \\\midrule
-Sequence count  & 4348      & 197         &  325      &  & 194       & 190     \\
-N50             & 12825     & 83067       &  27846    &  & 48105     & 46350   \\
-Mean seq len    & 1056      & 22647       &  13715    &  & 22982     & 23274   \\
-Max seq len     & 44949     & 200327      &  113049   &  & 192996    & 149710  \\
-Total bases     & 4590705   & 4461465     &  4457419  &  & 4458514   & 4421972 \\
-Uncalled bases  & 0         & 26290       &  0        &  & 110       & 1189    \\
+Sequence count  & 4348      & 197         &  323      & 323       & 195       & 152     \\
+N50             & 12825     & 83067       &  27846    & 27846     & 48105     & 58016   \\
+Mean seq len    & 1056      & 22647       &  13800    & 13800     & 22864     & 29311   \\
+Max seq len     & 48725     & 200327      &  113049   & 113049    & 192996    & 265123  \\
+Total bases     & 4590705   & 4461465     &  4457409  & 4457409   & 4458506   & 4455256 \\
+Uncalled bases  & 0         & 26290       &  0        & 0         & 108       & 251     \\
 \botrule \\
 \end{tabular}}{}
 \end{table*}
