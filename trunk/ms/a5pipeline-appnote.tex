@@ -148,7 +148,7 @@ read pairs.
 \subsubsection{Accurate estimates of insert size distributions}
 
 To avoid including noise in mean and variance estimates from shadow libraries and other error sources, 
-we perform a round of EM-clustering of insert sizes before calculating sample statistics\textbf{FIXME add ref to EM clustering}. Choice of 
+we perform a round of EM-clustering of insert sizes before calculating sample statistics~\citep{GuptaChen2010}. Choice of 
 the number of clusters $K$ in
 the EM-clustering algorithm is derived from an initial estimation of the library insert size using the method implemented in
 BWA~\citep{bwa}. Libraries with an preliminary
@@ -167,12 +167,12 @@ pairs represent improper connections and may contain clusters suggestive of misa
 \begin{figure}[t]
 \includegraphics[width=3.5in]{fish-qc.pdf}
 \vspace{-1cm}
-\caption{\textbf{Left:}  A hypothetical whole genome alignment of an assembly containing misassemblies relative to the true genome. 
-Red, green, and blue lines connect aligned regions. Black connecting lines represent real paired read 
-connections between contigs and orange connecting lines represent erroneous connections. \textbf{Right:}A plot 
-of connected points between Contig X and Contig Y. Black and orange dots correspond
-to black and orange connections lines from left figure, respectively. Dotted lines correspond
-to misassembly breakpoints. The gray circle highlights the set of points that are clustered by DBSCAN. }\label{fig:02}
+\caption{\textbf{Upper Left:}  A hypothetical whole genome alignment of an assembly containing misassemblies relative to the true genome and the 
+resulting broken assembly. Red, green, and blue lines connect aligned regions. Black connecting lines represent real paired read 
+connections between contigs and orange connecting lines represent erroneous connections. Black boxes in the broken assembly highlight
+blocks identified by the DBSCAN algorithm. \textbf{Upper Right and Bottom Row:} Plots of connected points between contigs. Black and orange dots 
+correspond to black and orange connections lines from left figure, respectively. Dotted lines correspond
+to misassembly breakpoints. Gray circles highlight the set of points that are clustered by DBSCAN. }\label{fig:02}
 \end{figure}
 
 After proper connections have been removed, misassemblies are identified by locating clusters of many read pairs mapped within
@@ -197,21 +197,20 @@ coverage, we ensure sensitivity to detect misassemblies in low-coverage regions.
 Assuming the positions of mapped reads  
 follow a Bernoulli process, the distance between two independent reads in a sequence follows a geometric distribution with parameter $p$.
 Using the geometric distribution we derive a maximum distance between two points (mapped reads) in one sequence using the following equation
-\begin{equation}
-	d(p) = \dfrac{\ln(\alpha)}{\ln(1-p)}
-\end{equation} 
-for some $\alpha < 1$. In practice we set $\alpha = 0.001$ and $\varepsilon = max(d(p),l_r)$ where $l_r$ is the read length.
-The second parameter of the DBSCAN algorithm, $MinPts$, is then set to be $2p\varepsilon$.
-\textbf{FIXME: what is the intuition behind setting alpha = 0.001 and MinPts to 2p varepsilon. Should alpha be called a scaling factor? Is the goal
-to select the 0.001'th quantile of the distribution? if so I'm not sure that multiplying by alpha achieves that effect. Or is alpha just renormalizing p
-based on the window size? If so, should it just be L instead of alpha?}.
+\begin{eqnarray}
+	1 - (1-p)^{d(p)} = 1-\alpha \nonumber \\
+	(1-p)^{d(p)} = \alpha  \nonumber \\ 
+	d(p)*\ln(1-p) = \ln(\alpha)  \nonumber \\
+	d(p) = \dfrac{\ln(\alpha)}{\ln(1-p)} 
+\end{eqnarray} 
+for some $\alpha < 1$. In practice we set $\alpha = 0.001$, to select the 99.9 quantile, and $\varepsilon = max(d(p),l_r)$ where $l_r$ is the read length.
+The second parameter of the DBSCAN algorithm, $MinPts$, is then set to be $3p\varepsilon$.
 
 Finally, regions of length $\le 2\mu$ within individual scaffolds that are flanked by two blocks are identified as containing
 misassemblies and are removed from the assembly, breaking the scaffold into two subscaffolds. The removed region contains the 
 misassembly breakpoint, but the exact position of the misassembly may not be well-defined in many cases, either due to lack of
 coverage by reads spanning that position or due to errors in the assembled sequence.
 
-\textbf{FIXME: to aid the dense reader, it would help to have a figure here that takes the misassembly from fig 2 and shows the points in contig X/Y, the resulting blocks on the contig, and how the misassembly results in two neighboring blocks}
 
 
 \section{Results}
@@ -225,12 +224,15 @@ using transposon-catalyzed adapter ligation (Nextera) and was sequenced on an Il
 We executed A5 and SOAPdenovo for each data set. Table 1 reports the assembly performance for Volc assemblies.
 Table 2 reports the assembly performance for Tn assemblies. The parameters used for SOAPdenovo are:
 \begin{itemize}
-\item Volc: $k = 27$, $d = 2$.
-\item Tn: $k = 27$, $d = 1$, $D = 1$
+\item Volc: $K = 27$, $d = 2$.
+\item Tn: $K = 27$, $d = 2$
 \end{itemize}
-
-\textbf{How did you arrive at these parameters??? Please list all the various parameter settings that you tried, and explain what metric you
-used to decide they were inferior (was it scaffold N50?)}
+SOAP was first ran with default parameters; however, the resulting assemblies were extremely poor quality. For \textbf{Volc}, there were
+280985 contigs (N50 = 76) and 14433 scaffolds (N50 = 209), and for \textbf{Tn}, there were 1572720 contigs (N50 = 76) and 8144 scaffolds (N50 = 121). 
+To select suitable parameters, we ran SOAP with different combinations of parameters and selected combinations that maximized scaffold N50 . For \textbf{Volc},
+we also present the parameter combination that minimized LCB count between the assembly and the reference. The parameter space queried was $S_K \bigoplus S_d$,
+where $S_K = \{23,25,27,29,31\}$ is the set of values over which $K$ was varied, and $S_d = \{1,2,...,9,10\}$ is the set of values over which $d$
+was varied.
 
 \textbf{FIXME: in the interest of reproducibility, need to state exactly which revision from the svn repository generated the above results.}
 
@@ -238,7 +240,7 @@ used to decide they were inferior (was it scaffold N50?)}
 
 Although SOAPdenovo out performs A5 in scaffold count and N50, the A5 pipeline produces fewer miscalled bases. This is to
 be expected, as the A5 pipeline first performs error corrections before building contigs. Running SOAPdenovo to
-obtain the presented results required multiple rounds of trial-and-error to determine optimal parameters, while A5 required
+obtain the presented results required a parameter sweep over , while A5 required
 only a single run of the pipeline. When little is known about the data being assembled, A5 produces higher quality assemblies 
 than SOAP.
 
@@ -250,7 +252,7 @@ feature of the misassembly is a false adjacency between two bases, and that cove
 
 Not limited to read pairs -- long reads with split mapping positions could in theory be used (maybe cite RazerS?).
 
-The algorithm for misassembly detection is conceptually similar to algorithms applied for segmental homology detection that permit local micro-rearrangement (FISH). It is also related to structural variant detection algorithms. Need to explain why we didn't use any of these?  Do the implementations suck? Are they not quite the right model? Please explain.
+The algorithm for misassembly detection is conceptually similar to algorithms applied for segmental homology detection that permit local micro-rearrangement. Chaining algorithms such as FISH and DAGChainer, are not permissive for this task, because they depend on a collinear arrangement of points. Because inserts vary in size, paired mapping points rarely fit this model.  It is also related to structural variant detection algorithms. Need to explain why we didn't use any of these?  Do the implementations suck? Are they not quite the right model? Please explain.
 
 
 Metagenomes? A necessary refinement would be to calculate parameters of the DBSCAN algorithm appropriate for the coverage level of the 
@@ -270,6 +272,7 @@ This work was supported by National Science Foundation award ER 0949453.
 \begin{table*}[!t] 
 \processtable{ Reference-based assembly metrics on crude and error-corrected assemblies.
 \label{Tab:01}}
+{\begin{tabular}{l|cccccc}\toprule
 Assembly           & vSOAPctg & vSOAPscaf & vA5ctg & vA5ctgQC & vA5scaf-noQC & vA5scaf  \\\midrule
 Sequence count     & 20630    & 229       & 853       & 869         & 470          & 322         \\
 N50                & 2551     & 126007    & 8173      & 8041        & 24779        & 14508       \\
