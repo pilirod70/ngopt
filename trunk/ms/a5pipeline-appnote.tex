@@ -275,11 +275,11 @@ than SOAPdenovo.
 
 The strategy used for detection of misassmblies demonstrates the utility of paired-end data for improving draft genome assemblies.
 In addition to identifying misassemblies after scaffolding, paired-reads may also be used to identify repetitve regions.   
-Although misassembly detection does not remove all misassemblies, it can still improve the connectivity of draft assemblies.
+Although we use paired short reads, the methodology is not limited to this type of data. Long reads with split mapping positions 
+could in theory be used in the same manner as the paired short read data.
+
 A limitation to misassembly detection is the underlying assumptions about the structure of misassemblies. We assume that the only
 feature of the misassembly is a false adjacency between two bases, and that coverage is uniform around this false adjacency. 
-
-Not limited to read pairs -- long reads with split mapping positions could in theory be used (maybe cite RazerS?).
 
 The algorithm for misassembly detection is conceptually similar to algorithms applied for segmental homology detection that permit local 
 micro-rearrangement. Chaining algorithms such as FISH and DAGChainer, are not permissive for this task, because they depend on a 
@@ -287,9 +287,6 @@ collinear arrangement of points. Because fragment lengths vary in size, points o
 The algorithm is also related to structural variant detection algorithms. However, software implementations of such methods were not condusive 
 to automation of the the misassembly detection step. \textbf{Need to explain why we didn't use any of these? 
 Do the implementations suck? Are they not quite the right model? Please explain.} 
-
-Although we use paired short reads, the methodology is not limited to this type of data. Long reads with split mapping positions 
-could in theory be used in the same manner as the paired short read data.
 
 Metagenomes? A necessary refinement would be to calculate parameters of the DBSCAN algorithm appropriate for the coverage level of the 
 scaffolds in question rather than for the assembly as a whole.
@@ -318,16 +315,16 @@ A5QC algorithm and rescaffolded with SSPACE.
 \label{Tab:01}}
 {\begin{tabular}{l|cccccccccc}\toprule
 Assembly           & cS-CDS & sS-CDS & cS-N50 & sS-N50 & cS-LCB & sS-LCB & cA     & cA-br  & sA     & sA-QC   \\\midrule
-Sequence count     & 10258  & 212    & 10258  & 212    & 19508  & 226    & 853    & 864    & 470    & 321     \\
-N50                & 4775   & 125739 & 4775   & 125739 & 2832   & 107081 & 8173   & 8056   & 14698  & 25153   \\
-Miscalled bases    & 270    & 395    & 270    & 395    & 409    & 377    & 146    & 150    & 204    & 200     \\
-Uncalled bases     & 0      & 11430  & 0      & 11430  & 0      & 13304  & 0      & 0      & 1295   & 2138    \\
-Extra bases        & 27069  & 14295  & 27069  & 14295  & 32797  & 19732  & 14088  & 15578  & 21723  & 15378   \\
-Missing bases      & 148291 & 142017 & 148291 & 142017 & 160773 & 156254 & 129629 & 127313 & 117258 & 113286  \\
-Extra sequences    & 8604   & 76     & 8604   & 76     & 17194  & 95     & 36     & 31     & 5      & 5       \\
+Sequence count     & 7686   & 211    & 10258  & 212    & 19508  & 226    & 853    & 864    & 470    & 321     \\
+N50                & 5111   & 125642 & 4775   & 125739 & 2832   & 107081 & 8173   & 8056   & 14698  & 25153   \\
+Miscalled bases    & 379    & 573    & 270    & 395    & 409    & 377    & 146    & 150    & 204    & 200     \\
+Uncalled bases     & 0      & 92290  & 0      & 11430  & 0      & 13304  & 0      & 0      & 1295   & 2138    \\
+Extra bases        & 269960 & 18582  & 27069  & 14295  & 32797  & 19732  & 14088  & 15578  & 21723  & 15378   \\
+Missing bases      & 149253 & 151966 & 148291 & 142017 & 160773 & 156254 & 129629 & 127313 & 117258 & 113286  \\
+Extra sequences    & 6129   & 75     & 8604   & 76     & 17194  & 95     & 36     & 31     & 5      & 5       \\
 Missing replicons  & 0      & 0      & 0      & 0      & 1      & 1      & 0      & 0      & 0      & 0       \\
-DCJ Distance       & 1656   & 140    & 1656   & 140    & 2317   & 134    & 835    & 843    & 487    & 327     \\
-LCB Count          & 9      & 14     & 9      & 14     & 7      & 10     & 46     & 47     & 52     & 31      \\
+DCJ Distance       & 1559   & 143    & 1656   & 140    & 2317   & 134    & 835    & 843    & 487    & 327     \\
+LCB Count          & 15     & 22     & 9      & 14     & 7      & 10     & 46     & 47     & 52     & 31      \\
 \botrule \\
 \end{tabular}}{}
 \end{table*}
