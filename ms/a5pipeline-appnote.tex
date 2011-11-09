@@ -283,10 +283,13 @@ Not limited to read pairs -- long reads with split mapping positions could in th
 
 The algorithm for misassembly detection is conceptually similar to algorithms applied for segmental homology detection that permit local 
 micro-rearrangement. Chaining algorithms such as FISH and DAGChainer, are not permissive for this task, because they depend on a 
-collinear arrangement of points. Because inserts vary in size, paired mapping points rarely fit this model.  
+collinear arrangement of points. Because fragment lengths vary in size, points of mapped read pairs rarely fit this model of collinearity. 
+The algorithm is also related to structural variant detection algorithms. However, software implementations of such methods were not condusive 
+to automation of the the misassembly detection step. \textbf{Need to explain why we didn't use any of these? 
+Do the implementations suck? Are they not quite the right model? Please explain.} 
 
-It is also related to structural variant detection algorithms. Need to explain why we didn't use any of these? 
-Do the implementations suck? Are they not quite the right model? Please explain.
+Although we use paired short reads, the methodology is not limited to this type of data. Long reads with split mapping positions 
+could in theory be used in the same manner as the paired short read data.
 
 Metagenomes? A necessary refinement would be to calculate parameters of the DBSCAN algorithm appropriate for the coverage level of the 
 scaffolds in question rather than for the assembly as a whole.
