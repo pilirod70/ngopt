@@ -393,17 +393,44 @@ Uncalled bases  & 0       & 26290   & 0       & 0       & 108     & 251     \\
 \section{Supplementary Material}
 \subsection{Description of internal assembly pipeline parameters}
 
+The A5 pipeline incorporates many algorithms, each of which require certain parameters to be set.
+Table~\ref{Tab:03} lists all of the parameters used in the A5 pipeline, along with how the value
+of that parameter is calculated. We now discuss the effect of each of these parameter settings in turn.  
+The SGA Quality Trim parameter sets a PHRED Q-score cutoff used for read trimming with the algorithm
+implemented in BWA~\citep{bwa}. The SGA Quality Filter parameter sets a maximum number of bases
+with a PHRED Q-score of below 3 that are permitted in a read before the read is discarded entirely.
+The SGA Min Read Length sets the minimum allowed read length after quality trimming, reads shorter
+than that will be discarded.
+
+The IDBA min $k$-mer sets the starting $k$-mer size for \emph{de bruijn} graph construction, and the max $k$-mer sets
+the largest $k$ that will be used during graph simplification.
+
+The SSPACE Overhang MinOverlap sets the number of nucleotides that a read must overlap with an existing
+contig to be used for contig extension during scaffold gap filling. The SSPACE ExtendCall MinBases sets the minimum
+number of reads covering a base that are required to call the base during contig extension. The SSPACE minimum
+links sets the minimum number of read pairs that must be connecting a pair of contigs in order for them to be considered
+for scaffolding, the reads must map to the region of the contig expected based on the insert size distribution.
+For three contigs A, B, and C, where read pairs link A,B and A,C, the SSPACE Min Link Ratio sets the 
+maximum allowable ratio between the number of links connecting A,C and A,B. If the ratio is below the threshold,
+A,B will be scaffolded, otherwise A will not be scaffolded. Here A,B and A,C have the highest and 2$^{nd}$ highest number
+of links between A and any other contig.
+
+The SSPACE Merge MinOverlap sets the minimum number of bases that two scaffolded contigs must overlap in order to be merged
+into a single contig.  The SSPACE Insert Mean is the mean value of the insert size for a paired-end or mate-pair library. 
+The SSPACE Insert StDev is the standard deviation.
+
+$\varepsilon$ is the maximum inter-point distance used for spatial clustering and $MinPts$ is the minimum number of points
+in a cluster.
+
 \begin{table*}[!t]
 \processtable{\textbf{Supplementary} Assembly parameters within the pipeline and how their values are chosen. 
 \label{Tab:03}}
-{\begin{tabular}{l|c|c}\toprule
+{\begin{tabular}{l|c|l}\toprule
 Parameter                       & Stage & Default setting  \\\midrule
 SGA Quality Trim (-q)           & 1     & hard coded to 10 \\
 SGA Quality Filter (-f)         & 1     & hard coded to 20  \\
 SGA Min Read Length (-m)        & 1     & hard coded to 30 \\
-SGA k-mer Size (-k)             & 1     & hard coded to 31 \\
-SGA k-mer-rounds (-i)           & 1     & hard coded to 10\\
-IDBA min $k$-mer                & 2     & 35 \\
+IDBA min $k$-mer                & 2     & 29, most $k$-mers of this size are unique in a microbial genome but larger values may be better for larger genomes \\
 IDBA max $k$-mer                & 2     & maximum read length of trimmed reads \\
 SSPACE Overhang MinOverlap (-m) & 3,5   & Max of 15 and floor of binary logarithm of genome size, plus 3.99  \\
 SSPACE ExtendCall MinBases (-o) & 3,5   & hard coded to 1 \\
