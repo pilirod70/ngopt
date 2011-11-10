@@ -47,9 +47,9 @@ sequence reads of length up to 150nt per read, from fragments as long as 600nt. 
 quality scores indicating the accuracy of each sequenced nucleotide.
 
 A tremendous number of software tools have been developed to assist with genome assembly from Illumina data.
-These include tools for base calling of the images from the sequencer~\citep{Kao2009,Kircher2009},
-error correction of the sequence reads~\citep{Kelley2010,Kao2011}, removal of adapter sequence contamination~\citep{Lassmann2009},
-contig assembly~\citep{Warren2007,Chaisson2008}, and scaffolding~\citep{Koren2011,Boetzer2011,Dayarian2010}.
+These include tools for base calling of the images from the sequencer~\citep{bayescall,ibis},
+error correction of the sequence reads~\citep{quake,shrec}, removal of adapter sequence contamination~\citep{tagdust},
+contig assembly~\citep{vcake,euler-sr}, and scaffolding~\citep{bambus2,Boetzer2011,SOPRA}.
 This list is not complete, but rather meant to illustrate some of the many tools for Illumina sequence analysis.
 As part of a project to sequence and assemble \textit{de novo} the genomes of 64 halophilic archaea, we have
 evaluated many of these softwares and constructed a new genome assembly pipeline that incorporates
@@ -88,7 +88,7 @@ published programs. First, ambiguous and low quality portions of reads are remov
 Both of these steps use tools from 
 from the SGA software package~\citep{Simpson2010}.  Although many read error correction packages have been published,
 we found the implementation in SGA to have reasonable compute time and memory requirements compared to others while also providing 
-good accuracy.  Next, the pipeline applies Tagdust~\citep{Lassmann2009} to remove any 
+good accuracy.  Next, the pipeline applies Tagdust~\citep{tagdust} to remove any 
 sequencing adapter contamination that may be present in the data. The default set of adapter sequences used for screening
 include the standard Illumina TruSeq adapters and those used in Epicentre Nextera (transposon-catalyzed) library preparation protocols~\citep{Adey2010}. 
 User-specified adapter sequences can be screened by adding them to a FastA file. 
@@ -269,9 +269,10 @@ of missing and extra bases. The parameter space queried was $S_K \bigoplus S_d$,
 where $S_K = \{23,25,27,29,31\}$ is the set of values over which $K$ was varied, and $S_d = \{1,2,...,9,10\}$ is the set of values over which $d$
 was varied. Using this process, the optimal parameters were set to be
 \begin{itemize}
-\item Volc (MaxN50): $K = 27$, $d = 2$.
-\item Volc (MinLCB): $K = 27$, $d = 1$.
-\item Tn: $K = 27$, $d = 2$
+\item \textbf{Volc} (-N50): $K = 27$, $d = 2$.
+\item \textbf(Volc) (-LCB): $K = 27$, $d = 1$.
+\item \textbf(Volc) (-CDS): $K = 29$, $d = 2$.
+\item \textbf{Tn}: $K = 27$, $d = 2$
 \end{itemize}
 
 A5 assemblies were generated using source code from revision 577 of the A5 pipeline.
@@ -286,7 +287,7 @@ A5 assemblies were generated using source code from revision 577 of the A5 pipel
 
 When little is known about the data being assembled, A5 produces higher quality assemblies 
 than SOAPdenovo. To obtain the our SOAPdenovo results we conducted a parameter sweep 
-over 50 combinations of $k$ and $d$, while A5 required
+over 50 combinations of $K$ and $d$, while A5 required
 only a single run of the pipeline.
 SOAPdenovo outperforms A5 in scaffold count and N50 on the \textit{Haloferax volcanii} DS2 dataset, but on the \textit{E. coli} dataset 
 (for which no high quality reference assembly is available) the
@@ -309,18 +310,32 @@ In addition to identifying misassemblies after scaffolding, paired-reads may als
 Although we use paired short reads, the methodology is not limited to this type of data. Long reads with split mapping positions 
 could in theory be used in the same manner as the paired short read data.
 
-A limitation to misassembly detection is the underlying assumptions about the structure of misassemblies. We assume that the only
-feature of the misassembly is a false adjacency between two bases, and that coverage is uniform around this false adjacency. 
+A limitation to misassembly detection is the underlying assumptions about the structure of misassemblies. The first assumption we make
+is that the only feature of the misassembly is a false adjacency between two bases.
+In many cases, however, a misassembly consists of more than a single false adjacency and includes extra inserted sequence.  One approach to
+overcomming this would be to employ a model that characterizes the insertion of additional sequence. Related to this is the assumption 
+that coverage is uniform in the two regions surrounding the missassembly. This assumption is frequently violated, as sequence coverage
+is rarely uniform. We also assume that coverage is equal on both sides of the false adjacency. In cases where coverage is not equal between 
+the two regions flanking a misassembly, as may be the case in metagenomes, a spatial clustering algorithm that allows for variable density
+clusters, such as AMSTLSC~\citep{AMSTLSC}, would more accurately identify blocks. Finally, we assume that all replicons in the target genome
+are circular. In genomes containing linear chromosomes, a misassembly combining a whole linear chromosome with another chromosome
+at a non-telomeric region would result in a single block on one side of the misassembly. Identifying a misassembly in this case
+would require additional information. When two chromosomes have been assembled together at their telomeres, no such blocks will be found, 
+necessitating a different approach to identifying misassemblies.
+
+In addition to theoretical limitations, our pipeline is also limited by data size. Especially large datasets, such as a full lane of data
+generated on the Illumina HiSeq2000 platform, are not easily processed using our pipeline. The major bottlenecks of our pipeline are the 
+first two stages: read cleaning, and contigging. The DBSCAN algorithm has $O(n\log{n})$ time-complexity and $O(n)$ memory-complexity. One 
+approach to reduce the memory complexity would be to implement a grid-based density clustering algorithm that operates on cell densities 
+rather than individual data points. Such algorithms exist (~\citep{STING}); however, employing a grid may compromise the resolution at which 
+a misassembly can be identified. Additionally, when coverage is high, subsampling the dataset can lower the memory load without sacrificing
+sensitivity.
 
 The algorithm for misassembly detection is conceptually similar to algorithms applied for segmental homology detection that permit local 
 micro-rearrangement. Chaining algorithms such as FISH and DAGChainer, are not permissive for this task, because they depend on a 
 collinear arrangement of points. Because fragment lengths vary in size, points of mapped read pairs rarely fit this model of collinearity. 
 The algorithm is also related to structural variant detection algorithms. However, software implementations of such methods were not condusive 
-to automation of the the misassembly detection step. \textbf{Need to explain why we didn't use any of these? 
-Do the implementations suck? Are they not quite the right model? Please explain.} 
-
-Metagenomes? A necessary refinement would be to calculate parameters of the DBSCAN algorithm appropriate for the coverage level of the 
-scaffolds in question rather than for the assembly as a whole.
+to automation of the the misassembly detection step. 
 
 DCJ distance on contigs may be nonzero due to alignment error or due to the reference assembly having a different linearization point
 for circular molecules. 
