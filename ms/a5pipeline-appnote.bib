@@ -29,6 +29,34 @@ journal = {Genome Research},
 year = {Submitted}
 }
 
+@article{Chaisson2008,
+author = {Chaisson, Mark J. and Pevzner, Pavel A.}, 
+title = {Short read fragment assembly of bacterial genomes}, 
+volume = {18}, 
+number = {2}, 
+pages = {324-330}, 
+year = {2008}, 
+doi = {10.1101/gr.7088808}, 
+abstract ={In the last year, high-throughput sequencing technologies have progressed from proof-of-concept to production quality. While these methods produce high-quality reads, they have yet to produce reads comparable in length to Sanger-based sequencing. Current fragment assembly algorithms have been implemented and optimized for mate-paired Sanger-based reads, and thus do not perform well on short reads produced by short read technologies. We present a new Eulerian assembler that generates nearly optimal short read assemblies of bacterial genomes and describe an approach to assemble reads in the case of the popular hybrid protocol when short and long Sanger-based reads are combined.}, 
+URL = {http://genome.cshlp.org/content/18/2/324.abstract}, 
+eprint = {http://genome.cshlp.org/content/18/2/324.full.pdf+html}, 
+journal = {Genome Research} 
+}
+
+@article{Warren2007,
+author = {Warren, René L. and Sutton, Granger G. and Jones, Steven J. M. and Holt, Robert A.}, 
+title = {Assembling millions of short DNA sequences using SSAKE}, 
+volume = {23}, 
+number = {4}, 
+pages = {500-501}, 
+year = {2007}, 
+doi = {10.1093/bioinformatics/btl629}, 
+abstract ={Summary: Novel DNA sequencing technologies with the potential for up to three orders magnitude more sequence throughput than conventional Sanger sequencing are emerging. The instrument now available from Solexa Ltd, produces millions of short DNA sequences of 25 nt each. Due to ubiquitous repeats in large genomes and the inability of short sequences to uniquely and unambiguously characterize them, the short read length limits applicability for de novo sequencing. However, given the sequencing depth and the throughput of this instrument, stringent assembly of highly identical sequences can be achieved. We describe SSAKE, a tool for aggressively assembling millions of short nucleotide sequences by progressively searching through a prefix tree for the longest possible overlap between any two sequences. SSAKE is designed to help leverage the information from short sequence reads by stringently assembling them into contiguous sequences that can be used to characterize novel sequencing targets.Availability:http://www.bcgsc.ca/bioinfo/software/ssakeContact:rwarren@bcgsc.ca}, 
+URL = {http://bioinformatics.oxfordjournals.org/content/23/4/500.abstract}, 
+eprint = {http://bioinformatics.oxfordjournals.org/content/23/4/500.full.pdf+html}, 
+journal = {Bioinformatics} 
+}
+
 @article{Earl2011,
 author = {Earl, Dent A. and Bradnam, Keith and St. John, John and Darling, Aaron and Lin, Dawei and Faas, Joseph and Yu, Hung On Ken and Vince, Buffalo and Zerbino, Daniel R. and Diekhans, Mark and Nguyen, Ngan and Nuwantha, Pramila and Sung, Ariyaratne Wing-Kin and Ning, Zemin and Haimel, Matthias and Simpson, Jared T. and Fronseca, Nuno A. and Birol, İnanç and Docking, T. Roderick and Ho, Isaac Y. and Rokhsar, Daniel S and Chikhi, Rayan and Lavenier, Dominique and Chapuis, Guillaume and Naquin, Delphine and Maillet, Nicolas and Schatz, Michael C. and Kelly, David R. and Phillippy, Adam M. and Koren, Sergey and Yang, Shiaw-Pyng and Wu, Wei and Chou, Wen-Chi and Srivastava, Anuj and Shaw, Timothy I. and Ruby, J. Graham and Skewes-Cox, Peter and Betegon, Miguel and Dimon, Michelle T. and Solovyev, Victor and Kosarev, Petr and Vorobyev, Denis and Ramirez-Gonzalez, Ricardo and Leggett, Richard and MacLean, Dan and Xia, Fangfang and Luo, Ruibang and L, Zhenyu and Xie, Yinlong and Liu, Binghang and Gnerre, Sante and MacCallum, Iain and Przybylski, Dariusz and Ribeiro, Filipe J. and Yin, Shuangye and Sharpe, Ted and Hall, Giles and Kersey, Paul J. and Durbin, Richard and Jackman, Shaun D. and Chapman, Jarrod A. and Huang, Xiaoqiu and DeRisi, Joseph L. and Caccamo, Mario and Li, Yingrui and Jaffe, David B. and Green, Richard and Haussler, David and Korf, Ian and Paten, Benedict}, 
 title = {Assemblathon 1: A competitive assessment of de novo short read assembly methods}, 
@@ -42,7 +70,34 @@ journal = {Genome Research}
 
 @article{Zerbino2008, title={Velvet: algorithms for de novo short read assembly using de Bruijn graphs.}, volume={18}, url={http://www.ncbi.nlm.nih.gov/pubmed/18349386}, number={5}, journal={Genome Research}, publisher={Cold Spring Harbor Lab}, author={Zerbino, Daniel R and Birney, Ewan}, year={2008}, pages={821--9}}
 
+@article{Koren2011,
+author = {Koren, Sergey and Treangen, Todd J and Pop, Mihai}, 
+title = {Bambus 2: Scaffolding Metagenomes}, 
+year = {2011}, 
+doi = {10.1093/bioinformatics/btr520}, 
+abstract ={Motivation: Sequencing projects increasingly target samples from non-clonal sources. In particular, metagenomics has enabled scientists to begin to characterize the structure of microbial communities. The software tools developed for assembling and analyzing sequencing data for clonal organisms are, however, unable to adequately process data derived from non-clonal sources.Results: We present a new scaffolder, Bambus 2 to address some of the challenges encountered when analyzing metagenomes. Our approach relies on a combination of a novel method for detecting genomic repeats and algorithms that analyze assembly graphs to identify biologically meaningful genomic variants. We compare our software to current assemblers using simulated and real data. We demonstrate that the repeat detection algorithms have higher sensitivity than current approaches without sacrificing specificity. In metagenomic datasets, the scaffolder avoids false joins between distantly related organisms while obtaining long-range contiguity. Bambus 2 represents a first step towards automated metagenomic assembly.Availability: Bambus 2 is open-source and available from http://amos.sf.net.Contact: mpop@umiacs.umd.edu}, 
+URL = {http://bioinformatics.oxfordjournals.org/content/early/2011/09/16/bioinformatics.btr520.abstract}, 
+eprint = {http://bioinformatics.oxfordjournals.org/content/early/2011/09/16/bioinformatics.btr520.full.pdf+html}, 
+journal = {Bioinformatics} 
+}
+
 @article{Kozarewa2009, title={Amplification-free Illumina sequencing-library preparation facilitates improved mapping and assembly of (G+C)-biased genomes.}, volume={6}, url={http://www.ncbi.nlm.nih.gov/pubmed/19287394}, number={4}, journal={Nature Methods}, publisher={Nature Publishing Group}, author={Kozarewa, Iwanka and Ning, Zemin and Quail, Michael A and Sanders, Mandy J and Berriman, Matthew and Turner, Daniel J}, year={2009}, pages={291--295}}
+
+@Article{Dayarian2010,
+AUTHOR = {Dayarian, Adel and Michael, Todd and Sengupta, Anirvan},
+TITLE = {SOPRA: Scaffolding algorithm for paired reads via statistical optimization},
+JOURNAL = {BMC Bioinformatics},
+VOLUME = {11},
+YEAR = {2010},
+NUMBER = {1},
+PAGES = {345},
+URL = {http://www.biomedcentral.com/1471-2105/11/345},
+DOI = {10.1186/1471-2105-11-345},
+PubMedID = {20576136},
+ISSN = {1471-2105},
+ABSTRACT = {BACKGROUND:High throughput sequencing (HTS) platforms produce gigabases of short read (<100 bp) data per run. While these short reads are adequate for resequencing applications, de novo assembly of moderate size genomes from such reads remains a significant challenge. These limitations could be partially overcome by utilizing mate pair technology, which provides pairs of short reads separated by a known distance along the genome.RESULTS:We have developed SOPRA, a tool designed to exploit the mate pair/paired-end information for assembly of short reads. The main focus of the algorithm is selecting a sufficiently large subset of simultaneously satisfiable mate pair constraints to achieve a balance between the size and the quality of the output scaffolds. Scaffold assembly is presented as an optimization problem for variables associated with vertices and with edges of the contig connectivity graph. Vertices of this graph are individual contigs with edges drawn between contigs connected by mate pairs. Similar graph problems have been invoked in the context of shotgun sequencing and scaffold building for previous generation of sequencing projects. However, given the error-prone nature of HTS data and the fundamental limitations from the shortness of the reads, the ad hoc greedy algorithms used in the earlier studies are likely to lead to poor quality results in the current context. SOPRA circumvents this problem by treating all the constraints on equal footing for solving the optimization problem, the solution itself indicating the problematic constraints (chimeric/repetitive contigs, etc.) to be removed. The process of solving and removing of constraints is iterated till one reaches a core set of consistent constraints. For SOLiD sequencer data, SOPRA uses a dynamic programming approach to robustly translate the color-space assembly to base-space. For assessing the quality of an assembly, we report the no-match/mismatch error rate as well as the rates of various rearrangement errors.CONCLUSIONS:Applying SOPRA to real data from bacterial genomes, we were able to assemble contigs into scaffolds of significant length (N50 up to 200 Kb) with very few errors introduced in the process. In general, the methodology presented here will allow better scaffold assemblies of any type of mate pair sequencing data.},
+}
+
 
 @article{Boetzer2011,
 author = {Boetzer, Marten and Henkel, Christiaan V. and Jansen, Hans J. and Butler, Derek and Pirovano, Walter}, 
@@ -73,6 +128,62 @@ journal = {Bioinformatics}
 }
 
 @article{Peng2010, title={IDBA - A Practical Iterative de Bruijn Graph De Novo Assembler}, volume={6044}, url={http://www.springerlink.com/index/622866948LH233G7.pdf}, journal={Computer}, publisher={Springer}, author={Peng, Yu and Leung, Henry and Yiu, S M and Chin, Francis Y L}, year={2010}, pages={426--440}}
+
+@Article{Kelley2010,
+AUTHOR = {Kelley, David and Schatz, Michael and Salzberg, Steven},
+TITLE = {Quake: quality-aware detection and correction of sequencing errors},
+JOURNAL = {Genome Biology},
+VOLUME = {11},
+YEAR = {2010},
+NUMBER = {11},
+PAGES = {R116},
+URL = {http://genomebiology.com/2010/11/11/R116},
+DOI = {10.1186/gb-2010-11-11-r116},
+PubMedID = {21114842},
+ISSN = {1465-6906},
+ABSTRACT = {We introduce Quake, a program to detect and correct errors in DNA sequencing reads. Using a maximum likelihood approach incorporating quality values and nucleotide specific miscall rates, Quake achieves the highest accuracy on realistically simulated reads. We further demonstrate substantial improvements in de novo assembly and SNP detection after using Quake. Quake can be used for any size project, including more than one billion human reads, and is freely available as open source software from http://www.cbcb.umd.edu/software/quake webcite.},
+}
+
+
+@article{Kao2011,
+author = {Kao, Wei-Chun and Chan, Andrew H. and Song, Yun S.}, 
+title = {ECHO: A reference-free short-read error correction algorithm}, 
+volume = {21}, 
+number = {7}, 
+pages = {1181-1192}, 
+year = {2011}, 
+doi = {10.1101/gr.111351.110}, 
+abstract ={Developing accurate, scalable algorithms to improve data quality is an important computational challenge associated with recent advances in high-throughput sequencing technology. In this study, a novel error-correction algorithm, called ECHO, is introduced for correcting base-call errors in short-reads, without the need of a reference genome. Unlike most previous methods, ECHO does not require the user to specify parameters of which optimal values are typically unknown a priori. ECHO automatically sets the parameters in the assumed model and estimates error characteristics specific to each sequencing run, while maintaining a running time that is within the range of practical use. ECHO is based on a probabilistic model and is able to assign a quality score to each corrected base. Furthermore, it explicitly models heterozygosity in diploid genomes and provides a reference-free method for detecting bases that originated from heterozygous sites. On both real and simulated data, ECHO is able to improve the accuracy of previous error-correction methods by several folds to an order of magnitude, depending on the sequence coverage depth and the position in the read. The improvement is most pronounced toward the end of the read, where previous methods become noticeably less effective. Using a whole-genome yeast data set, it is demonstrated here that ECHO is capable of coping with nonuniform coverage. Also, it is shown that using ECHO to perform error correction as a preprocessing step considerably facilitates de novo assembly, particularly in the case of low-to-moderate sequence coverage depth.}, 
+URL = {http://genome.cshlp.org/content/21/7/1181.abstract}, 
+eprint = {http://genome.cshlp.org/content/21/7/1181.full.pdf+html}, 
+journal = {Genome Research} 
+}
+
+@Article{Kircher2009,
+AUTHOR = {Kircher, Martin and Stenzel, Udo and Kelso, Janet},
+TITLE = {Improved base calling for the Illumina Genome Analyzer using machine learning strategies},
+JOURNAL = {Genome Biology},
+VOLUME = {10},
+YEAR = {2009},
+NUMBER = {8},
+PAGES = {R83},
+URL = {http://genomebiology.com/2009/10/8/R83},
+DOI = {10.1186/gb-2009-10-8-r83},
+PubMedID = {19682367},
+ISSN = {1465-6906},
+ABSTRACT = {The Illumina Genome Analyzer generates millions of short sequencing reads. We present Ibis (Improved base identification system), an accurate, fast and easy-to-use base caller that significantly reduces the error rate and increases the output of usable reads. Ibis is faster and more robust with respect to chemistry and technology than other publicly available packages. Ibis is freely available under the GPL from http://bioinf.eva.mpg.de/Ibis/ webcite.},
+}
+
+@article{Kao2009,
+author = {Kao, Wei-Chun and Stevens, Kristian and Song, Yun S}, 
+title = {BayesCall: A model-based basecalling algorithm for high-throughput short-read sequencing}, 
+year = {2009}, 
+doi = {10.1101/gr.095299.109}, 
+abstract ={Extracting sequence information from raw images of fluorescence is the foundation underlying several high-throughput sequencing platforms. Some of the main challenges associated with this technology include reducing the error rate, assigning accurate base-specific quality scores, and reducing the cost of sequencing by increasing the throughput per run.  To demonstrate how computational advancement can help to meet these challenges, a novel model-based basecalling algorithm BayesCall is introduced for the Illumina sequencing platform.  Being founded on the tools of statistical learning, BayesCall is flexible enough to incorporate various features of the sequencing process.  In particular, it can easily incorporate time-dependent parameters and model residual effects. This new approach significantly improves the accuracy over Illumina's basecaller Bustard, particularly in the later cycles of a sequencing run.  For 76-cycle data on a standard viral sample PhiX174,  BayesCall improves Bustard's average per-base error rate by about 52%.  The probability of observing each base can be readily computed in BayesCall, and this probability can be transformed into a useful base-specific quality score with a high discrimination ability.   A detailed study of BayesCall's performance is presented here.}, 
+URL = {http://genome.cshlp.org/content/early/2009/08/06/gr.095299.109.abstract}, 
+eprint = {http://genome.cshlp.org/content/early/2009/08/06/gr.095299.109.full.pdf+html}, 
+journal = {Genome Research} 
+}
 
 @article{Lassmann2009,
 author = {Lassmann, Timo and Hayashizaki, Yoshihide and Daub, Carsten O.}, 
