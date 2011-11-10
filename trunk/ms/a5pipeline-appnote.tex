@@ -17,18 +17,24 @@ $^{4}$ Biomedical Engineering, University of California-Davis, Davis, CA 95616.}
 \maketitle
 
 \begin{abstract}
-High throughput DNA sequencing technologies have drastically altered the field of de novo genome assembly. Analyzing
-raw sequence data to obtain draft genomes is a complex process, requiring many steps to be taken to produce high
-quality assemblies. Carrying out many of these steps requires intimate knowledge of the algorithms and software. 
-We present an assembly pipeline that simplifies this process through automated parameter selection. When little
-knowledge is known the target genome and the protocols used to construct DNA libraries, our pipeline produces
-higher quality draft genomes than previously published software. 
+Repeated advance in DNA sequencing technology has created a profound need for de novo genome assembly methods
+tailored to work with the new sequencing data types. Assembling
+raw sequence data to obtain a draft genome is usually a complex, multi-step process, 
+involving several stages of sequence data cleaning, error reduction, and assembly quality control. 
+Successful application of these steps usually requires intimate knowledge of a diverse set of algorithms and software. 
+We present an assembly pipeline that simplifies the entire genome assembly process by automating much of the
+data cleaning, error correction, assembly, and quality control. Our pipeline integrates several previously published
+algorithms with new algorithms for quality control and automated assembly parameter selection.
+We demonstrate that our method can produce assemblies of quality comparable to a leading assembly algorithm without
+any prior knowledge of the particular genome being assembled and without the extensive parameter tuning required
+by the other assembly algorithm. Finally, our pipeline has modest compute requirements, and can assemble 
+a typical bacterial genome on current desktop or laptop computer hardware.
 
 \section{Summary:}
 \section{Availability:}
-GPL source code and a usage tutorial is at \href{http://ngopt.googlecode.com}{http://ngopt.googlecode.com}
+GPL source code, precompiled binaries for 64-bit Linux and Mac OS X, and a usage tutorial is available from \href{http://ngopt.googlecode.com}{http://ngopt.googlecode.com}
 
-\section{Contact:} \href{rabid apes}{}
+\section{Contact:} \href{mailto:andrew.j.tritt@gmail.com}{andrew.j.tritt@gmail.com}, \href{mailto:aarondarling@ucdavis.edu}{aarondarling@ucdavis.edu}
 \end{abstract}
 
 \section{Introduction}
@@ -283,7 +289,7 @@ Data presented were generated using source code from revision 577
 \begin{figure}[t]
 \includegraphics[width=3.5in]{volc_accum_plot.pdf}
 \vspace{-1cm}
-\caption{Sequence length accumulation curve for six assemblies.}\label{fig:01}
+\caption{Sequence length accumulation curve for six assemblies.}\label{fig:03}
 \end{figure}
 
 \section{Discussion}
@@ -292,16 +298,17 @@ When little is known about the data being assembled, A5 produces higher quality 
 than SOAPdenovo. To obtain the presented SOAPdenovo results we conducted a parameter sweep 
 over 50 combinations of $k$ and $d$, while A5 required
 only a single run of the pipeline.
-SOAPdenovo outperforms A5 in scaffold count and N50 on the \textit{Haloferax volcanii} DS2 dataset, but on the \textit{E. coli} dataset the
+SOAPdenovo outperforms A5 in scaffold count and N50 on the \textit{Haloferax volcanii} DS2 dataset, but on the \textit{E. coli} dataset 
+(for which no high quality reference assembly is available) the
 A5 pipeline produces a better assembly when measured by scaffold count, mean scaffold size, and max scaffold size.
 One possible reason that A5 may produce better results on the transposon catalyzed library is that the insert size using
-that library preparation protocol often does not fit a normal distribution.  In these libraries, the insert size 
-distribution depends greatly on the relative concentrations of transposase and target DNA and can range from truncated uniform
+that library preparation protocol often does not fit a normal distribution.  Instead the insert size 
+distribution depends greatly on the relative concentrations of transposase and target DNA and can range from a truncated uniform
 to roughly lognormal depending on the enzyme concentration and what size selection steps are taken during library preparation.
 Most scaffolding programs to-date model the insert sizes for paired-end reads using a normal distribution with a particular
 mean and standard deviation. Our pipeline also uses this model, but has been configured to be permissive of scaffolding
 using libraries with broadly distributed insert sizes.  A second possible explanation for A5's improved performance on transposon-catalyzed 
-libraries may be that the contigging method is less sensitive to low coverage regions.  Illumina libraries constructed by in-vitro 
+libraries may be that method is more robust to low coverage regions.  Illumina libraries constructed by in-vitro 
 transposition with Tn5 transposase have considerable target site preference, leading to highly nonuniform coverage around a genome.
 
 In all cases where reference data was available the A5 pipeline produced fewer miscalled bases. This is to
@@ -331,7 +338,7 @@ for circular molecules.
 \emph{de novo} genome assembly from Illumina data is an extremely active area of research, with many assembly algorithms published and many more continuing to be produced.
 A thorough comparison of the performance of all these methods is a highly nontrivial undertaking and well outside the scope of the present  
 work. Instead, we chose to compare to a single other widely-used assembly method, namely SOAPdenovo. We selected SOAPdenovo for comparison
-because it ranked among the best in two recent surveys of assembly algorithms~\citep{Assemblathon,GAGE}, it is able to run on a single paired-end
+because it ranked among the best in two recent surveys of assembly algorithms~\citep{Earl2011,GAGE}, it is able to run on a single paired-end
 library, and like A5 is relatively simple to download, install, and use. Although methods that require both small insert paired-end libraries
 and large insert mate-pair libraries can produce very high quality results, the time, cost and technical expertise required to construct large insert
 libraries is significantly beyond that required for small insert libraries (especially using transposon-catalyzed library construction).
