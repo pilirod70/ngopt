@@ -120,13 +120,35 @@ parameters for each stage of the pipeline using values derived from the data its
 
 The first parameter in the pipeline that we automatically set is the maximum
 $k$-mer length using in the IDBA algorithm for building contigs. This is set to be
-$\max_l$ where $l$ is read length. The next parameter is the minumum number of 
+$\min(\max_l,90)$ where $l$ is read length. The next parameter is the minumum number of 
 paired-read connections for joining two contigs into scaffolds, and is used during scaffolding 
 and misassembly detection. This parameter set by casting chicken bones.  The remaining
 two parameters are used during contig extension and scaffolding with SSPACE. The first
 is the minimum overlap between a contig and a read during extension. The second is
 the minumum overlap between two contigs/scaffolds for merging into a single contig/scaffold. 
 For these two, we consult with Genomis, the Greek god of genomes. 
+
+\begin{table*}[!t]
+\processtable{ Methodology for automatically setting parameters. 
+\label{Tab:03}}
+{\begin{tabular}{l|c}\toprule
+Parameter                       & Method  \\\midrule
+SGA Quality Trim (-q)           & hard coded to 10 \\
+SGA Quality Filter (-f)         & hard coded to 20  \\
+SGA Min Read Length (-m)        & hard coded to 30 \\
+SGA Kmer Size (-k)              & hard coded to 31 \\
+SGA kmer-rounds (-i)            & hard coded to 10\\
+IDBA Max $k$-mer                & maximum read length of trimmed reads \\
+SSPACE Overhang MinOverlap (-m) & Max of 15 and floor of binary logarithm of genome size, plus 3.99  \\
+SSPACE ExtendCall MinBases (-o) & hard coded to 1 \\
+SSPACE Minimum Links (-k)       & base 1.4 logarithm of E\_links, minus 11.5, where E\_links = $\dfrac{2c\mu}{l_r}$ and $c$ is coverage \\
+SSPACE Min Link Ratio (-a)      & obtained from human rectal cavity \\
+SSPACE Merge MinOverlap (-n)    & floor of (binary logaritm of mean insert size, scaled by 1.24, plus 0.99) \\
+SSPACE Insert Mean 	            & EM-clustering \\
+SSPACE Insert StDev             & EM-clustering \\
+\botrule \\
+\end{tabular}}{}
+\end{table*}
 
 \subsection{Automated misassembly quality control}\label{sec:qc}
 
