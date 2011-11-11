@@ -577,19 +577,6 @@ URL = {http://bioinformatics.oxfordjournals.org/content/27/21/2964.abstract},
 eprint = {http://bioinformatics.oxfordjournals.org/content/27/21/2964.full.pdf+html}, 
 journal = {Bioinformatics} 
 }
-@article{bayescall,
-author = {Kao, Wei-Chun and Stevens, Kristian and Song, Yun S.}, 
-title = {BayesCall: A model-based base-calling algorithm for high-throughput short-read sequencing}, 
-volume = {19}, 
-number = {10}, 
-pages = {1884-1895}, 
-year = {2009}, 
-doi = {10.1101/gr.095299.109}, 
-abstract ={Extracting sequence information from raw images of fluorescence is the foundation underlying several high-throughput sequencing platforms. Some of the main challenges associated with this technology include reducing the error rate, assigning accurate base-specific quality scores, and reducing the cost of sequencing by increasing the throughput per run. To demonstrate how computational advancement can help to meet these challenges, a novel model-based base-calling algorithm, BayesCall, is introduced for the Illumina sequencing platform. Being founded on the tools of statistical learning, BayesCall is flexible enough to incorporate various features of the sequencing process. In particular, it can easily incorporate time-dependent parameters and model residual effects. This new approach significantly improves the accuracy over Illumina's base-caller Bustard, particularly in the later cycles of a sequencing run. For 76-cycle data on a standard viral sample, phiX174, BayesCall improves Bustard's average per-base error rate by ∼51%. The probability of observing each base can be readily computed in BayesCall, and this probability can be transformed into a useful base-specific quality score with a high discrimination ability. A detailed study of BayesCall's performance is presented here.}, 
-URL = {http://genome.cshlp.org/content/19/10/1884.abstract}, 
-eprint = {http://genome.cshlp.org/content/19/10/1884.full.pdf+html}, 
-journal = {Genome Research} 
-}
 @article{euler-sr,
 author = {Chaisson, Mark J. and Pevzner, Pavel A.}, 
 title = {Short read fragment assembly of bacterial genomes}, 
@@ -672,5 +659,48 @@ DOI = {10.1186/1471-2105-11-345},
 PubMedID = {20576136},
 ISSN = {1471-2105},
 ABSTRACT = {BACKGROUND:High throughput sequencing (HTS) platforms produce gigabases of short read (<100 bp) data per run. While these short reads are adequate for resequencing applications, de novo assembly of moderate size genomes from such reads remains a significant challenge. These limitations could be partially overcome by utilizing mate pair technology, which provides pairs of short reads separated by a known distance along the genome.RESULTS:We have developed SOPRA, a tool designed to exploit the mate pair/paired-end information for assembly of short reads. The main focus of the algorithm is selecting a sufficiently large subset of simultaneously satisfiable mate pair constraints to achieve a balance between the size and the quality of the output scaffolds. Scaffold assembly is presented as an optimization problem for variables associated with vertices and with edges of the contig connectivity graph. Vertices of this graph are individual contigs with edges drawn between contigs connected by mate pairs. Similar graph problems have been invoked in the context of shotgun sequencing and scaffold building for previous generation of sequencing projects. However, given the error-prone nature of HTS data and the fundamental limitations from the shortness of the reads, the ad hoc greedy algorithms used in the earlier studies are likely to lead to poor quality results in the current context. SOPRA circumvents this problem by treating all the constraints on equal footing for solving the optimization problem, the solution itself indicating the problematic constraints (chimeric/repetitive contigs, etc.) to be removed. The process of solving and removing of constraints is iterated till one reaches a core set of consistent constraints. For SOLiD sequencer data, SOPRA uses a dynamic programming approach to robustly translate the color-space assembly to base-space. For assessing the quality of an assembly, we report the no-match/mismatch error rate as well as the rates of various rearrangement errors.CONCLUSIONS:Applying SOPRA to real data from bacterial genomes, we were able to assemble contigs into scaffolds of significant length (N50 up to 200 Kb) with very few errors introduced in the process. In general, the methodology presented here will allow better scaffold assemblies of any type of mate pair sequencing data.},
+}
+
+@article{SVDetect,
+author = {Zeitouni, Bruno and Boeva, Valentina and Janoueix-Lerosey, Isabelle and Loeillet, Sophie and Legoix-né, Patricia and Nicolas, Alain and Delattre, Olivier and Barillot, Emmanuel}, 
+title = {SVDetect: a tool to identify genomic structural variations from paired-end and mate-pair sequencing data}, 
+volume = {26}, 
+number = {15}, 
+pages = {1895-1896}, 
+year = {2010}, 
+doi = {10.1093/bioinformatics/btq293}, 
+abstract ={Summary: We present SVDetect, a program designed to identify genomic structural variations from paired-end and mate-pair next-generation sequencing data produced by the Illumina GA and ABI SOLiD platforms. Applying both sliding-window and clustering strategies, we use anomalously mapped read pairs provided by current short read aligners to localize genomic rearrangements and classify them according to their type, e.g. large insertions–deletions, inversions, duplications and balanced or unbalanced inter-chromosomal translocations. SVDetect outputs predicted structural variants in various file formats for appropriate graphical visualization.Availability: Source code and sample data are available at http://svdetect.sourceforge.net/Contact: svdetect@curie.frSupplementary information: Supplementary data are available at Bioinformatics online.}, 
+URL = {http://bioinformatics.oxfordjournals.org/content/26/15/1895.abstract}, 
+eprint = {http://bioinformatics.oxfordjournals.org/content/26/15/1895.full.pdf+html}, 
+journal = {Bioinformatics} 
+}
+@Article{BreakDancer,
+author="Chen, Ken
+and Wallis, John W.
+and McLellan, Michael D.
+and Larson, David E.
+and Kalicki, Joelle M.
+and Pohl, Craig S.
+and McGrath, Sean D.
+and Wendl, Michael C.
+and Zhang, Qunyuan
+and Locke, Devin P.
+and Shi, Xiaoqi
+and Fulton, Robert S.
+and Ley, Timothy J.
+and Wilson, Richard K.
+and Ding, Li
+and Mardis, Elaine R.",
+title="BreakDancer: an algorithm for high-resolution mapping of genomic structural variation",
+journal="Nat Meth",
+year="2009",
+month="Sep",
+publisher="Nature Publishing Group",
+volume="6",
+number="9",
+pages="677--681",
+issn="1548-7091",
+doi="10.1038/nmeth.1363",
+url="http://dx.doi.org/10.1038/nmeth.1363"
 }
 
