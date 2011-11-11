@@ -70,7 +70,7 @@ my $def_up_id="upReads";
 my @KEYS = ("id","p1","p2","shuf","up","rc","ins","err","nlibs","libfile");
 my $pname = basename($0);
 my $usage= qq{
-Usage: $pname [--begin=1-5] [--preprocessed] <lib_file> <out_base>
+Usage: $pname [--begin=1-5] [--end=1-5] [--preprocessed] <lib_file> <out_base>
 
 Or: $pname <Read 1 FastQ> <Read 2 FastQ> <out_base>
 
@@ -87,8 +87,10 @@ die $usage if ! @ARGV;
 
 Getopt::Long::Configure(qw{no_auto_abbrev no_ignore_case_always pass_through});
 my $start = 1;
+my $end = 5;
 my $preproc = 0;
 GetOptions( 'begin=i' => \$start,
+            'end=i' => \$end,
 			'preprocessed' => \$preproc);
 
 die $usage if (@ARGV < 2);
@@ -146,6 +148,10 @@ if ($start <= 1) {
 	$reads = tagdust($OUTBASE, $reads);
 	`mv $reads $OUTBASE.ec.fastq`;
 } 
+if ($end == 1){
+	print STDERR "[a5] Done cleaning reads. Results at $OUTBASE.ec.fastq\n";
+	exit;
+}
 if ($start <= 2) {
 	my $fq_reads = "$OUTBASE.ec.fastq";
 	`gunzip $fq_reads.gz` if -f "$fq_reads.gz";
@@ -173,6 +179,10 @@ if ($start <= 2) {
 	#`mv $ctgs $OUTBASE.contigs.fasta`;
 	
 } 
+if ($end == 2){
+	print STDERR "[a5] Done building contigs. Results at $OUTBASE.contigs.fasta\n";
+	exit;
+}
 $WD="$OUTBASE.s3";
 mkdir($WD) if ! -d $WD;
 my %PAIR_LIBS; 
@@ -194,6 +204,10 @@ if ($start <= 3) {
 	$scafs = scaffold_sspace($libfile, $OUTBASE, \%PAIR_LIBS, $ctgs);
 	`mv $scafs $OUTBASE.crude.scaffolds.fasta`; 
 } 
+if ($end == 3){
+	print STDERR "[a5] Done building crude scaffolds. Results at $OUTBASE.crude.scaffolds.fasta\n";
+	exit;
+}
 my $need_qc = 1;
 if ($start <= 4) {
 	my $prev_scafs = "$OUTBASE.crude.scaffolds.fasta";
@@ -212,6 +226,15 @@ if ($start <= 4) {
 		`mv $scafs $OUTBASE.broken.scaffolds.fasta`; 
 	}
 } 
+if ($end == 4){
+	print STDERR "[a5] Done running QC. ";
+	if ($need_qc){
+		print STDERR " Results at $OUTBASE.broken.scaffolds.fasta\n";
+	} else {
+		print STDERR " No misassemblies detected.";
+	}
+	exit;
+}
 if ($start <= 5 && $need_qc) {
 	$scafs = "$OUTBASE.broken.scaffolds.fasta";
 	die "[a5_s5] Can't find starting broken scaffolds $scafs\n" unless -f $scafs;
@@ -222,8 +245,9 @@ if ($start <= 5 && $need_qc) {
 	$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs,1);
 	`mv $scafs $OUTBASE.final.scaffolds.fasta`;
 } 
-print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
-
+if ($end == 5){
+	print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
+}
 
 
 
