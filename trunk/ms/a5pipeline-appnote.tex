@@ -22,12 +22,14 @@ tailored to work with the new sequencing data types. Many such methods have been
 raw sequence data to obtain a draft genome has remained a complex, multi-step process, 
 involving several stages of sequence data cleaning, error correction, and assembly quality control. 
 Successful application of these steps usually requires intimate knowledge of a diverse set of algorithms and software. 
-We present an assembly pipeline that simplifies the entire genome assembly process by automating much of the
+We present an assembly pipeline called A5 that simplifies the entire genome assembly process by automating much of the
 data cleaning, error correction, assembly, and quality control. Our pipeline integrates several previously published
 algorithms with new algorithms for quality control and automated assembly parameter selection.
-We demonstrate that our method can produce assemblies of quality comparable to a leading assembly algorithm without
+We demonstrate that A5 can produce assemblies of quality comparable to a leading assembly algorithm without
 any prior knowledge of the particular genome being assembled and without the extensive parameter tuning required
-by the other assembly algorithm. Finally, our pipeline has modest compute requirements, and can assemble 
+by the other assembly algorithm. The A5 pipeline can also assemble Illumina libraries constructed by the Nextera
+(transposon-catalyzed) protocol, which have markedly different characteristics to mechanically sheared libraries.
+Finally, our pipeline has modest compute requirements, and can assemble 
 a typical bacterial genome on current desktop or laptop computer hardware.
 
 \section{Summary:}
@@ -56,7 +58,7 @@ evaluated many of these softwares and constructed a new genome assembly pipeline
 methods for data cleaning, error correction, contig assembly, and scaffolding together with a new algorithm
 for assembly quality control. 
 
-The new quality control algorithm uses information from paired-end read information
+The new quality control algorithm uses paired-end read information
 to detect and fix misassembled contigs and scaffolds. The first stage is to map reads back to assembled contigs.
 The second stage involves detecting statistically significant clusters of read pairs that conflict with the
 assembled contigs. Having identified putative regions of misassembly, the algorithm then determines the 
