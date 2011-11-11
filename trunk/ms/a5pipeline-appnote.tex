@@ -47,9 +47,9 @@ sequence reads of length up to 150nt per read, from fragments as long as 600nt. 
 quality scores indicating the accuracy of each sequenced nucleotide.
 
 A tremendous number of software tools have been developed to assist with genome assembly from Illumina data.
-These include tools for base calling of the images from the sequencer~\citep{bayescall,ibis},
-error correction of the sequence reads~\citep{quake,shrec}, removal of adapter sequence contamination~\citep{tagdust},
-contig assembly~\citep{vcake,euler-sr}, and scaffolding~\citep{bambus2,Boetzer2011,SOPRA}.
+These include tools for base calling of the images from the sequencer~\citep{Kao2009,Kircher2009},
+error correction of the sequence reads~\citep{Kelley2010,Kao2011}, removal of adapter sequence contamination~\citep{Lassmann2009},
+contig assembly~\citep{Warren2007,Chaisson2008}, and scaffolding~\citep{Koren2011,Boetzer2011,Dayarian2010}.
 This list is not complete, but rather meant to illustrate some of the many tools for Illumina sequence analysis.
 As part of a project to sequence and assemble \textit{de novo} the genomes of 64 halophilic archaea, we have
 evaluated many of these softwares and constructed a new genome assembly pipeline that incorporates
@@ -88,7 +88,7 @@ published programs. First, ambiguous and low quality portions of reads are remov
 Both of these steps use tools from 
 from the SGA software package~\citep{Simpson2010}.  Although many read error correction packages have been published,
 we found the implementation in SGA to have reasonable compute time and memory requirements compared to others while also providing 
-good accuracy.  Next, the pipeline applies Tagdust~\citep{tagdust} to remove any 
+good accuracy.  Next, the pipeline applies Tagdust~\citep{Lassmann2009} to remove any 
 sequencing adapter contamination that may be present in the data. The default set of adapter sequences used for screening
 include the standard Illumina TruSeq adapters and those used in Epicentre Nextera (transposon-catalyzed) library preparation protocols~\citep{Adey2010}. 
 User-specified adapter sequences can be screened by adding them to a FastA file. 
@@ -248,6 +248,49 @@ coverage by reads spanning that position or due to errors in the assembled seque
 
 \section{Results}
 
+\begin{table*}[!t] 
+\processtable{ Reference-based assembly metrics on crude and error-corrected assemblies of \textbf{Volc} data.
+Labels beginning with a "c" indicate contigs, while labels beginning with a "s" indicate scaffolds. S: assembled with SOAPdenovo. 
+A: assembled with A5. -CDS: assembly that minimized broken coding sequences. -N50: assembly that maximized scaffold N50. -LCB: assembly 
+that minimized LCB count. -br: has been broken using A5QC algorithm, but not rescaffolded. -QC: assembly has been broken using 
+A5QC algorithm and rescaffolded with SSPACE.
+\label{Tab:01}}
+{\begin{tabular}{l|cccccccccc}\toprule
+Assembly           & cS-CDS & sS-CDS & cS-N50 & sS-N50 & cS-LCB & sS-LCB & cA     & cA-br  & sA     & sA-QC   \\\midrule
+Sequence count     & 7686   & 211    & 10258  & 212    & 19508  & 226    & 853    & 864    & 470    & 321     \\
+N50                & 5111   & 125642 & 4775   & 125739 & 2832   & 107081 & 8173   & 8056   & 14698  & 25153   \\
+Miscalled bases    & 379    & 573    & 270    & 395    & 409    & 377    & 146    & 150    & 204    & 200     \\
+Uncalled bases     & 0      & 92290  & 0      & 11430  & 0      & 13304  & 0      & 0      & 1295   & 2138    \\
+Extra bases        & 269960 & 18582  & 27069  & 14295  & 32797  & 19732  & 14088  & 15578  & 21723  & 15378   \\
+Missing bases      & 149253 & 151966 & 148291 & 142017 & 160773 & 156254 & 129629 & 127313 & 117258 & 113286  \\
+Extra sequences    & 6129   & 75     & 8604   & 76     & 17194  & 95     & 36     & 31     & 5      & 5       \\
+Missing replicons  & 0      & 0      & 0      & 0      & 1      & 1      & 0      & 0      & 0      & 0       \\
+DCJ Distance       & 1559   & 143    & 1656   & 140    & 2317   & 134    & 835    & 843    & 487    & 327     \\
+LCB Count          & 15     & 22     & 9      & 14     & 7      & 10     & 46     & 47     & 52     & 31      \\
+\botrule \\
+\end{tabular}}{}
+\end{table*}
+
+% TnSOAPdenovo__MaxN50 : K = 27, d = 2
+
+\begin{table*}[!t]
+\processtable{ Non-reference based metrics on five assemblies of \textbf{Tn} data.  
+Labels beginning with a "c" indicate contigs, while labels beginning with a "s" indicate scaffolds. S: assembled with SOAPdenovo. 
+A: assembled with A5. -br: has been broken using A5QC algorithm, but not rescaffolded. -QC: assembly has been broken using A5QC 
+algorithm and rescaffolded with SSPACE.
+\label{Tab:02}}
+{\begin{tabular}{l|cccccc}\toprule
+Assembly        & cS      & sS      & cA      & cA-br   & sA      & sA-QC   \\\midrule
+Sequence count  & 4348    & 197     & 323     & 323     & 195     & 152     \\
+N50             & 12825   & 83067   & 27846   & 27846   & 48105   & 58016   \\
+Mean seq len    & 1056    & 22647   & 13800   & 13800   & 22864   & 29311   \\
+Max seq len     & 48725   & 200327  & 113049  & 113049  & 192996  & 265123  \\
+Total bases     & 4590705 & 4461465 & 4457409 & 4457409 & 4458506 & 4455256 \\
+Uncalled bases  & 0       & 26290   & 0       & 0       & 108     & 251     \\
+\botrule \\
+\end{tabular}}{}
+\end{table*}
+
 We evaluated the performance of the A5 pipeline using two real Illumina data sets and compared the results to
 those obtained when running SOAPdenovo v1.05~\citep{Li2010} on the same datasets. The first data set (called \textbf{Volc}) is a paired-end short insert library constructed from \emph{Haloferax volcanii} DS2 genomic DNA 
 using sonication followed by end-repair, A-tailing, and adapter ligation, and was sequenced on an Illumina GAIIx instrument.
@@ -332,7 +375,7 @@ a misassembly can be identified. Additionally, when coverage is high, subsamplin
 sensitivity.
 
 The algorithm for misassembly detection is conceptually similar to algorithms applied for segmental homology detection that permit local 
-micro-rearrangement. Chaining algorithms such as FISH and DAGChainer, are not permissive for this task, because they depend on a 
+micro-rearrangement. Chaining algorithms such as FISH~\citep{Calabrese2003} and DAGChainer~\citep{Haas2004}, are not permissive for this task, because they depend on a 
 collinear arrangement of points. Because fragment lengths vary in size, points of mapped read pairs rarely fit this model of collinearity. 
 The algorithm is also related to structural variant detection algorithms. However, software implementations of such methods were not condusive 
 to automation of the the misassembly detection step. 
@@ -343,11 +386,11 @@ for circular molecules.
 \emph{de novo} genome assembly from Illumina data is an extremely active area of research, with many assembly algorithms published and many more continuing to be produced.
 A thorough comparison of the performance of all these methods is a highly nontrivial undertaking and well outside the scope of the present  
 work. Instead, we chose to compare to a single other widely-used assembly method, namely SOAPdenovo. We selected SOAPdenovo for comparison
-because it ranked among the best in two recent surveys of assembly algorithms~\citep{Earl2011,Salzberg2011}, it is able to run on a single paired-end
+because it ranked among the best in two recent surveys of assembly algorithms~\citep{Earl2011,Salzberg2011}, because it is able to run on a single paired-end
 library, and like A5 is relatively simple to download, install, and use. Although methods that require both small insert paired-end libraries
-and large insert mate-pair libraries can produce very high quality results, the time, cost and technical expertise required to construct large insert
+and large insert mate-pair libraries can produce very high quality results~\citep{Gnerre2011}, the time, cost and technical expertise required to construct large insert
 libraries is significantly beyond that required for small insert libraries (especially using transposon-catalyzed library construction).
-For this reason we feel there is a great need for methods to easily produce the highest possible quality assemblies without large insert mate-pair data.
+For this reason we feel there is a great need for methods to easily produce assemblies of the highest quality possible without large insert mate-pair data.
 A5 can be considered a first attempt at such a method.
 
 \section*{Acknowledgements}
@@ -362,48 +405,6 @@ This work was supported by National Science Foundation award ER 0949453.
 % vSOAPdenovo__MinBrCDS    : K = 29, d = 2
 % vSOAPdenovo__MinLCB      : K = 27, d = 1
 
-\begin{table*}[!t] 
-\processtable{ Reference-based assembly metrics on crude and error-corrected assemblies of \textbf{Volc} data.
-Labels beginning with a "c" indicate contigs, while labels beginning with a "s" indicate scaffolds. S: assembled with SOAPdenovo. 
-A: assembled with A5. -CDS: assembly that minimized broken coding sequences. -N50: assembly that maximized scaffold N50. -LCB: assembly 
-that minimized LCB count. -br: has been broken using A5QC algorithm, but not rescaffolded. -QC: assembly has been broken using 
-A5QC algorithm and rescaffolded with SSPACE.
-\label{Tab:01}}
-{\begin{tabular}{l|cccccccccc}\toprule
-Assembly           & cS-CDS & sS-CDS & cS-N50 & sS-N50 & cS-LCB & sS-LCB & cA     & cA-br  & sA     & sA-QC   \\\midrule
-Sequence count     & 7686   & 211    & 10258  & 212    & 19508  & 226    & 853    & 864    & 470    & 321     \\
-N50                & 5111   & 125642 & 4775   & 125739 & 2832   & 107081 & 8173   & 8056   & 14698  & 25153   \\
-Miscalled bases    & 379    & 573    & 270    & 395    & 409    & 377    & 146    & 150    & 204    & 200     \\
-Uncalled bases     & 0      & 92290  & 0      & 11430  & 0      & 13304  & 0      & 0      & 1295   & 2138    \\
-Extra bases        & 269960 & 18582  & 27069  & 14295  & 32797  & 19732  & 14088  & 15578  & 21723  & 15378   \\
-Missing bases      & 149253 & 151966 & 148291 & 142017 & 160773 & 156254 & 129629 & 127313 & 117258 & 113286  \\
-Extra sequences    & 6129   & 75     & 8604   & 76     & 17194  & 95     & 36     & 31     & 5      & 5       \\
-Missing replicons  & 0      & 0      & 0      & 0      & 1      & 1      & 0      & 0      & 0      & 0       \\
-DCJ Distance       & 1559   & 143    & 1656   & 140    & 2317   & 134    & 835    & 843    & 487    & 327     \\
-LCB Count          & 15     & 22     & 9      & 14     & 7      & 10     & 46     & 47     & 52     & 31      \\
-\botrule \\
-\end{tabular}}{}
-\end{table*}
-
-% TnSOAPdenovo__MaxN50 : K = 27, d = 2
-
-\begin{table*}[!t]
-\processtable{ Non-reference based metrics on five assemblies of \textbf{Tn} data.  
-Labels beginning with a "c" indicate contigs, while labels beginning with a "s" indicate scaffolds. S: assembled with SOAPdenovo. 
-A: assembled with A5. -br: has been broken using A5QC algorithm, but not rescaffolded. -QC: assembly has been broken using A5QC 
-algorithm and rescaffolded with SSPACE.
-\label{Tab:02}}
-{\begin{tabular}{l|cccccc}\toprule
-Assembly        & cS      & sS      & cA      & cA-br   & sA      & sA-QC   \\\midrule
-Sequence count  & 4348    & 197     & 323     & 323     & 195     & 152     \\
-N50             & 12825   & 83067   & 27846   & 27846   & 48105   & 58016   \\
-Mean seq len    & 1056    & 22647   & 13800   & 13800   & 22864   & 29311   \\
-Max seq len     & 48725   & 200327  & 113049  & 113049  & 192996  & 265123  \\
-Total bases     & 4590705 & 4461465 & 4457409 & 4457409 & 4458506 & 4455256 \\
-Uncalled bases  & 0       & 26290   & 0       & 0       & 108     & 251     \\
-\botrule \\
-\end{tabular}}{}
-\end{table*}
 
 \section{Supplementary Material}
 \subsection{Description of internal assembly pipeline parameters}
@@ -411,7 +412,7 @@ Uncalled bases  & 0       & 26290   & 0       & 0       & 108     & 251     \\
 The A5 pipeline incorporates many algorithms, each of which require certain parameters to be set.
 Table~\ref{Tab:03} lists all of the parameters used in the A5 pipeline, along with how the value
 of that parameter is calculated. We now discuss the effect of each of these parameter settings in turn.  
-The SGA Quality Trim parameter sets a PHRED Q-score cutoff used for read trimming with the algorithm
+The SGA Quality Trim parameter sets a PHRED Q-score cutoff~\citep{Ewing1998} used for read trimming with the algorithm
 implemented in BWA~\citep{bwa}. The SGA Quality Filter parameter sets a maximum number of bases
 with a PHRED Q-score of below 3 that are permitted in a read before the read is discarded entirely.
 The SGA Min Read Length sets the minimum allowed read length after quality trimming, reads shorter

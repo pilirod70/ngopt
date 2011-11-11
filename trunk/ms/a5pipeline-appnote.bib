@@ -129,7 +129,108 @@ journal = {Bioinformatics}
 
 @article{Peng2010, title={IDBA - A Practical Iterative de Bruijn Graph De Novo Assembler}, volume={6044}, url={http://www.springerlink.com/index/622866948LH233G7.pdf}, journal={Computer}, publisher={Springer}, author={Peng, Yu and Leung, Henry and Yiu, S M and Chin, Francis Y L}, year={2010}, pages={426--440}}
 
-@article{tagdust,
+<<<<<<< .mine
+@article{Haas2004,
+author = {Haas, Brian J. and Delcher, Arthur L. and Wortman, Jennifer R. and Salzberg, Steven L.}, 
+title = {DAGchainer: a tool for mining segmental genome duplications and synteny}, 
+volume = {20}, 
+number = {18}, 
+pages = {3643-3646}, 
+year = {2004}, 
+doi = {10.1093/bioinformatics/bth397}, 
+abstract ={Summary: Given the positions of protein-coding genes along genomic sequence and probability values for protein alignments between genes, DAGchainer identifies chains of gene pairs sharing conserved order between genomic regions, by identifying paths through a directed acyclic graph (DAG). These chains of collinear gene pairs can represent segmentally duplicated regions and genes within a single genome or syntenic regions between related genomes. Automated mining of the Arabidopsis genome for segmental duplications illustrates the use of DAGchainer.}, 
+URL = {http://bioinformatics.oxfordjournals.org/content/20/18/3643.abstract}, 
+eprint = {http://bioinformatics.oxfordjournals.org/content/20/18/3643.full.pdf+html}, 
+journal = {Bioinformatics} 
+}
+
+@article{Calabrese2003,
+author = {Calabrese, Peter P. and Chakravarty, Sugata and Vision, Todd J.}, 
+title = {Fast identification and statistical evaluation of segmental homologies in comparative maps}, 
+volume = {19}, 
+number = {suppl 1}, 
+pages = {i74-i80}, 
+year = {2003}, 
+doi = {10.1093/bioinformatics/btg1008}, 
+abstract ={Motivation: Chromosomal segments that share common ancestry, either through
+genomic duplication or species divergence, are said to be
+segmental homologs of one another. Their identification
+allows researchers to leverage knowledge of model organisms for
+use in other systems and is of value for studies of genome
+evolution. However, identification and statistical evaluation of
+segmental homologies can be a challenge when the segments are
+highly diverged.Results: We describe a flexible dynamic programming algorithm for the
+identification of segments having multiple homologous features. We
+model the probability of observing putative segmental homologies
+by chance and incorporate our findings into the parameterization
+of the algorithm and the statistical evaluation of its output.
+Combined, these findings allow segmental homologies to be
+identified in comparisons within and between genomic maps in a
+rigorous, rapid, and automated fashion.Availability: http://www.bio.unc.edu/faculty/vision/lab/Contact: tjv@bio.unc.eduKeywords: homology, comparative maps, synteny, genome evolution
+        
+      }, 
+URL = {http://bioinformatics.oxfordjournals.org/content/19/suppl_1/i74.abstract}, 
+eprint = {http://bioinformatics.oxfordjournals.org/content/19/suppl_1/i74.full.pdf+html}, 
+journal = {Bioinformatics} 
+}
+
+@Article{Kelley2010,
+AUTHOR = {Kelley, David and Schatz, Michael and Salzberg, Steven},
+TITLE = {Quake: quality-aware detection and correction of sequencing errors},
+JOURNAL = {Genome Biology},
+VOLUME = {11},
+YEAR = {2010},
+NUMBER = {11},
+PAGES = {R116},
+URL = {http://genomebiology.com/2010/11/11/R116},
+DOI = {10.1186/gb-2010-11-11-r116},
+PubMedID = {21114842},
+ISSN = {1465-6906},
+ABSTRACT = {We introduce Quake, a program to detect and correct errors in DNA sequencing reads. Using a maximum likelihood approach incorporating quality values and nucleotide specific miscall rates, Quake achieves the highest accuracy on realistically simulated reads. We further demonstrate substantial improvements in de novo assembly and SNP detection after using Quake. Quake can be used for any size project, including more than one billion human reads, and is freely available as open source software from http://www.cbcb.umd.edu/software/quake webcite.},
+}
+
+
+@article{Kao2011,
+author = {Kao, Wei-Chun and Chan, Andrew H. and Song, Yun S.}, 
+title = {ECHO: A reference-free short-read error correction algorithm}, 
+volume = {21}, 
+number = {7}, 
+pages = {1181-1192}, 
+year = {2011}, 
+doi = {10.1101/gr.111351.110}, 
+abstract ={Developing accurate, scalable algorithms to improve data quality is an important computational challenge associated with recent advances in high-throughput sequencing technology. In this study, a novel error-correction algorithm, called ECHO, is introduced for correcting base-call errors in short-reads, without the need of a reference genome. Unlike most previous methods, ECHO does not require the user to specify parameters of which optimal values are typically unknown a priori. ECHO automatically sets the parameters in the assumed model and estimates error characteristics specific to each sequencing run, while maintaining a running time that is within the range of practical use. ECHO is based on a probabilistic model and is able to assign a quality score to each corrected base. Furthermore, it explicitly models heterozygosity in diploid genomes and provides a reference-free method for detecting bases that originated from heterozygous sites. On both real and simulated data, ECHO is able to improve the accuracy of previous error-correction methods by several folds to an order of magnitude, depending on the sequence coverage depth and the position in the read. The improvement is most pronounced toward the end of the read, where previous methods become noticeably less effective. Using a whole-genome yeast data set, it is demonstrated here that ECHO is capable of coping with nonuniform coverage. Also, it is shown that using ECHO to perform error correction as a preprocessing step considerably facilitates de novo assembly, particularly in the case of low-to-moderate sequence coverage depth.}, 
+URL = {http://genome.cshlp.org/content/21/7/1181.abstract}, 
+eprint = {http://genome.cshlp.org/content/21/7/1181.full.pdf+html}, 
+journal = {Genome Research} 
+}
+
+@Article{Kircher2009,
+AUTHOR = {Kircher, Martin and Stenzel, Udo and Kelso, Janet},
+TITLE = {Improved base calling for the Illumina Genome Analyzer using machine learning strategies},
+JOURNAL = {Genome Biology},
+VOLUME = {10},
+YEAR = {2009},
+NUMBER = {8},
+PAGES = {R83},
+URL = {http://genomebiology.com/2009/10/8/R83},
+DOI = {10.1186/gb-2009-10-8-r83},
+PubMedID = {19682367},
+ISSN = {1465-6906},
+ABSTRACT = {The Illumina Genome Analyzer generates millions of short sequencing reads. We present Ibis (Improved base identification system), an accurate, fast and easy-to-use base caller that significantly reduces the error rate and increases the output of usable reads. Ibis is faster and more robust with respect to chemistry and technology than other publicly available packages. Ibis is freely available under the GPL from http://bioinf.eva.mpg.de/Ibis/ webcite.},
+}
+
+@article{Kao2009,
+author = {Kao, Wei-Chun and Stevens, Kristian and Song, Yun S}, 
+title = {BayesCall: A model-based basecalling algorithm for high-throughput short-read sequencing}, 
+year = {2009}, 
+doi = {10.1101/gr.095299.109}, 
+abstract ={Extracting sequence information from raw images of fluorescence is the foundation underlying several high-throughput sequencing platforms. Some of the main challenges associated with this technology include reducing the error rate, assigning accurate base-specific quality scores, and reducing the cost of sequencing by increasing the throughput per run.  To demonstrate how computational advancement can help to meet these challenges, a novel model-based basecalling algorithm BayesCall is introduced for the Illumina sequencing platform.  Being founded on the tools of statistical learning, BayesCall is flexible enough to incorporate various features of the sequencing process.  In particular, it can easily incorporate time-dependent parameters and model residual effects. This new approach significantly improves the accuracy over Illumina's basecaller Bustard, particularly in the later cycles of a sequencing run.  For 76-cycle data on a standard viral sample PhiX174,  BayesCall improves Bustard's average per-base error rate by about 52%.  The probability of observing each base can be readily computed in BayesCall, and this probability can be transformed into a useful base-specific quality score with a high discrimination ability.   A detailed study of BayesCall's performance is presented here.}, 
+URL = {http://genome.cshlp.org/content/early/2009/08/06/gr.095299.109.abstract}, 
+eprint = {http://genome.cshlp.org/content/early/2009/08/06/gr.095299.109.full.pdf+html}, 
+journal = {Genome Research} 
+}
+
+@article{Lassmann2009,
 author = {Lassmann, Timo and Hayashizaki, Yoshihide and Daub, Carsten O.}, 
 title = {TagDust—a program to eliminate artifacts from next generation sequencing data}, 
 volume = {25}, 
@@ -348,6 +449,21 @@ title = {The {SaSSY} manual, retrieved from {https://github.com/minillinim/SaSSY
 month = {June},
 year = {2011},
 url = {https://github.com/minillinim/SaSSY/blob/master/SaSSY_manual.pdf}
+}
+
+@article{Ewing1998,
+author = {Ewing, Brent and Green, Phil}, 
+title = {Base-Calling of Automated Sequencer Traces UsingPhred. II. Error Probabilities}, 
+volume = {8}, 
+number = {3}, 
+pages = {186-194}, 
+year = {1998}, 
+doi = {10.1101/gr.8.3.186}, 
+abstract ={Elimination of the data processing bottleneck in high-throughput sequencing will require both improved accuracy of data processing software and reliable measures of that accuracy. We have developed and implemented in our base-calling program phred the ability to estimate a probability of error for each base-call, as a function of certain parameters computed from the trace data. These error probabilities are shown here to be valid (correspond to actual error rates) and to have high power to discriminate correct base-calls from incorrect ones, for read data collected under several different chemistries and electrophoretic conditions. They play a critical role in our assembly program phrap and our finishing programconsed.
+}, 
+URL = {http://genome.cshlp.org/content/8/3/186.abstract}, 
+eprint = {http://genome.cshlp.org/content/8/3/186.full.pdf+html}, 
+journal = {Genome Research} 
 }
 
 @article{Gnerre2011,
