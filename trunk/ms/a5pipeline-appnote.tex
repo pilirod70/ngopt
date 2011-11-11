@@ -366,9 +366,12 @@ at a non-telomeric region would result in a single block on one side of the misa
 would require additional information. When two chromosomes have been assembled together at their telomeres, no such blocks will be found, 
 necessitating a different approach to identifying misassemblies.
 
-In addition to theoretical limitations, our pipeline is also limited by data size. Especially large datasets, such as a full lane of data
-generated on the Illumina HiSeq2000 platform, are not easily processed using our pipeline. The major bottlenecks of our pipeline are the 
-first two stages: read cleaning, and contigging. The DBSCAN algorithm has $O(n\log{n})$ time-complexity and $O(n)$ memory-complexity. One 
+In addition to theoretical limitations, our pipeline also also has practical computational limits. Large datasets, such as a full lane of data
+generated on the Illumina HiSeq2000 platform, require resources beyond that typically available in a desktop or laptop computer. 
+The major computational bottlenecks of our pipeline are the first two stages: read cleaning and contigging. Memory requirements for read error
+correction grow with total data volume, requirements for contigging grow with data volume and total size/complexity of the assembled genome 
+(since the \textit{de Bruijn} graph is more complex in these cases).
+The DBSCAN algorithm has $O(n\log{n})$ time-complexity and $O(n)$ memory-complexity. One 
 approach to reduce the memory complexity would be to implement a grid-based density clustering algorithm that operates on cell densities 
 rather than individual data points. Such algorithms exist (~\citep{STING}); however, employing a grid may compromise the resolution at which 
 a misassembly can be identified. Additionally, when coverage is high, subsampling the dataset can lower the memory load without sacrificing
@@ -418,7 +421,7 @@ with a PHRED Q-score of below 3 that are permitted in a read before the read is 
 The SGA Min Read Length sets the minimum allowed read length after quality trimming, reads shorter
 than that will be discarded.
 
-The IDBA min $k$-mer sets the starting $k$-mer size for \emph{de bruijn} graph construction, and the max $k$-mer sets
+The IDBA min $k$-mer sets the starting $k$-mer size for \emph{de Bruijn} graph construction, and the max $k$-mer sets
 the largest $k$ that will be used during graph simplification.
 
 The SSPACE Overhang MinOverlap sets the number of nucleotides that a read must overlap with an existing
