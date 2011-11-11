@@ -297,27 +297,33 @@ Uncalled bases  & 0       & 26290   & 0       & 0       & 108     & 251     \\
 We evaluated the performance of the A5 pipeline using two real Illumina data sets and compared the results to
 those obtained when running SOAPdenovo v1.05~\citep{Li2010} on the same datasets. The first data set (called \textbf{Volc}) is a paired-end short insert library constructed from \emph{Haloferax volcanii} DS2 genomic DNA 
 using sonication followed by end-repair, A-tailing, and adapter ligation, and was sequenced on an Illumina GAIIx instrument.
-Sequencing yielded \textbf{FIXME} XXXXXX read pairs, with each read being 78nt in length. These data have been deposited at the NCBI Short Read Archive, accession \textbf{SR??????}. 
+Sequencing yielded \textbf{FIXME} 6,844,701 read pairs, with each read being 78nt in length. These data have been deposited at the NCBI Short Read Archive, accession \textbf{SR??????}. 
 The second data set, called \textbf{Tn} and previously published by \citet{Adey2010}, is a paired-end library constructed from \emph{Escherichia coli} CC118 genomic DNA
 using transposon-catalyzed adapter ligation (Nextera) and was sequenced on an Illumina HiSeq2000 instrument using TruSeq 2 chemistry. 
 Reads from this dataset were obtained from the NCBI Short Read Archive, accession SRX030179.
 
-We executed A5 and SOAPdenovo for each data set. Table 1 reports the assembly performance for Volc assemblies.
-Table 2 reports the assembly performance for Tn assemblies. 
-Where $K$ is the $k$-mer size for SOAPdenovo and $d$ is the threshold for the minimum number of times a $k$-mer must be observed in the data to be considered valid.
+We executed A5 and SOAPdenovo for each data set. Table 1 reports the assembly performance for \textbf{Volc} assemblies.
+Table 2 reports the assembly performance for \textbf{Tn} assemblies. \textbf{Volc} assemblies were scored using Mauve Assembly 
+Metrics~\citep{Darling2011}, which first peforms a whole genome alignment betweem the assembly and the reference. We note here that
+aligner error may result in additional errors between the assembly.
+
 We initially ran SOAPdenovo with default parameters; however, the resulting assemblies were of extremely poor quality. For \textbf{Volc} there were
 280985 contigs (N50 = 76) and 14433 scaffolds (N50 = 209), and for \textbf{Tn}, there were 1572720 contigs (N50 = 76) and 8144 scaffolds (N50 = 121). 
-Rather than reporting poor results for SOAPdenovo, we endeavored to manually optimize its assembly parameters so that we can compare the A5 assembly to the best possible SOAPdenovo results. 
-To do so, we ran SOAPdenovo with different combinations of parameters and selected combinations that maximized scaffold N50. For \textbf{Volc},
-we also present assembly scoring results for the parameter combination that minimized LCB count between the assembly and the reference and minimized
-the number of broken coding sequences\textbf{FIXME: need to include this data or remove this phrase}. The parameter combination that maxmized scaffold N50 for \textbf{Volc} also minimized the sum
+Rather than reporting poor results for SOAPdenovo, we endeavored to manually optimize its assembly parameters so that we can compare the A5 assembly
+to the best possible SOAPdenovo results. 
+To do so, we ran SOAPdenovo with different combinations of values for parameters $K$ and $d$, where $K$ is the $k$-mer size for SOAPdenovo and $d$
+is the threshold for the minimum number of times a $k$-mer must be observed in the data to be considered valid.
+For both datasets, we selected combinations that maximized scaffold N50. In addition, for the \textbf{Volc} dataset we also present assembly scoring
+results for the parameter combination that minimized LCB count between the assembly and the reference, as well the combination that minimized the
+number of broken coding sequences. The parameter combination that maxmized scaffold N50 for \textbf{Volc} also minimized the sum
 of missing and extra bases. The parameter space queried was $S_K \bigoplus S_d$,
 where $S_K = \{23,25,27,29,31\}$ is the set of values over which $K$ was varied, and $S_d = \{1,2,...,9,10\}$ is the set of values over which $d$
-was varied. Using this process, the optimal parameters were set to be
+was varied. 
+Using this process, the optimal parameters were set to be
 \begin{itemize}
 \item \textbf{Volc} (-N50): $K = 27$, $d = 2$.
-\item \textbf(Volc) (-LCB): $K = 27$, $d = 1$.
-\item \textbf(Volc) (-CDS): $K = 29$, $d = 2$.
+\item \textbf{Volc} (-LCB): $K = 27$, $d = 1$.
+\item \textbf{Volc} (-CDS): $K = 29$, $d = 2$.
 \item \textbf{Tn}: $K = 27$, $d = 2$
 \end{itemize}
 
@@ -381,13 +387,11 @@ a misassembly can be identified. Additionally, when coverage is high, subsamplin
 sensitivity.
 
 The algorithm for misassembly detection is conceptually similar to algorithms applied for segmental homology detection that permit local 
-micro-rearrangement. Chaining algorithms such as FISH~\citep{Calabrese2003} and DAGChainer~\citep{Haas2004}, are not permissive for this task, because they depend on a 
-collinear arrangement of points. Because fragment lengths vary in size, points of mapped read pairs rarely fit this model of collinearity. 
-The algorithm is also related to structural variant detection algorithms. However, software implementations of such methods were not condusive 
-to automation of the the misassembly detection step. 
-
-DCJ distance on contigs may be nonzero due to alignment error or due to the reference assembly having a different linearization point
-for circular molecules. 
+micro-rearrangement. Chaining algorithms such as FISH~\citep{Calabrese2003} and DAGChainer~\citep{Haas2004}, are not permissive for this task,
+because they depend on a collinear arrangement of points. Because fragment lengths vary in size, points of mapped read pairs rarely fit this
+model of collinearity. The algorithm is also related to structural variant detection algorithms (~\citep{BreakDancer,SVDetect}. Structural 
+variant detection begins with mapping reads back to the reference and using read orientation information and mapping distance to identify 
+anomolous pairs. 
 
 \emph{de novo} genome assembly from Illumina data is an extremely active area of research, with many assembly algorithms published and many more continuing to be produced.
 A thorough comparison of the performance of all these methods is a highly nontrivial undertaking and well outside the scope of the present  
