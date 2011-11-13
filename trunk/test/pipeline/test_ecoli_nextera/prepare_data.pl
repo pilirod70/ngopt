@@ -2,7 +2,13 @@
 use strict;
 use warnings;
 
-
+if (@ARGV < 1) {
+	print "Usage: $0 pair_number in.fastq > prepared.out.fastq\n".
+          "Subsamples every read where read_index mod 10 == 0, and reads are indexed starting at 0.\n".
+	      "Header parsing assumes reads are coming from SRA\n";
+	exit;
+}
+my $pair = shift;
 my $count = 0;
 while (my $hdr = <>){
 	my $seq = <>;
@@ -13,7 +19,7 @@ while (my $hdr = <>){
 	chomp $qual;
 	$qual = p33to64($qual);
 	$hdr = (split(' ', $hdr))[1];
-	print "\@$hdr/1\n".$seq."+$hdr/1\n".$qual."\n";	
+	print "\@$hdr/$pair\n".$seq."+$hdr/$pair\n".$qual."\n";	
 }
 
 sub p33to64 {
