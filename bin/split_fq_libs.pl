@@ -2,7 +2,10 @@
 use strict;
 use warnings;
 
-
+if (@ARGV != 2) {
+	print "Usage: $0 <hdr_info_file> <fastq>\n";
+	exit;
+}
 
 
 my $hdr_info_file = shift;
@@ -14,10 +17,8 @@ while(<HDR>){
 	chomp;
 	my @ar = split /\t/;
 	$hdr_base{$ar[0]} = $ar[1];
-	open (FILE,">",$hdr_base{$ar[0]}."_p1.fastq");
-	$output_fh{"p1"} = *FILE;	
-	open (FILE,">",$hdr_base{$ar[0]}."_p2.fastq");
-	$output_fh{"p2"} = *FILE;	
+	open ($output_fh{$ar[0]}{0},">",$hdr_base{$ar[0]}."_p1.fastq");
+	open ($output_fh{$ar[0]}{1},">",$hdr_base{$ar[0]}."_p2.fastq");
 }
 
 my %libs = ();
@@ -40,9 +41,11 @@ while (my $line = <IN>) {
 	my $pair_num;
 	if (@hdrAr == 5) { # Illumina 1.4+
 		$lib = $hdrAr[0].":".$hdrAr[1];
-		$pair_num = substr($hdr,0,index($hdr,"/"));
+		$pair_num = substr($hdr,index($hdr,"/")+1);
+		$hdr = substr($hdr,0,index($hdr,"/"));
 	} else { # Casava 1.8+
 		@hdrAr = split(/' '/,$hdr);
+		$hdr = $hdrAr[0];
 		$pair_num = (split(/:/,$hdrAr[1]))[0];
 		@hdrAr = split(/' '/,$hdrAr[0]);
 		$lib = $hdrAr[0].":".$hdrAr[1].":".$hdrAr[2];
@@ -52,19 +55,25 @@ while (my $line = <IN>) {
 		$libs{$lib} = ();
 	} 
 	my $seq = <IN>;
-	<IN>:
+	<IN>;
 	my $qual = <IN>;
 
 	if (defined($libs{$lib}{$hdr})){ # this read is paired, and we found its mate
-		my $fh = $output_fh{$lib}{"p$pair_num"};
-		print $fh "\@$hdr/$pair_num\n".$seq."+$hdr/$pair_num\n".$qual;
-		$fh = $output_fh{$lib}{"p".$libs{$lib}{$hdr}[0]};
-		print $fh "\@$hdr/".$libs{$lib}{$hdr}[0]."\n".
+		my $file_pair_key = $pair_num == 1 ? 0 : 1;
+		print STDERR "Found match   >$lib<  >$file_pair_key<\n";
+		my $fh = $output_fh{$lib}{$file_pair_key};
+		print {$fh} "\@$hdr/$pair_num\n".$seq."+$hdr/$pair_num\n".$qual;
+
+		$file_pair_key = $libs{$lib}{$hdr}[0] ? 0 : 1;
+		$fh = $output_fh{$lib}{$file_pair_key};
+		print {$fh} "\@$hdr/".$libs{$lib}{$hdr}[0]."\n".
                    $libs{$lib}{$hdr}[1].
                   "+$hdr/".$libs{$lib}{$hdr}[0]."\n".
                    $libs{$lib}{$hdr}[2];
+
 		delete($libs{$lib}{$hdr});
 	} else {
+		print STDERR "$hdr\n";
 		$libs{$lib}{$hdr} = [ $pair_num, $seq, $qual ];
 	}
 }
