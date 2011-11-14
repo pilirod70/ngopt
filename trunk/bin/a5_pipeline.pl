@@ -65,6 +65,14 @@ This software is licensed under the terms of the GPLv3
 
 =cut
 
+use constant {
+	IDBA_MIN_K => 29,
+	IDBA_MAX_K => 90,
+	SGA_Q_TRIM => 10,
+	SGA_Q_FILTER => 20,
+	SGA_MIN_READ_LENGTH => 29,
+};
+
 my $AVAILMEM = 4000000;
 my $def_up_id="upReads";
 my @KEYS = ("id","p1","p2","shuf","up","rc","ins","err","nlibs","libfile");
@@ -101,6 +109,7 @@ print $AVAILMEM."\n";
 my $libfile = $ARGV[0];
 my $OUTBASE = $ARGV[1];
 
+# check whether command-line input was FastQ files or a library file
 if(@ARGV==3){
 	# assume the user provided two FastQ files instead of a library file
 	$OUTBASE = $ARGV[2];
@@ -275,22 +284,72 @@ sub get_availmem {
 	return $mem
 }
 
+sub readFastqEntry {
+	my $bufref = shift;
+	my $infile = shift;
+	my %buf = %$bufref;
+	my $name = <$infile>;
+	my $barename = $name;
+	chomp($barename);
+	$barename =~ s/\/\d$//g;	# trim off paired read id
+	$buf{$barename} = $name;
+	$buf{$barename} .= <$infile>;	# seq line
+	$buf{$barename} .= <$infile>;	# qual name line
+	$buf{$barename} .= <$infile>;	# qual seq line
+	return $barename;
+}
 
-# assemble contigs using SGA
-# experimental! not fine-tuned!
-sub sga_assemble {
-	my $r1fq = shift;
-	my $r2fq = shift;
-	my $rupfq = shift;
-	my $outbase = shift;
-	`$DIR/sga preprocess -p 1 -q 10 -f 20 -m 30 --phred64 $r1fq $r2fq > $outbase.pp.fastq`;
-	`$DIR/sga index -d 4000000 -t 4  $outbase.pp.fastq`;
-	`$DIR/sga correct -k 31 -i 10 -t 4  $outbase.pp.fastq`;
-	`$DIR/sga index -d 2000000 -t 4 $outbase.pp.ec.fa`;
-	`$DIR/sga qc -x 2 -t 4 $outbase.pp.ec.fa`;
-	`$DIR/sga rmdup -t 4 $outbase.pp.ec.qcpass.fa`;
-	`$DIR/sga overlap -m 30 -t 4 $outbase.pp.ec.qcpass.rmdup.fa`;
-	`$DIR/sga assemble -x 10 -b 5 -r 20 $outbase.pp.ec.qcpass.rmdup.asqg.gz`;
+#
+# 3-read sequencing protocols can set the paired read ID to /3 instead of /2
+# and some softwares don't like this
+#
+sub fix_read_id {
+	my $fastq = shift;
+	open( FQ, $fastq );
+	my $line = <FQ>;
+	$line =~ /\/(\d+)$/;
+	my $id = $1;
+	if($id>2){
+		my $swap_cmd = "perl -p -i -e \"s/\/$id\$/\/2/\" $fastq";
+		print STDERR "[a5] $swap_cmd\n";
+		`$swap_cmd`;
+	}
+}
+
+#
+# does paired-end read filtering with SGA, discards unpaired reads
+#
+sub qfilter_paired_easy {
+	my $r1file = shift;
+	my $r2file = shift;
+
+	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --pe-mode=1 ";
+	$cmd .= "--phred64 " if (get_phred64($r1file));
+	$cmd .= " $r1file $r2file |";
+
+	open(R1OUT, ">$r1file.pp");
+	open(R2OUT, ">$r2file.pp");
+	open(PPPIPE, $cmd);
+	my $lc = -1;
+	while( my $line = <PPPIPE> ){
+		$lc++;
+		print R1OUT $line if( $lc % 8 < 4 );
+		print R2OUT $line if( $lc % 8 >= 4 );
+	}
+}
+
+sub get_phred64{
+	my $tail_file = shift;
+	my $qline = `head -n 1000 $tail_file | tail -n 1`;
+	chomp $qline;
+	my $phred64 = 1;
+	for my $q (split(//,$qline)){
+		if (ord($q) < 64) {
+			$phred64 = 0;
+			last;
+		}
+	}
+	return $phred64;
 }
 
 #
@@ -308,6 +367,8 @@ sub sga_clean {
 			my $fq2 = $libs{$lib}{"p2"}; 
 			$tail_file = $fq1 unless length($tail_file);
 			$files .= "$fq1 $fq2 ";
+			fix_read_id($libs{$lib}{"p2"});
+			qfilter_paired_easy($fq1, $fq2);
 		}
 		if (defined($libs{$lib}{"up"})){
 			my $up = $libs{$lib}{"up"}; 
@@ -315,42 +376,52 @@ sub sga_clean {
 			$files .= "$up ";
 		}
 	}
-	my $qline = `head -n 1000 $tail_file | tail -n 1`;
-	chomp $qline;
-	my $phred64 = 1;
-	for my $q (split(//,$qline)){
-		if (ord($q) < 64) {
-			$phred64 = 0;
-			last;
-		}
-	}
-	my $cmd = "";
-	if ($phred64) {
-		$cmd = "sga preprocess -q 10 -f 20 -m 30 --phred64 $files > $WD/$outbase.pp.fastq";
-	} else {
-		$cmd = "sga preprocess -q 10 -f 20 -m 30 $files > $WD/$outbase.pp.fastq";
-	}
-	print STDERR "[a5] $cmd\n";
-	system("$DIR/$cmd");
+	my $phred64 = get_phred64($tail_file);
+	
+	# preprocess the reads with SGA -- quality trim and filter
+	# pipe in the reads so we can count how many passed the filter for each file
+	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." ";
+	$cmd .= "--phred64 " if ($phred64);
+	$cmd .= " $files >$WD/$outbase.pp.fastq";
+	system($cmd);
 	die "[a5] Error preprocessing reads with SGA\n" if( $? != 0 );
+
+	# build a bwt index for all of the reads
 	my $sga_ind = "";
-	my $sga_ind_kb = 4000000;
+	my $sga_ind_kb = $AVAILMEM/2;
 	my $err_file = "$WD/index.err";
 	do{
-		$cmd = "sga index -d ".($AVAILMEM/2)." -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
+		$cmd = "sga index -d ".($sga_ind_kb)." -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
 		print STDERR "[a5] $cmd\n";
 		$sga_ind = `$DIR/$cmd`;
 		$sga_ind = read_file($err_file);
 		$sga_ind_kb = int($sga_ind_kb/2);
 	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 0);
+	#
+	# error correct the entire set of reads
 	my $ec_file = "$WD/$outbase.pp.ec.fa";
 	system("rm -f core*") if (-f "core*");
 	die "[a5] Error indexing reads with SGA\n" if( $? != 0 );
-	$cmd = "sga correct -k 31 -i 10 -t $t -o $ec_file $WD/$outbase.pp.fastq > $WD/correct.out";
+	$cmd = "sga correct -t $t -o $ec_file $WD/$outbase.pp.fastq > $WD/correct.out";
 	print STDERR "[a5] $cmd\n";
 	`rm $WD/$OUTBASE.pp.*` if (-f "$WD/$OUTBASE.pp.*");
 	`rm $OUTBASE.pp.*` if (-f "$OUTBASE.pp.*");
 	system("$DIR/$cmd");
+
+	#
+	# error correct individual paired-end libraries
+	for my $lib (keys %libs) {
+		next unless defined($libs{$lib}{"p1"});
+		my $ec1 = $libs{$lib}{"p1"};
+		my $ec2 = $libs{$lib}{"p2"};
+		$cmd = "sga correct -t $t -p $OUTBASE.pp -o $ec1.pp.ec.fastq $ec1.pp > $WD/$lib.r1.correct.out";
+		print STDERR "[a5] $cmd\n";
+		system($cmd);
+		$cmd = "sga correct -t $t -p $OUTBASE.pp -o $ec2.pp.ec.fastq $ec2.pp > $WD/$lib.r2.correct.out";
+		print STDERR "[a5] $cmd\n";
+		system($cmd);
+		`rm $ec1.pp $ec2.pp`;	# don't carry these heavy things around
+	}
 	
 	die "[a5] Error correcting reads with SGA\n" if( $? != 0 );
 	return $ec_file;
@@ -460,8 +531,8 @@ sub idba_assemble {
 	my $outbase = shift;
 	my $reads = shift;
 	my $maxrdlen = shift;
-	$maxrdlen = 90 if $maxrdlen > 90;	# idba seems to break if the max k gets too big
-	my $idba_cmd = "idba -r $reads -o $WD/$outbase --mink 29 --maxk $maxrdlen";
+	$maxrdlen = IDBA_MAX_K if $maxrdlen > IDBA_MAX_K;	# idba seems to break if the max k gets too big
+	my $idba_cmd = "idba -r $reads -o $WD/$outbase --mink ".IDBA_MIN_K." --maxk $maxrdlen";
 	print STDERR "[a5] $idba_cmd\n";
 	`$DIR/$idba_cmd > $WD/idba.out`;
 	die "[a5] Error building contigs with IDBA\n" if ($? != 0);
@@ -494,9 +565,11 @@ sub scaffold_sspace {
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
 		my ($exp_link, $cov) = calc_explinks( $genome_size, $libs{$lib}{"ins"}, $libs{$lib}{"p1"} ); 
 		printf STDERR "[a5] %s\: Insert %.0f, coverage %.2f, expected links %.0f\n", $libs{$lib}{"id"}, $libs{$lib}{"ins"}, $cov, $exp_link;
-		if (-f "$OUTBASE.unpaired.fastq") { # run sspace with unpaired library if we have one
+#		if (-f "$OUTBASE.unpaired.fastq") { # run sspace with unpaired library if we have one
+		if (-f "$WD/$OUTBASE.ec.fa") { # run sspace with unpaired library if we have one
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
-                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold, "$OUTBASE.unpaired.fastq");
+#                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold, "$OUTBASE.unpaired.fastq");
+                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold, "$WD/$OUTBASE.ec.fa");
 		} else {
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
                                                   $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold);
@@ -515,6 +588,14 @@ sub preprocess_libs {
 		print STDERR "[a5] Removing unpaired reads $OUTBASE.unpaired.fastq\n";
 		`rm $OUTBASE.unpaired.fastq`;
 	}
+	# for each lib, check whether an error corrected version exists and use that instead if possible
+	for my $lib (keys %libs) {
+		next unless defined($libs{$lib}{"p1"});
+		next unless -e $libs{$lib}{"p1"}.".pp.ec.fastq";
+		$libs{$lib}{"p1"} .= ".pp.ec.fastq";
+		$libs{$lib}{"p2"} .= ".pp.ec.fastq";
+	}
+
 #
 #       MAKE OUR INITIAL ESTIMATES OF INSERT SIZE HERE AND GET ERROR ESTIMATES.
 #       ALSO CONCATENATE UNPAIRED LIBRARIES AND REMOVE FROM HASH
