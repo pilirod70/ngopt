@@ -323,13 +323,13 @@ sub qfilter_paired_easy {
 	my $r1file = shift;
 	my $r2file = shift;
 
-	my $cmd = "$DIR/sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --pe-mode=1 ";
+	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --pe-mode=1 ";
 	$cmd .= "--phred64 " if (get_phred64($r1file));
-	$cmd .= " $r1file $r2file |";
-
+	$cmd .= " $r1file $r2file";
+	print STDERR "[a5] $cmd\n";
 	open(R1OUT, ">$r1file.pp");
 	open(R2OUT, ">$r2file.pp");
-	open(PPPIPE, $cmd);
+	open(PPPIPE, "$DIR/$cmd |");
 	my $lc = -1;
 	while( my $line = <PPPIPE> ){
 		$lc++;
@@ -380,10 +380,10 @@ sub sga_clean {
 	
 	# preprocess the reads with SGA -- quality trim and filter
 	# pipe in the reads so we can count how many passed the filter for each file
-	my $cmd = "$DIR/sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." ";
+	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." ";
 	$cmd .= "--phred64 " if ($phred64);
 	$cmd .= " $files >$WD/$outbase.pp.fastq";
-	system($cmd);
+	system("$DIR/$cmd");
 	die "[a5] Error preprocessing reads with SGA\n" if( $? != 0 );
 
 	# build a bwt index for all of the reads
@@ -391,7 +391,7 @@ sub sga_clean {
 	my $sga_ind_kb = $AVAILMEM/2;
 	my $err_file = "$WD/index.err";
 	do{
-		$cmd = "$DIR/sga index -d ".($sga_ind_kb)." -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
+		$cmd = "sga index -d ".($sga_ind_kb)." -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
 		print STDERR "[a5] $cmd\n";
 		$sga_ind = `$DIR/$cmd`;
 		$sga_ind = read_file($err_file);
@@ -402,7 +402,7 @@ sub sga_clean {
 	my $ec_file = "$WD/$outbase.pp.ec.fa";
 	system("rm -f core*") if (-f "core*");
 	die "[a5] Error indexing reads with SGA\n" if( $? != 0 );
-	$cmd = "$DIR/sga correct -t $t -o $ec_file $WD/$outbase.pp.fastq > $WD/correct.out";
+	$cmd = "sga correct -t $t -o $ec_file $WD/$outbase.pp.fastq > $WD/correct.out";
 	print STDERR "[a5] $cmd\n";
 	`rm $WD/$OUTBASE.pp.*` if (-f "$WD/$OUTBASE.pp.*");
 	`rm $OUTBASE.pp.*` if (-f "$OUTBASE.pp.*");
@@ -414,12 +414,12 @@ sub sga_clean {
 		next unless defined($libs{$lib}{"p1"});
 		my $ec1 = $libs{$lib}{"p1"};
 		my $ec2 = $libs{$lib}{"p2"};
-		$cmd = "$DIR/sga correct -t $t -p $OUTBASE.pp -o $ec1.pp.ec.fastq $ec1.pp > $WD/$lib.r1.correct.out";
+		$cmd = "sga correct -t $t -p $OUTBASE.pp -o $ec1.pp.ec.fastq $ec1.pp > $WD/$lib.r1.correct.out";
 		print STDERR "[a5] $cmd\n";
-		system($cmd);
-		$cmd = "$DIR/sga correct -t $t -p $OUTBASE.pp -o $ec2.pp.ec.fastq $ec2.pp > $WD/$lib.r2.correct.out";
+		system("$DIR/$cmd");
+		$cmd = "sga correct -t $t -p $OUTBASE.pp -o $ec2.pp.ec.fastq $ec2.pp > $WD/$lib.r2.correct.out";
 		print STDERR "[a5] $cmd\n";
-		system($cmd);
+		system("$DIR/$cmd");
 		`rm $ec1.pp $ec2.pp`;	# don't carry these heavy things around
 	}
 	
