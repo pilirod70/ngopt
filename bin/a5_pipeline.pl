@@ -4,7 +4,8 @@
 # (c) 2011 Andrew Tritt and Aaron Darling
 # This is free software licensed under the GPL
 #
-# Usage: a5_pipeline.pl <library file> <output directory or basename>
+# Usage: a5_pipeline <library file> <output directory or basename>
+#   Or:  a5_pipeline <fastq 1> <fastq 2> <output directory or basename>
 #
 use strict;
 use warnings;
@@ -154,8 +155,10 @@ if ($start <= 1) {
 	$WD="$OUTBASE.s1";
 	mkdir($WD) if ! -d $WD;
 	$reads = sga_clean($OUTBASE, \%RAW_LIBS);
-	$reads = tagdust($OUTBASE, $reads);
+	$reads = tagdust($OUTBASE, $reads);	
 	`mv $reads $OUTBASE.ec.fastq`;
+	`rm $WD/*.fastq`;
+	`rm $WD/*.ec.fa`;
 } 
 if ($end == 1){
 	print STDERR "[a5] Done cleaning reads. Results at $OUTBASE.ec.fastq\n";
@@ -976,7 +979,7 @@ sub get_insert($$$$) {
 	$npairs /= 4;
 	my $estimate_pair_count = 20000;
 	$estimate_pair_count = $npairs < $estimate_pair_count ? $npairs : $estimate_pair_count;
-	my $require_fraction = 0.25;
+	my $require_reads = 1000;
 	my $fq_linecount = $estimate_pair_count*2;
 	# estimate the library insert size with bwa
 	# just use a subsample of 40k reads
@@ -989,7 +992,7 @@ sub get_insert($$$$) {
 	`$DIR/bwa aln $ctgs $r2fq.sub > $r2fq.sub.sai`;
 	# bwa will print the estimated insert size, let's capture it then kill the job
 	my $cmd = "$DIR/bwa sampe -P $ctgs $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub ".
-												"> $outbase.sub.pe.sam 2> $outbase.sampe.out";
+			"> $outbase.sub.pe.sam 2> $outbase.sampe.out";
 	`$cmd`;
 	$cmd = "GetInsertSize.jar $outbase.sub.pe.sam";
 	print STDERR "[a5] java -jar $cmd\n"; 
@@ -999,7 +1002,7 @@ sub get_insert($$$$) {
 	my $ins_error = 0;
 	`rm $r1fq.sub* $r2fq.sub* $ctgs.*`;
 	my $n_sd = 6;
-	if ($ins_n > $require_fraction * $estimate_pair_count) {		
+	if ($ins_n > $require_reads) {		
 		$ins_error = $ins_sd*$n_sd < $ins_mean ? $ins_sd*$n_sd / $ins_mean : 0.95;
 		$ins_mean = sprintf("%.0f",$ins_mean);
 		$ins_error = sprintf("%.3f",$ins_error);
