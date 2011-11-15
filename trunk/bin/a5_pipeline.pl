@@ -310,12 +310,20 @@ sub readFastqEntry {
 #
 sub fix_read_id {
 	my $fastq = shift;
+	my $expected_id = shift;
 	open( FQ, $fastq );
 	my $line = <FQ>;
+	chomp $line;
 	$line =~ /\/(\d+)$/;
 	my $id = $1;
-	if($id>2){
-		my $swap_cmd = "perl -p -i -e \"s/\/$id\$/\/2/\" $fastq";
+	if(!defined($id)){
+		# tack on the read id to the end of each line
+		my $swap_cmd = "perl -p -i -e \"s/^([@\\\+])(.+)\\n/\\\$1\\\$2\\\/$expected_id\\n/\" $fastq";
+		print STDERR "[a5] $swap_cmd\n";
+		`$swap_cmd`;
+	}elsif($id != $expected_id){
+		# swap in the correct read id
+		my $swap_cmd = "perl -p -i -e \"s/\/$id/\/$expected_id/\" $fastq";
 		print STDERR "[a5] $swap_cmd\n";
 		`$swap_cmd`;
 	}
@@ -417,7 +425,10 @@ sub sga_clean {
 		next unless defined($libs{$lib}{"p1"});
 		my $ec1 = $libs{$lib}{"p1"};
 		my $ec2 = $libs{$lib}{"p2"};
-		fix_read_id($libs{$lib}{"p2"});
+		# bwa and sga require paired reads to have /1 and /2
+		# make sure our reads have that
+		fix_read_id($ec1,1);
+		fix_read_id($ec2,2);
 		qfilter_paired_easy($ec1, $ec2);
 		$cmd = "sga correct -t $t -p $OUTBASE.pp -o $ec1.pp.ec.fastq $ec1.pp > $WD/$lib.r1.correct.out";
 		print STDERR "[a5] $cmd\n";
