@@ -1,4 +1,4 @@
-#summary One-sentence summary of this page.
+#summary A README for the A5 pipeline.
 
 = Introduction =
 
