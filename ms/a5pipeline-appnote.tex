@@ -298,12 +298,12 @@ broken using the A5QC algorithm and rescaffolded using SSPACE.
 {\begin{tabular}{l|cc|ccc}\toprule
 & \multicolumn{2}{c|}{SOAPdenovo} & \multicolumn{3}{c}{A5} \\
 Assembly        & ctg     & scaf    & ctg     & scaf    & scaf-QC \\\midrule
-Sequence count  & 4348    & 197     & 323     & 195     & 152     \\
-N50             & 12825   & 83067   & 27846   & 48105   & 58016   \\
-Mean seq len    & 1056    & 22647   & 13800   & 22864   & 29311   \\
-Max seq len     & 48725   & 200327  & 113049  & 192996  & 265123  \\
-Total bases     & 4590705 & 4461465 & 4457409 & 4458506 & 4455256 \\
-Uncalled bases  & 0       & 26290   & 0       & 108     & 251     \\
+Sequence count  & 4348    & 197     & 323     & 111     & 87      \\
+N50             & 12825   & 83067   & 27846   & 72166   & 82719   \\
+Mean seq len    & 1056    & 22647   & 13800   & 40207   & 51300   \\
+Max seq len     & 48725   & 200327  & 113049  & 330689  & 330689  \\
+Total bases     & 4590705 & 4461465 & 4457409 & 4462953 & 4463084 \\
+Uncalled bases  & 0       & 26290   & 0       & 220     & 290     \\
 \botrule \\
 \end{tabular}}{}
 \end{table*}
@@ -408,12 +408,13 @@ rather than individual data points. Such algorithms exist~\citep{STING}; however
 a misassembly can be identified. Finally, when coverage is high, subsampling the dataset can lower the memory load without sacrificing
 sensitivity.
 
-The algorithm for misassembly detection is conceptually similar to algorithms applied for segmental homology detection that operate
-by "chaining" homologous fragments into collinear blocks. Chaining algorithms such as FISH~\citep{Calabrese2003}
-and DAGChainer~\citep{Haas2004}, are not permissive for this task, as they depend on a collinear arrangement of points. Because fragment lengths 
-vary in size, points of mapped read pairs rarely fit this model of collinearity. The algorithm is also related to structural variant detection 
+Previous efforts have been made toward identification of misassemblies~\citep{Phillippy2008}. Implementations identify locations of putative 
+misassemblies and require further manual inspection to remove these regions. The algorithm we developed for misassembly detection is conceptually 
+similar to algorithms applied for segmental homology detection that operate by "chaining" homologous fragments into collinear blocks. Chaining 
+algorithms such as FISH~\citep{Calabrese2003} and DAGChainer~\citep{Haas2004}, are not permissive for this task, as they depend on a 
+collinear arrangement of points. Because fragment lengths vary in size, points of mapped read pairs rarely fit this model of collinearity. The algorithm is also related to structural variant detection 
 algorithms ~\citep{BreakDancer,SVDetect}. Structural variant detection begins with mapping reads back to the reference and using read orientation 
-information and mapping distance to identify anomalous pairs. In theory, some of these algorithms could also be employed to detect misassembly. 
+information and mapping distance to identify anomalous pairs. In theory, some of these algorithms could also be employed to detect misassembly.  
 
 \emph{de novo} genome assembly from Illumina data is an extremely active area of research, with many assembly algorithms published and many more continuing to be produced.
 A thorough comparison of the performance of all these methods is a highly nontrivial undertaking and well outside the scope of the present  
