@@ -36,7 +36,13 @@ function copy_exdat {
 	echo "Copying example data and README to archive"
 	mkdir -p $findir/example
 	cp -v test/sequence/phiX_p[1,2].fastq test/sequence/phiX.libs $findir/example && \
-	cp -v ngopt_a5pipeline.README $findir/README
+#	cp -v ngopt_a5pipeline.README $findir/README
+	if [ `uname` = "Darwin" ]; then
+		curl http://code.google.com/p/ngopt/wiki/A5PipelineREADME > A5PipelineREADME.html	
+	else
+		wget -O A5PipelineREADME.html http://code.google.com/p/ngopt/wiki/A5PipelineREADME
+	fi
+	cp A5PipelineREADME.html $findir/README.html
 }
 
 function bundle_clean {
