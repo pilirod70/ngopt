@@ -370,8 +370,6 @@ sub sga_clean {
 			my $fq2 = $libs{$lib}{"p2"}; 
 			$tail_file = $fq1 unless length($tail_file);
 			$files .= "$fq1 $fq2 ";
-			fix_read_id($libs{$lib}{"p2"});
-			qfilter_paired_easy($fq1, $fq2);
 		}
 		if (defined($libs{$lib}{"up"})){
 			my $up = $libs{$lib}{"up"}; 
@@ -399,7 +397,7 @@ sub sga_clean {
 		$sga_ind = `$DIR/$cmd`;
 		$sga_ind = read_file($err_file);
 		$sga_ind_kb = int($sga_ind_kb/2);
-	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 0);
+	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 500000);
 	#
 	# error correct the entire set of reads
 	my $ec_file = "$WD/$outbase.pp.ec.fa";
@@ -417,6 +415,8 @@ sub sga_clean {
 		next unless defined($libs{$lib}{"p1"});
 		my $ec1 = $libs{$lib}{"p1"};
 		my $ec2 = $libs{$lib}{"p2"};
+		fix_read_id($libs{$lib}{"p2"});
+		qfilter_paired_easy($ec1, $ec2);
 		$cmd = "sga correct -t $t -p $OUTBASE.pp -o $ec1.pp.ec.fastq $ec1.pp > $WD/$lib.r1.correct.out";
 		print STDERR "[a5] $cmd\n";
 		system("$DIR/$cmd");
