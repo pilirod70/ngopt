@@ -7,7 +7,18 @@ Optionally, a5_pipeline.pl can be called by its full path
 
 To run:
 
-Usage: aaa_assembly_line.pl <library file> <output base>
+Usage: a5_pipeline.pl [--begin=1-5] [--end=1-5] [--preprocessed] <lib_file> <out_base>
+
+Or:    a5_pipeline.pl <Read 1 FastQ> <Read 2 FastQ> <out_base>
+
+<out_base> is the base file name for all output files. When assembling from 
+a single library, the fastq files may be given directly on the command line.
+If using more than one library, a library file must be given as <lib_file>.
+The library file must contain the filenames of all read files.
+
+If --preprocessed is used, <lib_file> is expected to be the library file
+created during step 2 of the pipeline, named <out_base>.preproc.libs. Note 
+that this flag only applies if beginning pipeline after step 2.
 
 Step 1: Making your library file.
 
