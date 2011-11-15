@@ -166,7 +166,9 @@ if ($end == 1){
 }
 if ($start <= 2) {
 	my $fq_reads = "$OUTBASE.ec.fastq";
-	`gunzip $fq_reads.gz` if -f "$fq_reads.gz";
+	if (-f "$fq_reads.gz" && ! -f "$fq_reads") { 
+		`gunzip $fq_reads.gz`;
+	}
 	$reads = $fq_reads;
 	die "[a5_s2] Can't find error corrected reads $reads" unless -f $reads;
 	print "[a5_s2] Building contigs from $reads with IDBA\n";
