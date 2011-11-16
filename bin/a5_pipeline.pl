@@ -227,8 +227,8 @@ if ($start <= 4) {
 	my $prev_scafs = "$OUTBASE.crude.scaffolds.fasta";
 	$scafs = $prev_scafs;
 	die "[a5_s4] Can't find starting crude scaffolds $scafs\n" unless -f $scafs;
-	print "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
-	print STDERR "[a5_s4] Detecting and breaking misassemblies in $scafs with FISH\n";
+	print "[a5_s4] Detecting and breaking misassemblies in $scafs with A5QC\n";
+	print STDERR "[a5_s4] Detecting and breaking misassemblies in $scafs with A5QC\n";
 	$WD="$OUTBASE.s4";
 	mkdir($WD) if ! -d $WD;
 	$scafs = break_all_misasms($prev_scafs,\%PAIR_LIBS,"$OUTBASE.qc"); 
@@ -350,6 +350,78 @@ sub qfilter_paired_easy {
 		print R2OUT $line if( $lc % 8 >= 4 );
 	}
 }
+#
+# does paired-end read filtering with SGA, discards unpaired reads
+#
+sub qfilter_correct_tagdust_paired {
+	my $r1file = shift;
+	my $r2file = shift;
+	my $t = shift;
+	my $lib = shift;
+
+	# quality filter
+	my $pp_cmd = "$DIR/sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --pe-mode=1 ";
+	$pp_cmd .= "--phred64 " if (get_phred64($r1file));
+	$pp_cmd .= " $r1file $r2file > $r1file.both.pp";
+	print STDERR "[a5] $pp_cmd\n";
+	system($pp_cmd);
+
+	# error correct
+	my $ec_cmd = "$DIR/sga correct -t $t -p $OUTBASE.pp -o $r1file.both.pp.ec.fastq $r1file.both.pp > $WD/$lib.correct.out";
+	print STDERR "[a5] $ec_cmd\n";
+	system($ec_cmd);
+	system("rm -rf $r1file.both.pp"); # clear up some disk space
+
+	# tagdust and repair
+	my $td_cmd = "$DIR/tagdust -s $DIR/../adapter.fasta -o $r1file.both.pp.ec.tagdust.fastq $r1file.both.pp.ec.fastq";
+	print STDERR "[a5] $td_cmd\n";
+	system($td_cmd);
+	system("rm -rf $r1file.both.pp.ec.fastq"); # clear up some disk space
+	my $lc = -1;
+	my $prev_read = "";
+	my $prev_record = "";
+	open(R1OUT, ">$r1file.pp.ec.fastq");
+	open(R2OUT, ">$r2file.pp.ec.fastq");
+	open(TDPIPE, "$r1file.both.pp.ec.tagdust.fastq");
+	while( my $line = <TDPIPE> ){
+		$lc++;
+		if($lc%4 != 0){
+			$prev_record .= $line;
+			next;
+		}
+		if($prev_read eq ""){
+			$prev_read = $line;
+			$prev_record = $line;
+			next;
+		}
+		# we're at a header line and we have a previous FastQ record loaded
+		chomp $prev_read;
+		$prev_read =~ s/\/\d$//g;
+		my $cur_read = $line;
+		chomp $cur_read;
+		$cur_read =~ s/\/\d$//g;
+		# read the rest of the current FastQ entry
+		my $cur_record = $line;
+		$cur_record .= <TDPIPE>;
+		$cur_record .= <TDPIPE>;
+		$cur_record .= <TDPIPE>;
+		$lc += 3;
+		# if records are paired, write them out
+		# otherwise ignore the previous entry
+		if($cur_read eq $prev_read){
+			print R1OUT $prev_record;
+			print R2OUT $cur_record;
+			$prev_record = "";
+			$prev_read = "";
+		}else{
+			$prev_record = $cur_record;
+			$prev_read = $line;
+		}
+	}
+	close R1OUT;
+	close R2OUT;
+	system("rm -rf $r1file.both.pp.ec.tagdust.fastq"); # clear up some disk space
+}
 
 sub get_phred64{
 	my $tail_file = shift;
@@ -429,14 +501,8 @@ sub sga_clean {
 		# make sure our reads have that
 		fix_read_id($ec1,1);
 		fix_read_id($ec2,2);
-		qfilter_paired_easy($ec1, $ec2);
-		$cmd = "sga correct -t $t -p $OUTBASE.pp -o $ec1.pp.ec.fastq $ec1.pp > $WD/$lib.r1.correct.out";
-		print STDERR "[a5] $cmd\n";
-		system("$DIR/$cmd");
-		$cmd = "sga correct -t $t -p $OUTBASE.pp -o $ec2.pp.ec.fastq $ec2.pp > $WD/$lib.r2.correct.out";
-		print STDERR "[a5] $cmd\n";
-		system("$DIR/$cmd");
-		`rm $ec1.pp $ec2.pp`;	# don't carry these heavy things around
+		# clean these reads!
+		qfilter_correct_tagdust_paired($ec1, $ec2, $t, $lib);
 	}
 	
 	die "[a5] Error correcting reads with SGA\n" if( $? != 0 );
@@ -634,7 +700,7 @@ sub preprocess_libs {
 					print STDERR "[a5_preproc] Using given insert estimate instead.\n";
 					$libs{$libid}{"err"} = 0.95;
 				} else {
-					print STDERR "[a5_preproc] No insert estimate for $libid. Exiting\n";
+					print STDERR "[a5_preproc] No insert estimate for $libid. Please provide one in a library file. Exiting\n";
 					exit -1;
 				}
 		
@@ -939,7 +1005,7 @@ sub run_sspace {
 
 #	$sspace_k = 5;	# gives best results on mediterranei
 
-	my $sspace_a = 0.6;	# be less stringent about ambiguity by default, since these will be fixed by the misassembly detector
+	my $sspace_a = 0.4;	# be less stringent about ambiguity by default, since these will be fixed by the misassembly detector
 
 	if(defined($rescaffold)&&$rescaffold==1){
 		# when rescaffolding we want to pick up the low coverage
@@ -955,11 +1021,11 @@ sub run_sspace {
 
 	my $sspace_cmd = "SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a $sspace_a -o 1 -x $sspace_x ".
                                         "-l $libfile -s $input_fa -b $outbase -d $WD";
-	if (@_) {
-		print STDERR "[a5] Running SSPACE with unpaired reads\n";
-		my $up = shift;
-		$sspace_cmd .= " -u $up";
-	}
+#	if (@_) {
+#		print STDERR "[a5] Running SSPACE with unpaired reads\n";
+#		my $up = shift;
+#		$sspace_cmd .= " -u $up";
+#	}
 	print STDERR "[a5] $sspace_cmd > $WD/$outbase.out\n";
 	`$DIR/SSPACE/$sspace_cmd > $WD/$outbase.out`;
 	`rm -rf $WD/bowtieoutput/ $WD/reads/`;
@@ -990,13 +1056,24 @@ sub get_insert($$$$) {
 	my $ctgs = shift;
 	my $npairs = (split(' ', `wc -l $r1fq`))[0]; 
 	$npairs /= 4;
-	my $estimate_pair_count = 20000;
+	my $estimate_pair_count = 40000;
 	$estimate_pair_count = $npairs < $estimate_pair_count ? $npairs : $estimate_pair_count;
-	my $require_reads = 1000;
+	my $require_reads = 5000;
 	my $fq_linecount = $estimate_pair_count*2;
 	# estimate the library insert size with bwa
-	# just use a subsample of 40k reads
+	# just use a subsample of $estimate_pair_count reads
 	`$DIR/bwa index -a is $ctgs`;
+	# check that there are enough reads in the file, don't want to duplicate reads...
+	my $bighead = $fq_linecount*2;
+	my $headcheck = `head -n $bighead $r1fq | wc -l`;
+	chomp $headcheck;
+	print STDERR "[a5] Found only ".($headcheck/4)." read pairs in library\n" if($headcheck < $bighead);
+	$fq_linecount = int($headcheck / 8)*4;
+	# allow insert size estimates with fewer than 5000 reads if there is a very high mapping rate
+	# but never use fewer than 1000.
+	$require_reads = ($fq_linecount/2)*0.9 < $require_reads ? ($fq_linecount/2)*0.9 : $require_reads;
+	$require_reads = 1000 > $require_reads ? 1000 : $require_reads;
+	print STDERR "[a5] Using ".($fq_linecount/2)." read pairs for mapping\n";
 	`head -n $fq_linecount $r1fq > $r1fq.sub`;
 	`tail -n $fq_linecount $r1fq >> $r1fq.sub`;
 	`head -n $fq_linecount $r2fq > $r2fq.sub`;
