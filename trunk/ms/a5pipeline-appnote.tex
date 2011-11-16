@@ -267,9 +267,9 @@ coverage by reads spanning that position or due to errors in the assembled seque
 
 \begin{table*}[!t] 
 \processtable{ Reference-based assembly metrics on ten assemblies of \textit{Haloferax volcanii} DS2 
-(\textbf{Volc}) dataset. "scaf" indicates an assembly that has been scaffolded, while "ctg" indicates no scaffolding. 
-Labels "-CDS", "-N50", and "-LCB" indicate SOAPdenovo assemblies run with parameters combinations that minimized broken coding 
-sequences, maximized scaffold N50, and minimized LCB (Locally Collinear Block) count, respectively. For A5, assembly "scaf-QC" has been 
+(\textbf{Volc}) dataset. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates no scaffolding. 
+Labels ``-CDS'', ``-N50'', and ``-LCB'' indicate SOAPdenovo assemblies run with parameters combinations that minimized broken coding 
+sequences, maximized scaffold N50, and minimized LCB (Locally Collinear Block) count, respectively. For A5, assembly ``scaf-QC'' has been 
 broken using the A5QC algorithm and rescaffolded using SSPACE. The DCJ Distance is the Double-Cut-and-Join distance~\citep{Bergeron2006},
 a measure of the minimum number of rearrangement operations required to transform one genome assembly into another.
 \label{Tab:01}}
@@ -296,7 +296,7 @@ Broken CDS         & 434     & 434      & 454     & 454      & 634     & 634    
 \begin{table*}[!t]
 \processtable{ Non-reference based metrics on six assemblies of \emph{Escherichia coli} CC118 (\textbf{Tn}) dataset. Data
 for SOAPdenovo were calculated from the assembly run with parameters that maximized scaffold N50. 
-"scaf" indicates an assembly that has been scaffolded, while "ctg" indicates no scaffolding. For A5, assembly "scaf-QC" has been 
+``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates no scaffolding. For A5, assembly ``scaf-QC'' has been 
 broken using the A5QC algorithm and rescaffolded using SSPACE. 
 \label{Tab:02}}
 {\begin{tabular}{l|cc|ccc}\toprule
@@ -354,9 +354,9 @@ A5 assemblies were generated using source code from revision 625 of A5.
 \includegraphics[width=3.5in]{volc_accum_plot.pdf}
 \vspace{-1cm}
 \caption{Sequence length accumulation curve for six assemblies. Curves represent the number of bases 
-in an assembly as a function of the $N$ largest sequences. Assemblies generated from SOAPdenovo and A5 are labelled with "SOAP" and "A5", 
-respectively. "scaf" indicates an assembly that has been scaffolded, while "ctg" indicates 
-no scaffolding. For A5, assembly "scaf-QC" has been broken using the A5QC algorithm and rescaffolded using SSPACE. }\label{fig:03}
+in an assembly as a function of the $N$ largest sequences. Assemblies generated from SOAPdenovo and A5 are labelled with ``SOAP'' and ``A5'', 
+respectively. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates 
+no scaffolding. For A5, assembly ``scaf-QC'' has been broken using the A5QC algorithm and rescaffolded using SSPACE. }\label{fig:03}
 \end{figure}
 
 \section{Discussion}
@@ -414,7 +414,7 @@ sensitivity.
 
 Previous efforts have been made toward identification of misassemblies~\citep{Phillippy2008}. Implementations identify locations of putative 
 misassemblies and require further manual inspection to remove these regions. The algorithm we developed for misassembly detection is conceptually 
-similar to algorithms applied for segmental homology detection that operate by "chaining" homologous fragments into collinear blocks. Chaining 
+similar to algorithms applied for segmental homology detection that operate by ``chaining'' homologous fragments into collinear blocks. Chaining 
 algorithms such as FISH~\citep{Calabrese2003} and DAGChainer~\citep{Haas2004}, are not permissive for this task, as they depend on a 
 collinear arrangement of points. Because fragment lengths vary in size, points of mapped read pairs rarely fit this model of collinearity. The algorithm is also related to structural variant detection 
 algorithms ~\citep{BreakDancer,SVDetect}. Structural variant detection begins with mapping reads back to the reference and using read orientation 
