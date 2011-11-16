@@ -104,12 +104,14 @@ User-specified adapter sequences can be screened by adding them to a FastA file.
 Using the newly cleaned reads derived from stage 1, stage 2 of the pipeline builds contigs
 with the the assembler IDBA~\citep{Peng2010}. We selected IDBA due 
 to its ability to produce long contigs in the presence of inconsistent depth of sequence coverage more robustly than other methods (data not shown).
-A further advantage of IDBA lies in its ability to automatically use a wide range of $k$-mer lengths when constructing the \emph{de Bruijn} graph 
-and processing it into contigs. A \emph{de Bruijn} graph is a directed graph that represents overlap between all $k$-mers found in a nucleotide dataset~\citep{Pop2009}.
+Like many current assembly algorithms, IDBA uses a \emph{de Bruijn} graph-based algorithm to assemble contigs. A \emph{de Bruijn} graph is a directed graph that represents overlap between all $k$-mers found in a nucleotide dataset, for a more complete description and comparison to other
+assembly approaches please see~\citet{Pop2009}.
 Many \emph{de Bruijn}-based assemblers require the user to specify a single $k$-mer length, and the optimal choice of $k$ depends intimately
 on characteristics of the genome being assembled.  Moreover it is possible that for a particular dataset with given read lengths and error profiles, 
-different regions of the same genome may be optimally reconstructed by different values of $k$. IDBA simply requires a minimum and maximum value of
-$k$ to use when constructing the \emph{de Bruijn} graph and simplifying it into contigs. One final factor entering into the choice of IDBA was its 
+different regions of the same genome may be optimally reconstructed by different values of $k$. In contrast, IDBA simply requires a 
+minimum and maximum value of
+$k$ to use when processing the \emph{de Bruijn} graph into contigs. This simplifies parameter choice. 
+One final factor entering into the choice of IDBA was its 
 ability to generate highly contiguous sequence even with unpaired sequence reads. Although assemblers using paired-end read information during 
 contigging can often produce exceptional results~\citep{Gnerre2011, SASSY}, we did not want to impose the requirement of paired reads (or multiple
 libraries with different insert sizes) upon users of the pipeline. This keeps applicability of A5 as broad as possible.
@@ -431,7 +433,8 @@ For this reason we feel there is a great need for methods to easily produce asse
 A5 can be considered a first attempt at such a method.
 
 \section*{Acknowledgements}
-This work was supported by National Science Foundation award ER 0949453.
+This work was supported by National Science Foundation award ER 0949453. We thank Vadim Mozhayskiy for beta testing a
+version of the A5 software.
 
 \bibliographystyle{natbib}
 \bibliography{a5pipeline-appnote}
