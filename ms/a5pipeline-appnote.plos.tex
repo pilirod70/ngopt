@@ -66,7 +66,7 @@
 % Title must be 150 characters or less
 \begin{flushleft}
 {\Large
-\textbf{Title}
+\textbf{A User-friendly Pipeline for de Novo Assembly of Microbial Genomes}
 }
 % Insert Author names, affiliations and corresponding author email.
 \\
@@ -75,13 +75,13 @@ Jonathan A. Eisen$^{1,2,3}$,
 Marc T. Facciotti$^{1,4}$, 
 Aaron Darling$^{1,\ast}$
 \\
-\bf{1} Genome Center, University of California-Davis, Davis, CA 95616
+\bf{1} Genome Center, University of California-Davis, California, United States of America
 \\
-\bf{2} Dept. of Evolution and Ecology, University of California-Davis, Davis, CA 95616
+\bf{2} Department of Evolution and Ecology, University of California-Davis, California, United States of America
 \\
-\bf{3} Dept. of Medical Microbiology and Immunology, University of California-Davis, Davis, CA 95616
+\bf{3} Department. of Medical Microbiology and Immunology, University of California-Davis, California, United States of America
 \\
-\bf{4} Dept. of Biomedical Engineering, University of California-Davis, Davis, CA 95616
+\bf{4} Department. of Biomedical Engineering, University of California-Davis, California, United States of America
 \\
 $\ast$ E-mail: Corresponding aarondarling@ucdavis.edu
 \end{flushleft}
@@ -154,13 +154,13 @@ We evaluated the performance of A5 on two real Illumina data sets and compared t
 those obtained when running SOAPdenovo v1.05~\cite{Li2010} on the same datasets. The first data set (called \textbf{Volc}) is a paired-end short insert library constructed from \emph{Haloferax volcanii} DS2 genomic DNA 
 using sonication followed by end-repair, A-tailing, and adapter ligation, and was sequenced on an Illumina GAIIx instrument.
 Sequencing yielded 6,844,701 read pairs, with each read being 78nt in length. These data have been deposited at the NCBI Short Read Archive, accession SRX105348 (data can be downloaded
-from http://edhar.genomecenter.ucdavis.edu/~andrew/ngopt\_pipeline/ms/). 
+from http://edhar.genomecenter.ucdavis.edu/${\sim}$andrew/ngopt\_pipeline/ms/). 
 The second data set, called \textbf{Tn} and previously published by \cite{Adey2010}, is a paired-end library constructed from \emph{Escherichia coli} CC118 genomic DNA
 using transposon-catalyzed adapter ligation (Nextera) and was sequenced on an Illumina HiSeq2000 instrument using TruSeq 2 chemistry. 
 Reads from this dataset were obtained from the NCBI Short Read Archive, accession SRX030179.
 
-We executed A5 and SOAPdenovo for each data set. Table 1 reports the assembly performance for \textbf{Volc} assemblies.
-Table 2 reports the assembly performance for \textbf{Tn} assemblies. \textbf{Volc} assemblies were scored using Mauve Assembly 
+We executed A5 and SOAPdenovo for each data set. Table~\ref{tab:tab01} reports the assembly performance for \textbf{Volc} assemblies.
+Table~\ref{tab:tab02} reports the assembly performance for \textbf{Tn} assemblies. \textbf{Volc} assemblies were scored using Mauve Assembly 
 Metrics~\cite{Darling2011}, which quantifies differences between the reference and assembly using whole genome alignment. We note that
 aligner error may result in additional errors between the assembly. Although high quality reference assemblies exist for other \textit{E. coli} 
 isolates, none are available for strain CC118. We can not use another \textit{E. coli} as a reference due to the great deal of genomic divergence
@@ -325,7 +325,7 @@ optimum has been achieved (or a pressing deadline looms). Scripts for automating
 been developed~\cite{VelvetOpt}, however, it is not always feasible, depending on available compute resources and the size 
 of the dataset. The A5 pipeline avoids the problem for users by calculating reasonable
 parameters for each stage of the pipeline using values derived from the data itself. In some
-cases, default parameters have been set to data-independent values. Supplementary Table~\ref{Tab:03} 
+cases, default parameters have been set to data-independent values. Supplementary Table~\ref{tab:tab03} 
 summarizes the many parameters in the pipeline.
 
 \subsection{Automated misassembly quality control}\label{sec:qc}
@@ -418,7 +418,8 @@ coverage by reads spanning that position or due to errors in the assembled seque
 
 % Do NOT remove this, even if you are not including acknowledgments
 \section*{Acknowledgments}
-
+This work was supported by National Science Foundation award ER 0949453. We thank Vadim Mozhayskiy for beta testing a
+version of the A5 software.
 
 %\section*{References}
 % The bibtex filename
@@ -528,6 +529,60 @@ broken using the A5QC algorithm and rescaffolded using SSPACE.
 \end{flushleft}
 \label{tab:tab02}
 \end{table}
+
+\begin{table}[!t]
+\caption{\bf{Supplementary Table: Automatically set parameters}}
+{\begin{tabular}{l|c|l}
+Parameter                       & Stage & Default setting  \\
+SGA Quality Trim (-q)           & 1     & hard coded to 10 \\
+SGA Quality Filter (-f)         & 1     & hard coded to 20  \\
+SGA Min Read Length (-m)        & 1     & hard coded to 30 \\
+IDBA min $k$-mer                & 2     & 29, most $k$-mers of this size are unique in a microbial genome but larger values may be better for larger genomes \\
+IDBA max $k$-mer                & 2     & maximum read length of trimmed reads \\
+SSPACE Overhang MinOverlap (-m) & 3,5   & Max of 15 and floor of binary logarithm of genome size, plus 3.99  \\
+SSPACE ExtendCall MinBases (-o) & 3,5   & hard coded to 1 \\
+SSPACE Minimum Links (-k)       & 3,5   & base 1.4 logarithm of $E\_links$, minus 11.5, where $E\_links$ = $\dfrac{2c\mu}{l_r}$ and $c$ is coverage \\
+SSPACE Min Link Ratio (-a)      & 3,5   & hard coded to 0.6,0.3  \\
+SSPACE Merge MinOverlap (-n)    & 3,5   & floor of (binary logaritm of mean insert size, scaled by 1.24, plus 0.99) \\
+SSPACE Insert Mean 	            & 3,5   & Calculated using EM-clustering \\
+SSPACE Insert StDev             & 3,5   & Calculated using EM-clustering \\
+DBSCAN $\varepsilon$            & 4     & Derived from coverage as described in main text \\
+DBSCAN $MinPts$                 & 4     & Derived from coverage as described in main text \\
+\end{tabular}}
+\begin{flushleft} Assembly parameters within the pipeline and how their values are chosen. $\varepsilon$ is the maximum inter-point distance 
+used for spatial clustering and $MinPts$ is the minimum number of points in a cluster.
+\end{flushleft}
+\label{tab:tab03}
+\end{table}
+
+\section*{Supplementary Material}
+\subsection{Description of internal assembly pipeline parameters}
+
+The A5 pipeline incorporates many algorithms, each of which require certain parameters to be set.
+Table~\ref{tab:tab03} lists all of the parameters used in A5, along with how the value
+of that parameter is calculated. We now discuss the effect of each of these parameter settings in turn.  
+The SGA Quality Trim parameter sets a PHRED Q-score cutoff~\cite{Ewing1998} used for read trimming with the algorithm
+implemented in BWA~\cite{bwa}. The SGA Quality Filter parameter sets a maximum number of bases
+with a PHRED Q-score of below 3 that are permitted in a read before the read is discarded entirely.
+The SGA Min Read Length sets the minimum allowed read length after quality trimming, reads shorter
+than that will be discarded.
+
+The IDBA min $k$-mer sets the starting $k$-mer size for \emph{de Bruijn} graph construction, and the max $k$-mer sets
+the largest $k$ that will be used during graph simplification.
+
+The SSPACE Overhang MinOverlap sets the number of nucleotides that a read must overlap with an existing
+contig to be used for contig extension during scaffold gap filling. The SSPACE ExtendCall MinBases sets the minimum
+number of reads covering a base that are required to call the base during contig extension. The SSPACE minimum
+links sets the minimum number of read pairs that must be connecting a pair of contigs in order for them to be considered
+for scaffolding, the reads must map to the region of the contig expected based on the insert size distribution.
+For three contigs A, B, and C, where read pairs link A,B and A,C, the SSPACE Min Link Ratio sets the 
+maximum allowable ratio between the number of links connecting A,C and A,B. If the ratio is below the threshold,
+A,B will be scaffolded, otherwise A will not be scaffolded. Here A,B and A,C have the highest and 2$^{nd}$ highest number
+of links between A and any other contig.
+
+The SSPACE Merge MinOverlap sets the minimum number of bases that two scaffolded contigs must overlap in order to be merged
+into a single contig.  The SSPACE Insert Mean is the mean value of the insert size for a paired-end or mate-pair library. 
+The SSPACE Insert StDev is the standard deviation.
 
 \end{document}
 
