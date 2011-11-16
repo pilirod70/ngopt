@@ -313,7 +313,7 @@ suggestive of a misassembly. The A5 pipeline then breaks the crude scaffolds at 
 \subsubsection*{Stage 5}
 Finally, in stage 5 the broken-up scaffolds are rescaffolded using SSPACE~\cite{Boetzer2011}.
 
-\subsection{Automated parameter selection}
+\subsection*{Automated parameter selection}
 
 Most currently available assembly programs have a wide variety of parameters which must
 be specified by the user, and some of these can have a profound impact on the quality of the 
@@ -328,7 +328,7 @@ parameters for each stage of the pipeline using values derived from the data its
 cases, default parameters have been set to data-independent values. Supplementary Table~\ref{tab:tab03} 
 summarizes the many parameters in the pipeline.
 
-\subsection{Automated misassembly quality control}\label{sec:qc}
+\subsection*{Automated misassembly quality control}\label{sec:qc}
 
 After crude scaffolds have been built, A5 performs an automated quality control step.
 
@@ -350,7 +350,7 @@ feature that can interfere with insert size distribution calculations is inheren
 fragments and ambiguous read mapping due to repetitive regions or highly erroneous reads. 
 
 
-\subsubsection{Accurate estimates of insert size distributions}
+\subsubsection*{Accurate estimates of insert size distributions}
 
 To avoid including noise in mean and variance estimates from shadow libraries and other error sources, 
 we perform a round of Expectation-Maximization (EM) clustering of insert sizes before calculating sample statistics~\cite{GuptaChen2010}. 
@@ -425,6 +425,8 @@ version of the A5 software.
 % The bibtex filename
 \bibliography{a5pipeline-appnote.plos}
 
+\clearpage
+
 \section*{Figure Legends}
 %\begin{figure}[!ht]
 %\begin{center}
@@ -437,7 +439,7 @@ version of the A5 software.
 %}
 %\label{Figure_label}
 %\end{figure}
-\begin{figure}[t]
+\begin{figure}[hp]
 \begin{center}
 \end{center}
 \caption{\textbf{Overview of the stages in A5.} The first stage of the pipeline is to clean reads, removing any contaminant
@@ -447,7 +449,7 @@ containing misassemblies. Finally, the broken scaffolds are rescaffolded using t
 \label{fig:01}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[hp]
 \caption{\textbf{Upper Left:}  A hypothetical whole genome alignment of an assembly containing misassemblies relative to the true genome,
 consisting of three circular chromosomes, and the 
 resulting broken assembly. Red, green, and blue lines connect aligned regions. Black connecting lines represent real paired read 
@@ -458,7 +460,7 @@ to misassembly breakpoints. Gray circles highlight the set of points that are cl
 \label{fig:02}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[hp]
 \caption{\textbf{Sequence length accumulation curve for six assemblies of the model archaeon \textit{Haloferax volcanii} DS2.} Curves represent the number of bases 
 in an assembly as a function of the $N$ largest sequences. Assemblies generated from SOAPdenovo and A5 are labelled with ``SOAP'' and ``A5'', 
 respectively. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates 
@@ -468,6 +470,7 @@ in the extreme upper left corner.}
 \label{fig:03}
 \end{figure}
 
+\clearpage
 
 \section*{Tables}
 %\begin{table}[!ht]
@@ -480,9 +483,10 @@ in the extreme upper left corner.}
 %\end{flushleft}
 %\label{tab:label}
 % \end{table}
-\begin{table}[!t] 
+\begin{table}[hp] 
 \caption{ 
 \bf{Assembly metrics for \textit{Haloferax volcanii} DS2}}
+\footnotesize
 \begin{tabular}{l|cccccc|ccc}
 &\multicolumn{6}{c|}{SOAPdenovo} & \multicolumn{3}{c}{A5} \\
 Assembly           & ctg-CDS & scaf-CDS & ctg-N50 & scaf-N50 & ctg-LCB & scaf-LCB & ctg    & scaf     & scaf-QC \\
@@ -509,7 +513,7 @@ a measure of the minimum number of rearrangement operations required to transfor
 \end{table}
 
 
-\begin{table}[!t]
+\begin{table}[hp]
 \caption{  
 \bf{Assembly metrics for \emph{Escherichia coli} CC118}}
 {\begin{tabular}{l|cc|ccc}
@@ -530,33 +534,11 @@ broken using the A5QC algorithm and rescaffolded using SSPACE.
 \label{tab:tab02}
 \end{table}
 
-\begin{table}[!t]
-\caption{\bf{Supplementary Table: Automatically set parameters}}
-{\begin{tabular}{l|c|l}
-Parameter                       & Stage & Default setting  \\
-SGA Quality Trim (-q)           & 1     & hard coded to 10 \\
-SGA Quality Filter (-f)         & 1     & hard coded to 20  \\
-SGA Min Read Length (-m)        & 1     & hard coded to 30 \\
-IDBA min $k$-mer                & 2     & 29, most $k$-mers of this size are unique in a microbial genome but larger values may be better for larger genomes \\
-IDBA max $k$-mer                & 2     & maximum read length of trimmed reads \\
-SSPACE Overhang MinOverlap (-m) & 3,5   & Max of 15 and floor of binary logarithm of genome size, plus 3.99  \\
-SSPACE ExtendCall MinBases (-o) & 3,5   & hard coded to 1 \\
-SSPACE Minimum Links (-k)       & 3,5   & base 1.4 logarithm of $E\_links$, minus 11.5, where $E\_links$ = $\dfrac{2c\mu}{l_r}$ and $c$ is coverage \\
-SSPACE Min Link Ratio (-a)      & 3,5   & hard coded to 0.6,0.3  \\
-SSPACE Merge MinOverlap (-n)    & 3,5   & floor of (binary logaritm of mean insert size, scaled by 1.24, plus 0.99) \\
-SSPACE Insert Mean 	            & 3,5   & Calculated using EM-clustering \\
-SSPACE Insert StDev             & 3,5   & Calculated using EM-clustering \\
-DBSCAN $\varepsilon$            & 4     & Derived from coverage as described in main text \\
-DBSCAN $MinPts$                 & 4     & Derived from coverage as described in main text \\
-\end{tabular}}
-\begin{flushleft} Assembly parameters within the pipeline and how their values are chosen. $\varepsilon$ is the maximum inter-point distance 
-used for spatial clustering and $MinPts$ is the minimum number of points in a cluster.
-\end{flushleft}
-\label{tab:tab03}
-\end{table}
+
+\clearpage
 
 \section*{Supplementary Material}
-\subsection{Description of internal assembly pipeline parameters}
+\subsection*{Description of internal assembly pipeline parameters}
 
 The A5 pipeline incorporates many algorithms, each of which require certain parameters to be set.
 Table~\ref{tab:tab03} lists all of the parameters used in A5, along with how the value
@@ -583,6 +565,33 @@ of links between A and any other contig.
 The SSPACE Merge MinOverlap sets the minimum number of bases that two scaffolded contigs must overlap in order to be merged
 into a single contig.  The SSPACE Insert Mean is the mean value of the insert size for a paired-end or mate-pair library. 
 The SSPACE Insert StDev is the standard deviation.
+
+\begin{table}[hp]
+\caption{\bf{Supplementary Table: Automatically set parameters}}
+\footnotesize
+{\begin{tabular}{l|c|l}
+Parameter                       & Stage & Default setting  \\
+SGA Quality Trim (-q)           & 1     & hard coded to 10 \\
+SGA Quality Filter (-f)         & 1     & hard coded to 20  \\
+SGA Min Read Length (-m)        & 1     & hard coded to 30 \\
+IDBA min $k$-mer                & 2     & 29, most $k$-mers of this size are unique in a microbial genome but larger values may be better for larger genomes \\
+IDBA max $k$-mer                & 2     & maximum read length of trimmed reads \\
+SSPACE Overhang MinOverlap (-m) & 3,5   & Max of 15 and floor of binary logarithm of genome size, plus 3.99  \\
+SSPACE ExtendCall MinBases (-o) & 3,5   & hard coded to 1 \\
+SSPACE Minimum Links (-k)       & 3,5   & base 1.4 logarithm of $E\_links$, minus 11.5, where $E\_links$ = $\dfrac{2c\mu}{l_r}$ and $c$ is coverage \\
+SSPACE Min Link Ratio (-a)      & 3,5   & hard coded to 0.6,0.3  \\
+SSPACE Merge MinOverlap (-n)    & 3,5   & floor of (binary logaritm of mean insert size, scaled by 1.24, plus 0.99) \\
+SSPACE Insert Mean 	            & 3,5   & Calculated using EM-clustering \\
+SSPACE Insert StDev             & 3,5   & Calculated using EM-clustering \\
+DBSCAN $\varepsilon$            & 4     & Derived from coverage as described in main text \\
+DBSCAN $MinPts$                 & 4     & Derived from coverage as described in main text \\
+\end{tabular}}
+\begin{flushleft} Assembly parameters within the pipeline and how their values are chosen. $\varepsilon$ is the maximum inter-point distance 
+used for spatial clustering and $MinPts$ is the minimum number of points in a cluster.
+\end{flushleft}
+\label{tab:tab03}
+\end{table}
+
 
 \end{document}
 
