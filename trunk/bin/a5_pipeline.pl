@@ -236,6 +236,7 @@ if ($start <= 4) {
 		$need_qc = 0;
 		`cp $scafs $OUTBASE.final.scaffolds.fasta`;
 		print "[a5_s5] No misassemblies found.\n";
+		map_all_libs($OUTBASE, \%RAW_LIBS);
 	} else {
 		`mv $scafs $OUTBASE.broken.scaffolds.fasta`; 
 	}
@@ -258,6 +259,7 @@ if ($start <= 5 && $need_qc) {
 	mkdir($WD) if ! -d $WD;
 	$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs,1);
 	`mv $scafs $OUTBASE.final.scaffolds.fasta`;
+	map_all_libs($OUTBASE, \%RAW_LIBS);
 } 
 if ($end == 5){
 	print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
@@ -316,14 +318,15 @@ sub fix_read_id {
 	chomp $line;
 	$line =~ /\/(\d+)$/;
 	my $id = $1;
+	print STDERR "In fix_read_id, got id $id\n";
 	if(!defined($id)){
 		# tack on the read id to the end of each line
-		my $swap_cmd = "perl -p -i -e \"s/^([@\\\+])(.+)\\n/\\\$1\\\$2\\\/$expected_id\\n/\" $fastq";
+		my $swap_cmd = "perl -p -i -e \"s/^([@\\\+])(.+)\\n/\\\$1\\\$2\\\/$expected_id\\n/g\" $fastq";
 		print STDERR "[a5] $swap_cmd\n";
 		`$swap_cmd`;
 	}elsif($id != $expected_id){
 		# swap in the correct read id
-		my $swap_cmd = "perl -p -i -e \"s/\/$id/\/$expected_id/\" $fastq";
+		my $swap_cmd = "perl -p -i -e \"s/\\\/$id/\\\/$expected_id/g\" $fastq";
 		print STDERR "[a5] $swap_cmd\n";
 		`$swap_cmd`;
 	}
@@ -442,6 +445,7 @@ sub sga_clean {
 	my $outbase = shift;
 	my $libsref = shift;
 	my %libs = %$libsref;
+	# OS X is missing some required multithreading gadgetry for SGA
 	my $t = $^O =~ m/darwin/ ? 1 : 4;
 	# figure out which files we need to pass to SGA
 	my $files = "";
@@ -507,6 +511,47 @@ sub sga_clean {
 	
 	die "[a5] Error correcting reads with SGA\n" if( $? != 0 );
 	return $ec_file;
+}
+
+sub map_all_libs {
+	my $outbase = shift;
+	my $libsref = shift;
+	my %libs = %$libsref;
+	my $index_cmd = "$DIR/bwa index $OUTBASE.final.scaffolds.fasta";
+	print STDERR "[a5] $index_cmd\n";
+	system($index_cmd);
+	for my $lib (keys %libs) {
+		if (defined($libs{$lib}{"p1"})) {
+			my $fq1 = $libs{$lib}{"p1"}; 
+			my $fq2 = $libs{$lib}{"p2"};
+			my $aln1_cmd = "$DIR/bwa aln $OUTBASE.final.scaffolds.fasta $fq1 > $fq1.sai";
+			my $aln2_cmd = "$DIR/bwa aln $OUTBASE.final.scaffolds.fasta $fq2 > $fq2.sai";
+			my $sampe_cmd = "$DIR/bwa sampe $OUTBASE.final.scaffolds.fasta $fq1.sai $fq2.sai $fq1 $fq2 | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.pe";
+			my $bamindex_cmd = "$DIR/samtools index $lib.pe.bam";
+			print STDERR "[a5] $aln1_cmd\n";
+			system($aln1_cmd);
+			print STDERR "[a5] $aln2_cmd\n";
+			system($aln2_cmd);
+			print STDERR "[a5] $sampe_cmd\n";
+			system($sampe_cmd);
+			print STDERR "[a5] $bamindex_cmd\n";
+			system($bamindex_cmd);
+			`rm $fq1.sai $fq2.sai`;
+		}
+		if (defined($libs{$lib}{"up"})){
+			my $up = $libs{$lib}{"up"}; 
+			my $aln1_cmd = "$DIR/bwa aln $OUTBASE.final.scaffolds.fasta $up > $up.sai";
+			my $samse_cmd = "$DIR/bwa sampe $OUTBASE.final.scaffolds.fasta $up.sai $up | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.up";
+			my $bamindex_cmd = "$DIR/samtools index $lib.up.bam";
+			print STDERR "[a5] $aln1_cmd\n";
+			system($aln1_cmd);
+			print STDERR "[a5] $samse_cmd\n";
+			system($samse_cmd);
+			print STDERR "[a5] $bamindex_cmd\n";
+			system($bamindex_cmd);
+			`rm $up.sai`;
+		}
+	}
 }
 
 #
