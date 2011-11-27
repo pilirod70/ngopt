@@ -77,26 +77,29 @@ public class InsertSizeExporter {
 				double[] insTot = ReadPair.estimateInsertSize(reads.values());
 				double[] ret = {insTot[0],insTot[1],insTot[2],ReadPair.getOrientation(reads.values())};
 				if (insTot[0]>1500){
-					System.err.println("[a5_ise] EM Clustering with K = 2 to remove noisy reads and shadow library");			
-					EMClusterer em = new EMClusterer(reads.values(), 2);
+					System.err.println("[a5_ise] EM Clustering with K = 3 to remove noisy reads and shadow library");			
+					EMClusterer em = new EMClusterer(reads.values(), 3);
 					em.iterate(1000,0.0001);
 					//System.out.println(" converged in "+numIt+" iterations");
 					Collection<ReadSet> emClusters = em.getClusters();
 					Iterator<ReadSet> clustIt = emClusters.iterator();
 					//System.out.println(emClusters.size()+" clusters");
 					ReadSet tmpClust = null;
+					double lowV=2000000000;
+					ReadSet highC=null;
 					while(clustIt.hasNext()){
 						tmpClust = clustIt.next();
-						if (tmpClust.mean()>1500){
-							ret[0] = tmpClust.mean();
-							ret[1] = tmpClust.sd();
-							ret[2] = tmpClust.size();
-							ret[3] = ReadPair.getOrientation(tmpClust.getReads());
-							break;
+						System.err.println( "Cluster mean "+tmpClust.mean()+" sd "+tmpClust.sd()+" size "+tmpClust.size() );
+						if (tmpClust.mean()>1500 && lowV > tmpClust.sd()){
+							lowV = tmpClust.sd();
+							highC = tmpClust;
 						} 
 					}
 					
-					
+					ret[0] = highC.mean();
+					ret[1] = highC.sd();
+					ret[2] = highC.size();
+					ret[3] = ReadPair.getOrientation(highC.getReads());					
 				}
 				System.out.println(NF.format(ret[0])+","+NF.format(ret[1])+","+NF.format(ret[2])+","+NF.format(ret[3]));
 				System.out.flush();
