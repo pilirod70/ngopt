@@ -339,7 +339,7 @@ sub qfilter_paired_easy {
 	my $r1file = shift;
 	my $r2file = shift;
 
-	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --pe-mode=1 ";
+	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
 	$cmd .= "--phred64 " if (get_phred64($r1file));
 	$cmd .= " $r1file $r2file";
 	print STDERR "[a5] $cmd\n";
@@ -363,7 +363,7 @@ sub qfilter_correct_tagdust_paired {
 	my $lib = shift;
 
 	# quality filter
-	my $pp_cmd = "$DIR/sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --pe-mode=1 ";
+	my $pp_cmd = "$DIR/sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
 	$pp_cmd .= "--phred64 " if (get_phred64($r1file));
 	$pp_cmd .= " $r1file $r2file > $r1file.both.pp";
 	print STDERR "[a5] $pp_cmd\n";
@@ -467,7 +467,7 @@ sub sga_clean {
 	
 	# preprocess the reads with SGA -- quality trim and filter
 	# pipe in the reads so we can count how many passed the filter for each file
-	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." ";
+	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous ";
 	$cmd .= "--phred64 " if ($phred64);
 	$cmd .= " $files >$WD/$outbase.pp.fastq";
 	system("$DIR/$cmd");
@@ -1099,33 +1099,30 @@ sub get_insert($$$$) {
 	my $r2fq = shift;
 	my $outbase = shift;
 	my $ctgs = shift;
-	my $npairs = (split(' ', `wc -l $r1fq`))[0]; 
-	$npairs /= 4;
 	my $estimate_pair_count = 40000;
-	$estimate_pair_count = $npairs < $estimate_pair_count ? $npairs : $estimate_pair_count;
-	my $require_reads = 5000;
-	my $fq_linecount = $estimate_pair_count*2;
+	my $require_reads = 4000;
+	my $fq_linecount = $estimate_pair_count*4;
 	# estimate the library insert size with bwa
 	# just use a subsample of $estimate_pair_count reads
 	`$DIR/bwa index -a is $ctgs`;
 	# check that there are enough reads in the file, don't want to duplicate reads...
-	my $bighead = $fq_linecount*2;
-	my $headcheck = `head -n $bighead $r1fq | wc -l`;
+	my $headcheck = `head -n $fq_linecount $r1fq | wc -l`;
 	chomp $headcheck;
-	print STDERR "[a5] Found only ".($headcheck/4)." read pairs in library\n" if($headcheck < $bighead);
-	$fq_linecount = int($headcheck / 8)*4;
-	# allow insert size estimates with fewer than 5000 reads if there is a very high mapping rate
+	print STDERR "[a5] Found only ".($headcheck/4)." read pairs in library\n" if($headcheck < $fq_linecount);
+	$fq_linecount = int($headcheck / 8)*8;
+	# allow insert size estimates with fewer than 5000 reads if enough have mapped
 	# but never use fewer than 1000.
-	$require_reads = ($fq_linecount/2)*0.9 < $require_reads ? ($fq_linecount/2)*0.9 : $require_reads;
+	$require_reads = ($fq_linecount/4)*0.25 < $require_reads ? ($fq_linecount/4)*0.25 : $require_reads;
 	$require_reads = 1000 > $require_reads ? 1000 : $require_reads;
-	print STDERR "[a5] Using ".($fq_linecount/2)." read pairs for mapping\n";
-	`head -n $fq_linecount $r1fq > $r1fq.sub`;
-	`tail -n $fq_linecount $r1fq >> $r1fq.sub`;
-	`head -n $fq_linecount $r2fq > $r2fq.sub`;
-	`tail -n $fq_linecount $r2fq >> $r2fq.sub`;
+	print STDERR "[a5] Using ".($fq_linecount/4)." read pairs for mapping\n";
+	my $half_lines = $fq_linecount / 2;
+	`head -n $half_lines $r1fq > $r1fq.sub`;
+	`tail -n $half_lines $r1fq >> $r1fq.sub`;
+	`head -n $half_lines $r2fq > $r2fq.sub`;
+	`tail -n $half_lines $r2fq >> $r2fq.sub`;
 	`$DIR/bwa aln $ctgs $r1fq.sub > $r1fq.sub.sai`;
 	`$DIR/bwa aln $ctgs $r2fq.sub > $r2fq.sub.sai`;
-	# bwa will print the estimated insert size, let's capture it then kill the job
+	# use bwa to map the reads
 	my $cmd = "$DIR/bwa sampe -P $ctgs $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub ".
 			"> $outbase.sub.pe.sam 2> $outbase.sampe.out";
 	`$cmd`;
