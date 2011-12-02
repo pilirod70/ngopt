@@ -13,7 +13,7 @@ import java.util.Vector;
 
 import org.halophiles.assembly.Contig;
 
-public class PointChainer {
+public class SpatialClusterer {
 	
 	static double EPS;
 	
@@ -29,9 +29,9 @@ public class PointChainer {
 		}
 	};
 
-	public static Comparator<KClump> CLUST_COMP = new Comparator<KClump>(){
+	public static Comparator<ReadCluster> CLUST_COMP = new Comparator<ReadCluster>(){
 		@Override
-		public int compare(KClump arg0, KClump arg1) {
+		public int compare(ReadCluster arg0, ReadCluster arg1) {
 			return arg0.xMax - arg1.xMax;
 		}
 	};
@@ -52,7 +52,7 @@ public class PointChainer {
 	 * KClumps should be mutually exclusive
 	 * 
 	 */
-	private Set<KClump> kclumps;
+	private Set<ReadCluster> kclumps;
 	
 	private class MatchComparator implements Comparator<Integer>{
 		public MatchComparator(int contig, MatchPoint[] matches){
@@ -69,11 +69,11 @@ public class PointChainer {
 		MatchPoint[] matches;
 	}
 	
-	public PointChainer(Contig contig1, Contig contig2){
+	public SpatialClusterer(Contig contig1, Contig contig2){
 		this.ctg1 = contig1;
 		this.ctg2 = contig2;
 		currPoints = new TreeSet<MatchPoint>(xSort);
-		kclumps = new TreeSet<KClump>(CLUST_COMP);
+		kclumps = new TreeSet<ReadCluster>(CLUST_COMP);
 		numPoints = 0;
 	}
 	
@@ -86,9 +86,9 @@ public class PointChainer {
 			out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t0");
 		}
 		
-		Iterator<KClump> kcIt = kclumps.iterator();
+		Iterator<ReadCluster> kcIt = kclumps.iterator();
 		while(kcIt.hasNext()){
-			KClump tmpKc = kcIt.next();
+			ReadCluster tmpKc = kcIt.next();
 			it = tmpKc.getMatchPoints().iterator();
 			while(it.hasNext()){
 				MatchPoint tmp = it.next();
@@ -133,7 +133,7 @@ public class PointChainer {
 		if (kclumps.isEmpty())
 			return;
 		System.out.println("[a5_qc] Found "+kclumps.size()+" initial blocks between contigs "+ctg1.getId()+" and "+ctg2.getId());
-		Iterator<KClump> kcIt = kclumps.iterator();
+		Iterator<ReadCluster> kcIt = kclumps.iterator();
 		while(kcIt.hasNext())
 			System.out.println("        "+kcIt.next().toString());
 	}
@@ -142,8 +142,8 @@ public class PointChainer {
 	 * Return a set of mutually exclusive KClumps
 	 * @return a set of mutually exclusive KClumps
 	 */
-	public KClump[] getKClumps() {
-		KClump[] ar = new KClump[kclumps.size()];
+	public ReadCluster[] getKClumps() {
+		ReadCluster[] ar = new ReadCluster[kclumps.size()];
 		kclumps.toArray(ar);
 		return ar;
 	}
@@ -213,7 +213,7 @@ public class PointChainer {
 			} else {
 				currClust = new TreeSet<MatchPoint>(xSort);
 				expandClusters(tmp, currClust);
-				kclumps.add(new KClump(currClust));
+				kclumps.add(new ReadCluster(currClust));
 			}
 			tmp.setVisited();
 		}

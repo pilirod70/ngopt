@@ -56,7 +56,7 @@ public class MisassemblyBreaker {
 	static int MIN_BLOCK_LEN;
 	static int MAX_BLOCK_LEN;
 	
-	private static Collection<PointChainer> matches;
+	private static Collection<SpatialClusterer> matches;
 	
 //	private static Map<String,int[]> points;
 	
@@ -116,12 +116,12 @@ public class MisassemblyBreaker {
 			printParams();
 			
 			// collect all of our blocks for each contig
-			Iterator<PointChainer> mbIt = matches.iterator();
+			Iterator<SpatialClusterer> mbIt = matches.iterator();
 			Map<String,Vector<int[]>> blocks = new HashMap<String,Vector<int[]>>();
 			Vector<int[]> xBlocks = null;
 			Vector<int[]> yBlocks = null;
 			while(mbIt.hasNext()){
-				PointChainer pc = mbIt.next();
+				SpatialClusterer pc = mbIt.next();
 				// get Vector for holding contig X blocks
 				xBlocks = new Vector<int[]>();
 				// get Vector for holding contig Y blocks
@@ -239,8 +239,8 @@ public class MisassemblyBreaker {
 		}
 	}
 	
-	private static void addBlocks(PointChainer pc, Vector<int[]> xBlocks, Vector<int[]> yBlocks) throws IOException {
-		KClump[] kclumps = pc.getKClumps();
+	private static void addBlocks(SpatialClusterer pc, Vector<int[]> xBlocks, Vector<int[]> yBlocks) throws IOException {
+		ReadCluster[] kclumps = pc.getKClumps();
 		int xlen = 0;
 		int ylen = 0;
 		int[] x = null;
@@ -341,7 +341,7 @@ public class MisassemblyBreaker {
 		for (int i = 0; i < ranges.length; i++)
 			System.out.println("[a5_qc] Filtering read pairs with inserts between "+
 					NF.format(ranges[i][0])+"-"+NF.format(ranges[i][1]));
-		Map<String,PointChainer> chainers = new HashMap<String,PointChainer>();
+		Map<String,SpatialClusterer> chainers = new HashMap<String,SpatialClusterer>();
 		Map<String,Vector<String>> ctgMBs = new HashMap<String,Vector<String>>();
 		Map<String,Integer> counts = new HashMap<String,Integer>();
 		Vector<String> tmpMBs = null;
@@ -396,7 +396,7 @@ public class MisassemblyBreaker {
 		int left2 = 0;
 		String ctgStr = null;
 		String tmp = null;
-		PointChainer pc = null;
+		SpatialClusterer pc = null;
 		Contig ctg1 = null;
 		Contig ctg2 = null;
 		int ctgNameComp = -10;
@@ -472,7 +472,7 @@ public class MisassemblyBreaker {
 					if (chainers.containsKey(ctgStr))
 						pc = chainers.get(ctgStr);
 					else {
-						pc = new PointChainer(ctg1, ctg2);
+						pc = new SpatialClusterer(ctg1, ctg2);
 						chainers.put(ctgStr, pc);
 					}
 					pc.addMatch(left1, left2);
@@ -481,7 +481,7 @@ public class MisassemblyBreaker {
 					if (chainers.containsKey(ctgStr))
 						pc = chainers.get(ctgStr);
 					else { 
-						pc = new PointChainer(ctg2, ctg1);
+						pc = new SpatialClusterer(ctg2, ctg1);
 						chainers.put(ctgStr, pc);
 					}
 					pc.addMatch(left2, left1);
@@ -503,7 +503,7 @@ public class MisassemblyBreaker {
 				if (chainers.containsKey(ctgStr))
 					pc = chainers.get(ctgStr);
 				else { 
-					pc = new PointChainer(ctg2, ctg1);
+					pc = new SpatialClusterer(ctg2, ctg1);
 					chainers.put(ctgStr, pc);
 				}
 				if (left2 < left1) // order for consistency
@@ -539,7 +539,7 @@ public class MisassemblyBreaker {
 		System.out.println("..100%... done!... Took "+(after-before)/1000+" seconds.");
 		perc = (double) numKeep / total * 100;
 		System.out.println("[a5_qc] Keeping "+NF.format(perc)+"% ("+numKeep+"/"+total+") of reads.");
-		KClump.RDLEN = rdLen;
+		ReadCluster.RDLEN = rdLen;
 		/*
 		 * Set LAMDBA, our Poisson rate parameter. We will use this to 
 		 * compute key runtime parameters
@@ -586,7 +586,7 @@ public class MisassemblyBreaker {
 		 * LAMBDA Rate of mapping points (Poisson rate parameter)
 		 */	
 //		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
-		MAX_INTERPOINT_DIST = Math.max(KClump.RDLEN, (int) (Math.log(ALPHA)/Math.log(Math.max(1-LAMBDA,0)))-1);
+		MAX_INTERPOINT_DIST = Math.max(ReadCluster.RDLEN, (int) (Math.log(ALPHA)/Math.log(Math.max(1-LAMBDA,0)))-1);
 //		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/Math.log(1-LAMBDA));
 		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
 		//MAX_INTERPOINT_DIST = 600;
@@ -606,8 +606,8 @@ public class MisassemblyBreaker {
 //		tmp = MEAN_BLOCK_LEN - tmp;
 //		tmp = 2*tmp;
 //		MAX_INTERBLOCK_DIST = (int)tmp;
-		PointChainer.MIN_PTS = (int) (LAMBDA * MIN_BLOCK_LEN);
-		PointChainer.EPS = MAX_INTERPOINT_DIST;
+		SpatialClusterer.MIN_PTS = (int) (LAMBDA * MIN_BLOCK_LEN);
+		SpatialClusterer.EPS = MAX_INTERPOINT_DIST;
 	}
 	
 	private static void setMAXBLOCKLEN(double[][] ranges){
@@ -627,8 +627,8 @@ public class MisassemblyBreaker {
 		System.out.println("        MAX_BLOCK_LEN       = " + MAX_BLOCK_LEN);
 		System.out.println("        MAX_INTERBLOCK_DIST = " + MAX_INTERBLOCK_DIST);
 		System.out.println("        MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
-		System.out.println("        EPSILON             = " + PointChainer.EPS);
-		System.out.println("        MIN_POINTS          = " + PointChainer.MIN_PTS);
+		System.out.println("        EPSILON             = " + SpatialClusterer.EPS);
+		System.out.println("        MIN_POINTS          = " + SpatialClusterer.MIN_PTS);
 //		System.out.println("        Geometric           = " + (int)(Math.log(ALPHA)/Math.log(1-LAMBDA)));
 //		System.out.println("        Exponential         = " + (int)(Math.log(ALPHA)/-LAMBDA));
 	}
