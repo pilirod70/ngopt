@@ -6,7 +6,7 @@ import java.io.PrintStream;
 import java.util.Iterator;
 import java.util.Set;
 
-public class KClump {
+public class ReadCluster {
 	private static int COUNT = 0;
 	
 	static int RDLEN = 50;
@@ -27,7 +27,7 @@ public class KClump {
 	 * @param points the points in this KClump
 	 * @param maxResid the maximum residual for calling a point a member of this KClump
 	 */
-	public KClump(Set<MatchPoint> points){
+	public ReadCluster(Set<MatchPoint> points){
 		id = ++COUNT;
 		xMax = Integer.MIN_VALUE;
 		xMin = Integer.MAX_VALUE;

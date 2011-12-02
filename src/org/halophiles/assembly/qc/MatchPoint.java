@@ -29,7 +29,7 @@ public class MatchPoint {
 	
 	public void addNeighbor(MatchPoint p){
 		if (neighbors == null)
-			neighbors = new TreeSet<MatchPoint>(PointChainer.xSort);
+			neighbors = new TreeSet<MatchPoint>(SpatialClusterer.xSort);
 		neighbors.add(p);
 	}
 	
