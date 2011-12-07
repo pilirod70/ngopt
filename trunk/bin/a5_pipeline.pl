@@ -318,22 +318,7 @@ sub fix_read_id {
 	chomp $line;
 	$line =~ /\/(\d+)$/;
 	my $id = $1;
-	if(!defined($id)){
-		# tack on the read id to the end of each line
-		print STDERR "[a5] Adding read identifier $expected_id\n";
-		open(INFQ, $fastq);
-		open(OUTFQ, ">$fastq.fixid");
-		my $counter = -1;
-		while( my $line = <INFQ> ){
-			$counter++;
-			if($counter % 2 == 0){
-				chomp $line;
-				$line .= "\\$expected_id\n";
-			}
-			print OUTFQ $line;
-		}
-		`mv $fastq.fixid $fastq`;
-	}elsif($id != $expected_id){
+	if(defined($id) && $id != $expected_id){
 		# swap in the correct read id
 		print STDERR "[a5] Swapping read identifier from $id to $expected_id\n";
 		my $swap_cmd = "perl -p -i -e \"s/\\\/$id/\\\/$expected_id/g\" $fastq";
