@@ -2,6 +2,11 @@
 use strict;
 use warnings;
 
+if (@ARGV != 2 && @ARGV != 3){
+	print "Usage:  split_velvet_by_cov.pl <cutoff> <output_base> <fasta|stdin>\n";
+	exit;
+}
+
 my $cutoff = shift;
 my $base = shift;
 
