@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-if (@ARGV != 2 && @ARGV != 3){
+if (@ARGV != 1 && @ARGV != 2){
 	print "Usage: filter_fasta_by_len.pl <min_length> <in.fasta|stdin>\n";
 	exit;
 }
@@ -28,3 +28,6 @@ while (<>){
 	}
 }
 
+if ($len >= $cut) {
+	print  $hdr.$seq;
+} 
