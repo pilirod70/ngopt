@@ -1,18 +1,35 @@
 #summary A README for the A5 pipeline.
 
-= Introduction =
+== Quickstart ==
+
+{{{
+a5_pipeline.pl read_1.fastq read_2.fastq mygenome
+}}}
+
+This will assemble the paired reads in the two files `read_1.fastq` and `read_2.fastq`.
+The final scaffolded assembly will be saved in `mygenome.final.scaffolds.fasta`.
+
+
+== Copyright and license ==
+The A5 pipeline is (c) 2011, 2012 Andrew Tritt and Aaron Darling.
+This A5 pipeline is free, open source software licensed under the GPLv3, please see the file LICENSE for details.
+The A5 pipeline includes open-source components developed and copyright by 3rd parties: `tagdust`, `bwa`, `SGA`, `bowtie`, `IDBA`, `SSPACE`, and `samtools`. Please see their license agreements for further details.
+
+== Introduction ==
 
 _A5_ is a pipeline for assembling DNA sequence data generated on the Illumina sequencing platform. This README will take you through the steps necessary for running _A5_.
 
-= Installation =
+== Installation ==
 
-Once you have downloaded and extracted the pipeline, add `a5_pipeline.pl` to executable path. 
+Once you have downloaded and extracted the pipeline, it is sufficient to simply add the pipeline's bin/ directory to the `$PATH` environment variable:
 {{{
-ln -s bin/a5_pipeline.pl ~/bin/a5_pipeline.pl
+export PATH=$PATH:/path/to/ngopt/bin
 }}}
-Optionally, a5_pipeline.pl can be called by its full path
+Please change /path/to/ngopt/bin appropriately, and put this command in ~/.bashrc or ~/.profile or another script that gets run at login time.
+The pipeline does not need to be copied to a specific location in order to be installed. You do not need root or superuser or administrator access to install and use the pipeline with this approach.
 
-= Running =
+
+== Usage details ==
 
 {{{
 Usage: a5_pipeline.pl [--begin=1-5] [--end=1-5] [--preprocessed] <lib_file> <out_base>
@@ -51,9 +68,9 @@ assembly.out.final.scaffolds.fasta    // Final scaffolds:  Checked for misassemb
 
 If no misassemblies are detected, `assembly.out.broken.scaffolds.fasta` will not be present.
 
-=== If you are using a library file, please read the following. ===
+=== If you are using a library file, please read the following ===
 
-== Making your library file. ==
+=== Making a library file ===
 
 The library file must contain file paths to all libraries being assembled. 
 Separate libraries are delimited in the library file by `[LIB]`. 
