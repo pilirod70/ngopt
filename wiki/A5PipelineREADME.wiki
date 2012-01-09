@@ -16,11 +16,12 @@ This A5 pipeline is free, open source software licensed under the GPLv3, please 
 The A5 pipeline includes open-source components developed and copyright by 3rd parties: `tagdust`, `bwa`, `SGA`, `bowtie`, `IDBA`, `SSPACE`, and `samtools`. Please see their license agreements for further details.
 
 == Introduction ==
-
 _A5_ is a pipeline for assembling DNA sequence data generated on the Illumina sequencing platform. This README will take you through the steps necessary for running _A5_.
 
-== Installation ==
+== Requirements ==
+A5 requires 64-bit Linux (kernel 2.6.15 or later) or Mac OS X 10.6 or later. A Java Runtime Environment is also required. Mac OS X includes Java. On Linux, check with your distribution provider for details on installing Java.
 
+== Installation ==
 Once you have downloaded and extracted the pipeline, it is sufficient to simply add the pipeline's bin/ directory to the `$PATH` environment variable:
 {{{
 export PATH=$PATH:/path/to/ngopt/bin
