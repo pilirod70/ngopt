@@ -1,3 +1,8 @@
+/**
+ * This file is part of the A5 pipeline.
+ * (c) 2011, 2012 Andrew Tritt and Aaron Darling
+ * This software is licensed under the GPL, v3.0. Please see the file LICENSE for details
+ */
 package org.halophiles.assembly.qc;
 
 import java.util.Arrays;
