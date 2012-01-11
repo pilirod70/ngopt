@@ -38,9 +38,9 @@
             <fileset dir="${bin}">
 				<include name="**/org/halophiles/assembly/qc/MisassemblyBreaker*.class"/>
 				<include name="**/org/halophiles/assembly/qc/EMClusterer*.class"/>
-				<include name="**/org/halophiles/assembly/qc/KClump.class"/>
+				<include name="**/org/halophiles/assembly/qc/ReadCluster.class"/>
 				<include name="**/org/halophiles/assembly/qc/MatchBuilder*.class"/>
-				<include name="**/org/halophiles/assembly/qc/PointChainer*.class"/>
+				<include name="**/org/halophiles/assembly/qc/SpatialClusterer*.class"/>
 				<include name="**/org/halophiles/assembly/qc/MatchPoint.class"/>
 				<include name="**/org/halophiles/assembly/qc/ScaffoldExporter.class"/>
 				<include name="**/org/halophiles/assembly/Contig.class"/>
