@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
 #
 # a5 pipeline
-# (c) 2011 Andrew Tritt and Aaron Darling
-# This is free software licensed under the GPL
+# (c) 2011,2012 Andrew Tritt and Aaron Darling
+# This is free software licensed under the GPL, v3. Please see the file LICENSE for details.
 #
 # Usage: a5_pipeline <library file> <output directory or basename>
 #   Or:  a5_pipeline <fastq 1> <fastq 2> <output directory or basename>
@@ -105,7 +105,12 @@ GetOptions( 'begin=i' => \$start,
 die $usage if (@ARGV < 2);
 
 $AVAILMEM = get_availmem();
-print $AVAILMEM."\n";
+
+#
+# Check that java is available and in the path
+#
+my $java = `which java`;
+die "Unable to find a java runtime environment. The A5 pipeline requires java 6 or later. Please ensure that java is installed and in the \$PATH" unless length($java>1);
 
 my $libfile = $ARGV[0];
 my $OUTBASE = $ARGV[1];
