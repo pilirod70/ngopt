@@ -17,7 +17,14 @@ import java.util.TreeSet;
 import java.util.Vector;
 
 import org.halophiles.assembly.Contig;
-
+/**
+ * A data structure for storing match points (i.e. paired-read mapping locations)
+ * between two contigs, and additional methods for running the DBSCAN spatial clusterin
+ * algorithm.
+ * 
+ * @author Andrew Tritt
+ *
+ */
 public class SpatialClusterer {
 	
 	static double EPS;
@@ -112,7 +119,7 @@ public class SpatialClusterer {
 		return currPoints.add(new MatchPoint(x, y));
 	}
 	
-	public void buildKClumps(){
+	public void buildReadPairClusters(){
 		int win = Math.max(1000,MisassemblyBreaker.MEAN_BLOCK_LEN);
 		int[][] grid = new int[ctg1.len/win+(ctg1.len%win==0?0:1)]
 		                       [ctg2.len/win+(ctg2.len%win==0?0:1)];

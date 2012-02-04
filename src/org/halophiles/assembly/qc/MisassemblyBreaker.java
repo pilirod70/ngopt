@@ -11,7 +11,6 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.text.NumberFormat;
 import java.util.Arrays;
@@ -32,42 +31,117 @@ import org.halophiles.assembly.ReadSet;
 
 public class MisassemblyBreaker {
 	
+	/**
+	 * A Comparator for sorting blocks by right-most position
+	 */
 	private static Comparator<int[]> BLOCK_COMP = new Comparator<int[]>(){
 		public int compare(int[] arg0, int[] arg1) {
 			return arg0[1] - arg1[1];
 		}
-	};  
+	};
 	
+	/**
+	 * Used for randomly sampling the SAM file. Read in
+	 * HANDFUL_SIZE reads after each jump in the SAM file.
+	 */
 	private static final int HANDFUL_SIZE = 100;
+	
+	/**
+	 * The approximate average length of each SAM file entry
+	 */
 	private static final int SAM_LINE_LEN = 215;
+	
+	/**
+	 * The tag used in the SAM file for indicating a non-ambiguous
+	 * read mapping location. Use this to ignore reads that were
+	 * ambiguously placed.
+	 */
 	private static final String TAG_KEEP = "XT:A:U";
+	
+	/**
+	 * The Minimum number of points allowed in a Read cluster
+	 */
 	private static final int MIN_PTS = 3;
 	
+	/**
+	 * The 
+	 */
+	private static int N_ESTREADPAIRS = 100000;
 	
 	private static NumberFormat NF;
-	private static int N_ESTREADPAIRS = 100000;
+	
+	/**
+	 * Represents whether there are a significant amount of
+	 * innie read pairs
+	 */
 	private static boolean INWARD = false;
+	
+	/**
+	 * Represents whether there are a significant amount of
+	 * outie read pairs
+	 */
 	private static boolean OUTWARD = false;
+	
+	/**
+	 * Number of inward facing read pairs (innies)
+	 */
 	private static double NIN = 0;
+	
+	/**
+	 * Number of outward facing read pairs (outies)
+	 */
 	private static double NOUT = 0;
 	
 	/** error rate for estimation of maximum values */
-	private static double ALPHA = 0.001;
+	private static double ALPHA = 0.0001;
 	
-	private static double LAMBDA;
+	/**
+	 * The probability of success for the Geometric distrbution
+	 * used for modelling read mapping locations. This
+	 * is set to be the minimum non-zero mapping frequency
+	 * over windows across the genome.
+	 */
+	private static double P;
+	
+	/**
+	 * The maximum allowed distance between two mapping points
+	 */
 	public static int MAX_INTERPOINT_DIST;
+	
+	/**
+	 * The maximum allowed distance between two blocks
+	 * for calling a region with a misassembly
+	 */
 	private static int MAX_INTERBLOCK_DIST;
+	
+	/**
+	 * The expected length of blocks of over-represented
+	 * mapping locations.
+	 */
 	static int MEAN_BLOCK_LEN;
+	
+	/**
+	 * The minimum allowed length of a block for calling
+	 * significant over-representation of mapped reads.
+	 */
 	static int MIN_BLOCK_LEN;
+	
+	/**
+	 * The maximum allowed length of a block for calling
+	 * significant over-representation of mapped reads.
+	 */
 	static int MAX_BLOCK_LEN;
 	
+	/**
+	 * A Collection of data structures for each pair of contig with
+	 * paired-read connections for storing each paired-read location
+	 * and running the DBSCAN spatial clustering algorithm.
+	 */
 	private static Collection<SpatialClusterer> matches;
 	
-//	private static Map<String,int[]> points;
-	
 	public static void main(String[] args){
-		if (args.length != 5 && args.length != 4){
-			System.err.println("Usage: java -jar A5qc.jar <sam_file> <contig_file> <output_file> <num_libs>");
+		if (args.length != 4 && args.length != 3){
+			System.err.println("Usage: java -jar A5qc.jar <sam_file> <contig_file> <output_file>");
 			System.exit(-1);
 		}
 		try{
@@ -131,7 +205,7 @@ public class MisassemblyBreaker {
 				xBlocks = new Vector<int[]>();
 				// get Vector for holding contig Y blocks
 				yBlocks = new Vector<int[]>();
-				pc.buildKClumps();
+				pc.buildReadPairClusters();
 				addBlocks(pc, xBlocks, yBlocks);
 				//pc.exportCurrState(new File(matchDir,"match."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
 				removeTerminalBlocks(pc.getContig1(), xBlocks);
@@ -271,9 +345,9 @@ public class MisassemblyBreaker {
 				xBlocks.add(x);
 				yBlocks.add(y);
 			} else {
-				if (xden >= LAMBDA)
+				if (xden >= P)
 					System.out.print("");
-				if (yden >= LAMBDA)
+				if (yden >= P)
 					System.out.print("");
 			}
 		}
@@ -549,14 +623,14 @@ public class MisassemblyBreaker {
 		 * Set LAMDBA, our Poisson rate parameter. We will use this to 
 		 * compute key runtime parameters
 		 */
-		LAMBDA = Double.POSITIVE_INFINITY;
+		P = Double.POSITIVE_INFINITY;
 		for (int i = 0; i < readCounts[1].length; i++){
 			if (readCounts[1][i] == 0)
 				continue;
-			if (LAMBDA > readCounts[1][i])
-				LAMBDA = readCounts[1][i];
+			if (P > readCounts[1][i])
+				P = readCounts[1][i];
 		}
-		LAMBDA = LAMBDA/windowLen;
+		P = P/windowLen;
 		
 		Iterator<String> ctgIt = ctgMBs.keySet().iterator();
 		Set<String> ctgToRm = new HashSet<String>();
@@ -590,11 +664,8 @@ public class MisassemblyBreaker {
 		 *
 		 * LAMBDA Rate of mapping points (Poisson rate parameter)
 		 */	
-//		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/(-LAMBDA));
-		MAX_INTERPOINT_DIST = Math.max(ReadCluster.RDLEN, (int) (Math.log(ALPHA)/Math.log(Math.max(1-LAMBDA,0)))-1);
-//		MAX_INTERPOINT_DIST = (int) (Math.log(ALPHA)/Math.log(1-LAMBDA));
+		MAX_INTERPOINT_DIST = Math.max(ReadCluster.RDLEN, (int) (Math.log(ALPHA)/Math.log(Math.max(1-P,0)))-1);
 		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
-		//MAX_INTERPOINT_DIST = 600;
 		/*
 		 * apply some extreme value theory to get the minimum of points 
 		 * randomly sampled uniformally across an interval of MAX_BLOCK_LEN
@@ -602,16 +673,9 @@ public class MisassemblyBreaker {
 		 * MAX_INTERBLOCK_DIST = 2*((1-ALPHA)^(1/EXP_POINTS) * MAX_BLOCK_LEN)
 		 * 
 		 */
-		MAX_INTERBLOCK_DIST = (int)(2*(Math.pow(1-ALPHA, 1/(LAMBDA*MEAN_BLOCK_LEN))*MEAN_BLOCK_LEN-1));
+		MAX_INTERBLOCK_DIST = (int)(2*(Math.pow(1-ALPHA, 1/(P*MEAN_BLOCK_LEN))*MEAN_BLOCK_LEN-1));
 		MAX_INTERBLOCK_DIST = 2*MEAN_BLOCK_LEN;
-//		double tmp = Math.pow(1-ALPHA, 1/(LAMBDA*MEAN_BLOCK_LEN));
-//		tmp = 1 - tmp;
-//		tmp = tmp*MEAN_BLOCK_LEN;
-//		tmp = tmp - 1;
-//		tmp = MEAN_BLOCK_LEN - tmp;
-//		tmp = 2*tmp;
-//		MAX_INTERBLOCK_DIST = (int)tmp;
-		SpatialClusterer.MIN_PTS = (int) (LAMBDA * MIN_BLOCK_LEN);
+		SpatialClusterer.MIN_PTS = (int) (P * MIN_BLOCK_LEN);
 		SpatialClusterer.EPS = MAX_INTERPOINT_DIST;
 	}
 	
@@ -626,7 +690,7 @@ public class MisassemblyBreaker {
 	
 	private static void printParams(){
 		System.out.println("[a5_qc] parameters:");
-		System.out.println("        LAMBDA              = " + LAMBDA);
+		System.out.println("        P                   = " + P);
 		System.out.println("        MIN_BLOCK_LEN       = " + MIN_BLOCK_LEN);
 		System.out.println("        MEAN_BLOCK_LEN      = " + MEAN_BLOCK_LEN);
 		System.out.println("        MAX_BLOCK_LEN       = " + MAX_BLOCK_LEN);
@@ -677,7 +741,8 @@ public class MisassemblyBreaker {
 	 * @return an array or arrays, where individual arrays contain ReadSet stats
 	 */
 	private static double[][] getLibraryStats(Map<String,ReadPair> reads, int numLibs){
-		int K = numLibs+1;
+		int maxK = 20;
+		double delta = 0.00005;
 		Vector<ReadPair> toFilt = new Vector<ReadPair>();
 		Iterator<ReadPair> rpIt = reads.values().iterator();
 		ReadPair tmp = null;
@@ -688,19 +753,26 @@ public class MisassemblyBreaker {
 		}
 		// estimate initial insert size to determine if we should look for shadow library.
 		double[] ins = ReadPair.estimateInsertSize(reads.values());
-		System.out.println("[a5_qc] Initial stats for sample: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
-		System.out.print("[a5_qc] EM-clustering insert sizes with K="+K+"... ");
-		/* begin: cluster read pairs by insert size so we can efficiently determine the insert size of this library */
-		EMClusterer em = new EMClusterer(toFilt, K);
-		long before = System.currentTimeMillis();
-		double delta = 0.00005;
-		int iters = em.iterate(1000, delta);
-		long after = System.currentTimeMillis();
-		System.out.println("stopping after "+iters+" iterations with delta="+delta+". Took "+(after-before)/1000+" seconds.");
-		ReadSet[] clusters = new ReadSet[K];
-		em.getClusters().toArray(clusters);
+		int bestModel = 0;
+		EMClusterer[] models = new EMClusterer[maxK];
+		models[0] = runEM(toFilt, 2, delta);
+		double maxL = models[0].likelihood();
+		double prevL = maxL;
+		int numWorseSteps = 0;
+		for (int i = 1; i < maxK && numWorseSteps < 3; i++){
+			models[i] = runEM(toFilt, i+2, delta);
+			if (models[i].likelihood() > maxL){
+				bestModel = i;
+				maxL = models[i].likelihood();
+			}
+			if (prevL > models[i].likelihood())
+				numWorseSteps++;
+			
+		}
 		/* end: cluster read pairs  */
-		
+		System.out.println("[a5_qc] Found "+(bestModel+1)+" clusters.");
+		ReadSet[] clusters = new ReadSet[models[bestModel].getClusters().size()];
+		models[bestModel].getClusters().toArray(clusters);
 		// sort clusters so we can keep the top numLibs underdispersed clusters
 		Arrays.sort(clusters,new Comparator<ReadSet>(){
 			public int compare(ReadSet x, ReadSet y) {
@@ -785,6 +857,18 @@ public class MisassemblyBreaker {
 		System.out.println("[a5_qc] Final stats for sample after filtering: mu="+NF.format(ins[0])+" sd="+NF.format(ins[1])+" n="+NF.format(ins[2]));
 		
 		return ret;
+	}
+	
+	private static EMClusterer runEM(Collection<ReadPair> toFilt, int K, double delta){
+		System.out.print("[a5_qc] EM-clustering insert sizes with K="+K+"... ");
+		/* begin: cluster read pairs by insert size so we can efficiently determine the insert size of this library */
+		EMClusterer em = new EMClusterer(toFilt, K);
+		long before = System.currentTimeMillis();
+		int iters = em.iterate(1000, delta);
+		long after = System.currentTimeMillis();
+		double LK3 = em.likelihood();
+		System.out.println("stopping after "+iters+" iterations with delta="+delta+". L = "+LK3+". Took "+(after-before)/1000+" seconds.");
+		return em;
 	}
 	
 	/**
