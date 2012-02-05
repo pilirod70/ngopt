@@ -69,11 +69,6 @@ public class EMClusterer {
 	 */
 	private double L;
 	
-	/**
-	 * The log-likelihood of the previous state.
-	 */
-	private double L_last;
-	
 	public EMClusterer(Collection<ReadPair> reads, int k){
 		rand = new Random(SEED++);
 		this.reads = new ReadPair[reads.size()];
@@ -148,7 +143,6 @@ public class EMClusterer {
 	private void expect(){
 		double U = 0;
 		int next = 0;
-		L_last = L;
 		L = 0.0;
 		for (int i = 0; i < reads.length; i++){
 			U = rand.nextDouble();

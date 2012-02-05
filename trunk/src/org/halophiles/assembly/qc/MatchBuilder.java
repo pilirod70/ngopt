@@ -14,6 +14,11 @@ import java.util.TreeSet;
 
 import org.halophiles.assembly.Contig;
 
+/**
+ * A deprecated class
+ * @author ajtritt
+ * @deprecated
+ */
 public class MatchBuilder {
 	// a comparator for sorting reads by position
 	private static final Comparator<int[]> COMP = new Comparator<int[]>(){
