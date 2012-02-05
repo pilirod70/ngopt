@@ -64,7 +64,7 @@ public class MisassemblyBreaker {
 	private static final int MIN_PTS = 3;
 	
 	/**
-	 * The 
+	 * The maximum number of ReadPairs to sample for insert size calculations
 	 */
 	private static int N_ESTREADPAIRS = 100000;
 	
@@ -318,8 +318,14 @@ public class MisassemblyBreaker {
 		}
 	}
 	
-	private static void addBlocks(SpatialClusterer pc, Vector<int[]> xBlocks, Vector<int[]> yBlocks) throws IOException {
-		ReadCluster[] kclumps = pc.getKClumps();
+	/**
+	 * Identify and add significant blocks resulting from spatial clustering of read pairs.
+	 * @param sc the SpatialClusterer to get blocks from
+	 * @param xBlocks the Collection of blocks for Contig 1 (aka the x Contig)
+	 * @param yBlocks the Collection of blocks for Contig 2 (aka the y Contig)
+	 */
+	private static void addBlocks(SpatialClusterer sc, Vector<int[]> xBlocks, Vector<int[]> yBlocks){
+		ReadCluster[] kclumps = sc.getReadClusters();
 		int xlen = 0;
 		int ylen = 0;
 		int[] x = null;
@@ -352,7 +358,11 @@ public class MisassemblyBreaker {
 			}
 		}
 	}
-	
+	/**
+	 * Remove blocks at the end of the given Contig
+	 * @param contig the Contig the given blocks correspond to.
+	 * @param blocks the Collection of blocks to filter
+	 */
 	private static void removeTerminalBlocks(Contig contig, Vector<int[]> blocks){
 		int i = 0;
 		while (i < blocks.size()){
@@ -388,7 +398,11 @@ public class MisassemblyBreaker {
 				i++;
 		}
 	}
-	
+	/**
+	 * Return true if the given character represents a non-ambiguity code.
+	 * @param c
+	 * @return
+	 */
 	private static boolean isNuc(char c){
 		switch (c) {
 			case 'a': return true;
@@ -420,8 +434,9 @@ public class MisassemblyBreaker {
 		for (int i = 0; i < ranges.length; i++)
 			System.out.println("[a5_qc] Filtering read pairs with inserts between "+
 					NF.format(ranges[i][0])+"-"+NF.format(ranges[i][1]));
-		Map<String,SpatialClusterer> chainers = new HashMap<String,SpatialClusterer>();
-		Map<String,Vector<String>> ctgMBs = new HashMap<String,Vector<String>>();
+		Map<String,SpatialClusterer> clusterers = new HashMap<String,SpatialClusterer>();
+		/* Keep track of all clusterers that each contig is associated with.*/
+		Map<String,Vector<String>> ctgClusterers = new HashMap<String,Vector<String>>();
 		Map<String,Integer> counts = new HashMap<String,Integer>();
 		Vector<String> tmpMBs = null;
 
@@ -548,20 +563,20 @@ public class MisassemblyBreaker {
 			if (ctgNameComp != 0){
 				if (ctgNameComp < 0){
 					ctgStr = line1[2]+"-"+line2[2];
-					if (chainers.containsKey(ctgStr))
-						pc = chainers.get(ctgStr);
+					if (clusterers.containsKey(ctgStr))
+						pc = clusterers.get(ctgStr);
 					else {
 						pc = new SpatialClusterer(ctg1, ctg2);
-						chainers.put(ctgStr, pc);
+						clusterers.put(ctgStr, pc);
 					}
 					pc.addMatch(left1, left2);
 				} else {
 					ctgStr = line2[2]+"-"+line1[2];
-					if (chainers.containsKey(ctgStr))
-						pc = chainers.get(ctgStr);
+					if (clusterers.containsKey(ctgStr))
+						pc = clusterers.get(ctgStr);
 					else { 
 						pc = new SpatialClusterer(ctg2, ctg1);
-						chainers.put(ctgStr, pc);
+						clusterers.put(ctgStr, pc);
 					}
 					pc.addMatch(left2, left1);
 				}
@@ -579,11 +594,11 @@ public class MisassemblyBreaker {
 						continue;
 				
 				ctgStr = line2[2]+"-"+line1[2];
-				if (chainers.containsKey(ctgStr))
-					pc = chainers.get(ctgStr);
+				if (clusterers.containsKey(ctgStr))
+					pc = clusterers.get(ctgStr);
 				else { 
 					pc = new SpatialClusterer(ctg2, ctg1);
-					chainers.put(ctgStr, pc);
+					clusterers.put(ctgStr, pc);
 				}
 				if (left2 < left1) // order for consistency
 					pc.addMatch(left2, left1);
@@ -597,19 +612,19 @@ public class MisassemblyBreaker {
 				
 			}
 			// add point for contig1, and keep track of which MatchBuilders are associated with contig1
-			if (ctgMBs.containsKey(ctg1.name)){
-				tmpMBs = ctgMBs.get(ctg1.name);
+			if (ctgClusterers.containsKey(ctg1.name)){
+				tmpMBs = ctgClusterers.get(ctg1.name);
 			} else {
 				tmpMBs = new Vector<String>();
-				ctgMBs.put(ctg1.name, tmpMBs);
+				ctgClusterers.put(ctg1.name, tmpMBs);
 			}
 			tmpMBs.add(ctgStr);
 			// add point for contig2, and keep track of which MatchBuilders are associated with contig2
-			if (ctgMBs.containsKey(ctg2.name)){
-				tmpMBs = ctgMBs.get(ctg2.name);
+			if (ctgClusterers.containsKey(ctg2.name)){
+				tmpMBs = ctgClusterers.get(ctg2.name);
 			} else {
 				tmpMBs = new Vector<String>();
-				ctgMBs.put(ctg2.name, tmpMBs);
+				ctgClusterers.put(ctg2.name, tmpMBs);
 			}
 			tmpMBs.add(ctgStr);
 			numKeep++;
@@ -632,20 +647,20 @@ public class MisassemblyBreaker {
 		}
 		P = P/windowLen;
 		
-		Iterator<String> ctgIt = ctgMBs.keySet().iterator();
+		Iterator<String> ctgIt = ctgClusterers.keySet().iterator();
 		Set<String> ctgToRm = new HashSet<String>();
 		Set<String> psPairsToRm = new HashSet<String>();
 		while(ctgIt.hasNext()){
 			tmp = ctgIt.next();
 			if (counts.get(tmp) < MIN_PTS) {
 				ctgToRm.add(tmp);
-				psPairsToRm.addAll(ctgMBs.get(tmp));
+				psPairsToRm.addAll(ctgClusterers.get(tmp));
 			} 
 		}
 		removeKeys(ctgs, ctgToRm);
-		removeKeys(chainers, psPairsToRm);
+		removeKeys(clusterers, psPairsToRm);
 	
-		matches = chainers.values();
+		matches = clusterers.values();
 	}
 	
 	/**
@@ -679,15 +694,21 @@ public class MisassemblyBreaker {
 		SpatialClusterer.EPS = MAX_INTERPOINT_DIST;
 	}
 	
-	private static void setMAXBLOCKLEN(double[][] ranges){
-		for (double[] cluster: ranges){
+	/**
+	 * Compute the maximum allowed block length.
+	 * @param clusterStats an array of arrays with each cluster's statistics (mean, sd, n, numSd)
+	 */
+	private static void setMAXBLOCKLEN(double[][] clusterStats){
+		for (double[] cluster: clusterStats){
 			if (cluster[0] > MEAN_BLOCK_LEN){
 				MEAN_BLOCK_LEN = (int) (cluster[0]);
 				MAX_BLOCK_LEN = (int) (cluster[0]+cluster[1]*cluster[3]);
 			}
 		}
 	}
-	
+	/**
+	 * Print the values of major parameters
+	 */
 	private static void printParams(){
 		System.out.println("[a5_qc] parameters:");
 		System.out.println("        P                   = " + P);
@@ -698,10 +719,12 @@ public class MisassemblyBreaker {
 		System.out.println("        MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
 		System.out.println("        EPSILON             = " + SpatialClusterer.EPS);
 		System.out.println("        MIN_POINTS          = " + SpatialClusterer.MIN_PTS);
-//		System.out.println("        Geometric           = " + (int)(Math.log(ALPHA)/Math.log(1-LAMBDA)));
-//		System.out.println("        Exponential         = " + (int)(Math.log(ALPHA)/-LAMBDA));
 	}
 	
+	/**
+	 * Identify if we have innies and/or outies in this set.
+	 * @param reads
+	 */
 	private static void setOrientation(Collection<ReadPair> reads){
 		NIN = 0;
 		NOUT = 0;
@@ -858,7 +881,13 @@ public class MisassemblyBreaker {
 		
 		return ret;
 	}
-	
+	/**
+	 * Run the EM-clustering algorithm with the given number of clusters
+	 * @param toFilt the ReadPairs to cluster
+	 * @param K the number of clusters to partition <code>toFilt</code> into
+	 * @param delta the threshold for determining convergence of the algorithm
+	 * @return the EMClusterer object used to run the algorithm
+	 */
 	private static EMClusterer runEM(Collection<ReadPair> toFilt, int K, double delta){
 		System.out.print("[a5_qc] EM-clustering insert sizes with K="+K+"... ");
 		/* begin: cluster read pairs by insert size so we can efficiently determine the insert size of this library */
@@ -978,8 +1007,8 @@ public class MisassemblyBreaker {
 	}	
 	
 	/**
-	 * A class for reading a SAM file via random access. 
-	 * @author andrew
+	 * A class for reading and sampling readpairs from a SAM file via random access. 
+	 * @author Andrew Tritt
 	 *
 	 */
 	private static class EfficientSAMFileSampler {
@@ -1049,7 +1078,14 @@ public class MisassemblyBreaker {
 			tokLeft = tok.countTokens()-1;
 		}
 	}
-	
+	/**
+	 * Return true of the next character in this RandomAccessFile is equal 
+	 * to the given character <code>c</code>
+	 * @param raf the RandomAccessFile to check
+	 * @param c the character value to check against
+	 * @return true if the next character in <code>raf</code> is equal to <code>c</code>
+	 * @throws IOException if an I/O error occurs while trying to read from the given RandomAccessFIle
+	 */
 	private static boolean nextCharIs(RandomAccessFile raf, char c) throws IOException{
 		char next = (char) raf.read();
 		raf.seek(raf.getFilePointer()-1);
@@ -1066,7 +1102,9 @@ public class MisassemblyBreaker {
 		br.reset();
 		return ret;
 	}	
-
+	/**
+	 * Pad String <code>s</code> with <code>len</code> spaces on the right.
+	 */
 	private static String pad(String s, int len){
 		String ret = new String(s);
 		for (int i = 0; i < len-s.length(); i++){
@@ -1082,7 +1120,6 @@ public class MisassemblyBreaker {
 	 */
 	private static int cigarLength(String cig){
 		StringTokenizer tok = new StringTokenizer(cig, "MIDNSHP", true);
-		int totalLen = 0;
 		int alignLen = 0;
 		while (tok.hasMoreTokens()){
 			int len = Integer.parseInt(tok.nextToken());
@@ -1090,8 +1127,6 @@ public class MisassemblyBreaker {
 			if (op == 'M'){
 				alignLen += len;
 			}
-			if (op != 'I')
-				totalLen += len;
 		}
 		return alignLen;
 	}
@@ -1118,10 +1153,12 @@ public class MisassemblyBreaker {
 	   }
 	   return mod;  
 	}
-	
+	/**
+	 * Strip the pair number off a fastq header
+	 */
 	private static String trimPairNumber(String s){
 		if (s.contains("/")){
-			return s.substring(0,s.indexOf("/"));
+			return s.substring(0,s.lastIndexOf("/"));
 		} else
 			return s;
 	}

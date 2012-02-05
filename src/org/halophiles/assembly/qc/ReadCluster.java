@@ -15,15 +15,31 @@ public class ReadCluster {
 	private static int COUNT = 0;
 	
 	static int RDLEN = 50;
-	
+	/**
+	 * The max MatchPoint location on the x Contig (aka Contig 1)
+	 */
 	int xMax;
+	/**
+	 * The min MatchPoint location on the x Contig (aka Contig 1)
+	 */
 	int xMin;
+	/**
+	 * The max MatchPoint location on the y Contig (aka Contig 2)
+	 */
 	int yMax;
+	/**
+	 * The min MatchPoint location on the y Contig (aka Contig 2)
+	 */
 	int yMin;
 	
-	
+	/**
+	 * The set of MatchPoints comprising this ReadCluster
+	 */
 	private Set<MatchPoint> points;
 	
+	/**
+	 * The uniqe id assigned to this ReadCluster
+	 */
 	final int id;
 	
 	/**
@@ -73,16 +89,24 @@ public class ReadCluster {
 		return points;
 	}
 	
+	/**
+	 * Returns a hash code for this ReadCluster. Just returns the unique id assigned to this
+	 * ReadCluster.
+	 */
 	public int hashCode(){
 		return id;
 	}
 	
+	/**
+	 * Return a String representation of this ReadCluster in the form:</br>
+	 * <code>xMin-xMax <-> yMin-yMax</code>
+	 */
 	public String toString(){
 		return xMin+"-"+xMax +" <-> "+yMin+"-"+yMax;
 	}
 	
 	/**
-	 * Prints this KClump to the given file
+	 * Prints this ReadCluster to the given file
 	 * 
 	 * @param file
 	 * @throws IOException
@@ -98,7 +122,4 @@ public class ReadCluster {
 		out.close();
 	}
 	
-	public double density(){
-		return points.size()/((double)(xMax-xMin)*(yMax-yMin));
-	}
 }
