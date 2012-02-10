@@ -765,7 +765,7 @@ public class MisassemblyBreaker {
 	 */
 	private static double[][] getLibraryStats(Map<String,ReadPair> reads, int numLibs){
 		int maxK = 20;
-		double delta = 0.00005;
+		double delta = 0.00000005;
 		Vector<ReadPair> toFilt = new Vector<ReadPair>();
 		Iterator<ReadPair> rpIt = reads.values().iterator();
 		ReadPair tmp = null;
@@ -976,8 +976,8 @@ public class MisassemblyBreaker {
 			boolean rev2 = isReverse(line2[1]);
 			
 			if (contigs.get(line1[2]).equals(contigs.get(line2[2])) && rev1 != rev2 &&
-					// require this mapping to be unique. 
-					line1[11].equals(TAG_KEEP) && line2[11].equals(TAG_KEEP)){
+					// If this information is present, require this mapping to be unique. 
+					(line1.length > 11 && line2.length > 11)&& line1[11].equals(TAG_KEEP) && line2[11].equals(TAG_KEEP)){
 				if (left1 < left2){
 					if (rev1){
 						contigs.get(line1[2]).addOut();
@@ -1046,7 +1046,7 @@ public class MisassemblyBreaker {
 			String[] line2 = tok.nextToken().split("\t");
 			tokLeft -= 2;
 			// get to the first read in a pair 
-			while (!line1[0].equals(line2[0]) && tok.hasMoreTokens()){
+			while (!line1[0].equals(line2[0]) && line1.length < 12 && line2.length < 12 && tok.hasMoreTokens()){
 				line1 = line2;
 				line2 = tok.nextToken().split("\t");
 				tokLeft--;
