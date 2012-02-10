@@ -110,7 +110,7 @@ $AVAILMEM = get_availmem();
 # Check that java is available and in the path
 #
 my $java = `which java`;
-die "Unable to find a java runtime environment. The A5 pipeline requires java 6 or later. Please ensure that java is installed and in the \$PATH" unless length($java>1);
+die "Unable to find a java runtime environment. The A5 pipeline requires java 6 or later. Please ensure that java is installed and in the \$PATH" unless length($java)>1;
 
 my $libfile = $ARGV[0];
 my $OUTBASE = $ARGV[1];
