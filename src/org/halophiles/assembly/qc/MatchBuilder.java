@@ -17,7 +17,7 @@ import org.halophiles.assembly.Contig;
 /**
  * A deprecated class
  * @author ajtritt
- * @deprecated
+ * @deprecated See SpatialCluster.java
  */
 public class MatchBuilder {
 	// a comparator for sorting reads by position
