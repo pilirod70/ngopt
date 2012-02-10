@@ -338,13 +338,35 @@ sub fix_read_id {
 sub qfilter_paired_easy {
 	my $r1file = shift;
 	my $r2file = shift;
+	my $r1file_in = $r1file;
+	my $r2file_in = $r2file;
+	my $r1file_out = "$r1file.pp";
+	my $r2file_out = "$r2file.pp";
+	
+	# check if the input files are zipped, and unzip if so
+	my $r1file_type = `file $r1file`;
+	if ($r1file_type =~ /gzip/){
+		$r1file_in = "$r1file.unzipped";
+		`gunzip -c $r1file > $r1file_in`;
+	} elsif ($r1file_type =~ /bzip2/) {
+		$r1file_in = "$r1file.unzipped";
+		`bunzip2 -c $r1file > $r1file_in`;
+	}
+	my $r2file_type = `file $r2file`;
+	if ($r2file_type =~ /gzip/){
+		$r2file_in = "$r2file.unzipped";
+		`gunzip -c $r2file > $r2file_in`;
+	} elsif ($r2file_type =~ /bzip2/) {
+		$r2file_in = "$r2file.unzipped";
+		`bunzip2 -c $r2file > $r2file_in`;
+	}
 
 	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
-	$cmd .= "--phred64 " if (get_phred64($r1file));
-	$cmd .= " $r1file $r2file";
+	$cmd .= "--phred64 " if (get_phred64($r1file_in));
+	$cmd .= " $r1file_in $r2file_in";
 	print STDERR "[a5] $cmd\n";
-	open(R1OUT, ">$r1file.pp");
-	open(R2OUT, ">$r2file.pp");
+	open(R1OUT, ">$r1file_out");
+	open(R2OUT, ">$r2file_out");
 	open(PPPIPE, "$DIR/$cmd |");
 	my $lc = -1;
 	while( my $line = <PPPIPE> ){
@@ -352,6 +374,9 @@ sub qfilter_paired_easy {
 		print R1OUT $line if( $lc % 8 < 4 );
 		print R2OUT $line if( $lc % 8 >= 4 );
 	}
+	# if we had to unzip files, remove the unzipped files to save space
+	`rm $r1file_in` if ($r1file_in =~ /.*\.unzipped/);
+	`rm $r2file_in` if ($r2file_in =~ /.*\.unzipped/);
 }
 #
 # does paired-end read filtering with SGA, discards unpaired reads
@@ -362,12 +387,34 @@ sub qfilter_correct_tagdust_paired {
 	my $t = shift;
 	my $lib = shift;
 
+
 	# quality filter
+	# first check if the input files are zipped, and unzip if so
+	my $r1file_in = $r1file;
+	my $r2file_in = $r2file;
+	my $r1file_type = `file $r1file`;
+	if ($r1file_type =~ /gzip/){
+		$r1file_in = "$r1file.unzipped";
+		`gunzip -c $r1file > $r1file_in`;
+	} elsif ($r1file_type =~ /bzip2/) {
+		$r1file_in = "$r1file.unzipped";
+		`bunzip2 -c $r1file > $r1file_in`;
+	}
+	my $r2file_type = `file $r2file`;
+	if ($r2file_type =~ /gzip/){
+		$r2file_in = "$r2file.unzipped";
+		`gunzip -c $r2file > $r2file_in`;
+	} elsif ($r2file_type =~ /bzip2/) {
+		$r2file_in = "$r2file.unzipped";
+		`bunzip2 -c $r2file > $r2file_in`;
+	}
 	my $pp_cmd = "$DIR/sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
-	$pp_cmd .= "--phred64 " if (get_phred64($r1file));
-	$pp_cmd .= " $r1file $r2file > $r1file.both.pp";
+	$pp_cmd .= "--phred64 " if (get_phred64($r1file_in));
+	$pp_cmd .= " $r1file_in $r2file_in > $r1file.both.pp";
 	print STDERR "[a5] $pp_cmd\n";
 	system($pp_cmd);
+	system("rm $r1file_in") if ($r1file_in =~ /.*\.unzipped/); # clear up some disk space
+	system("rm $r2file_in") if ($r2file_in =~ /.*\.unzipped/); # clear up some disk space
 
 	# error correct
 	my $ec_cmd = "$DIR/sga correct -t $t -p $OUTBASE.pp -o $r1file.both.pp.ec.fastq $r1file.both.pp > $WD/$lib.correct.out";
