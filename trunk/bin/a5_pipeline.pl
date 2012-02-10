@@ -346,19 +346,27 @@ sub qfilter_paired_easy {
 	# check if the input files are zipped, and unzip if so
 	my $r1file_type = `file $r1file`;
 	if ($r1file_type =~ /gzip/){
+		print STDERR "[a5] $r1file is gzipped\n";
 		$r1file_in = "$r1file.unzipped";
 		`gunzip -c $r1file > $r1file_in`;
 	} elsif ($r1file_type =~ /bzip2/) {
+		print STDERR "[a5] $r1file is bzipped\n";
 		$r1file_in = "$r1file.unzipped";
 		`bunzip2 -c $r1file > $r1file_in`;
+	} else {
+		print STDERR "$r1file is of the following type: $r1file_type\n";
 	}
 	my $r2file_type = `file $r2file`;
 	if ($r2file_type =~ /gzip/){
+		print STDERR "[a5] $r2file is gzipped\n";
 		$r2file_in = "$r2file.unzipped";
 		`gunzip -c $r2file > $r2file_in`;
 	} elsif ($r2file_type =~ /bzip2/) {
+		print STDERR "[a5] $r2file is bzipped\n";
 		$r2file_in = "$r2file.unzipped";
 		`bunzip2 -c $r2file > $r2file_in`;
+	} else {
+		print STDERR "$r2file is of the following type: $r1file_type\n";
 	}
 
 	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
@@ -499,13 +507,13 @@ sub sga_clean {
 	my $tail_file = "";
 	for my $lib (keys %libs) {
 		if (defined($libs{$lib}{"p1"})) {
-			my $fq1 = $libs{$lib}{"p1"}; 
-			my $fq2 = $libs{$lib}{"p2"}; 
+			my $fq1 = check_and_unzip($libs{$lib}{"p1"}); 
+			my $fq2 = check_and_unzip($libs{$lib}{"p2"}); 
 			$tail_file = $fq1 unless length($tail_file);
 			$files .= "$fq1 $fq2 ";
 		}
 		if (defined($libs{$lib}{"up"})){
-			my $up = $libs{$lib}{"up"}; 
+			my $up = check_and_unzip($libs{$lib}{"up"}); 
 			$tail_file = $up unless length($tail_file);
 			$files .= "$up ";
 		}
@@ -558,6 +566,20 @@ sub sga_clean {
 	
 	die "[a5] Error correcting reads with SGA\n" if( $? != 0 );
 	return $ec_file;
+}
+
+sub check_and_unzip {
+	my $file = shift;
+	my $file_type = `file $file`;
+	my $ret = $file;
+	if ($file_type =~ /gzip/){
+		$ret = "$file.unzipped";
+		`gunzip -c $file > $ret`;
+	} elsif ($file_type =~ /bzip2/) {
+		$ret = "$file.unzipped";
+		`bunzip2 -c $file > $ret`;
+	}
+	return $ret;
 }
 
 sub map_all_libs {
