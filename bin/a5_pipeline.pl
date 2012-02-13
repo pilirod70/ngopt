@@ -135,6 +135,7 @@ if(@ARGV==3){
 
 my $DIR = dirname(abs_path($0));
 my $TIME = "/usr/bin/time ";
+my $UNZIP_EXT = "a5unzipped";
 my %RAW_LIBS = read_lib_file($libfile);
 print STDERR "[a5] Found the following libraries:\n";
 print_lib_info(\%RAW_LIBS);
@@ -215,6 +216,12 @@ if (!$preproc || $start <= 2){
 	%PAIR_LIBS = preprocess_libs(\%RAW_LIBS,"$OUTBASE.contigs.fasta");
 	print STDERR "[a5] Processed libraries:\n";
 	print_lib_info(\%PAIR_LIBS);
+	# clean up any files we unzipped files if the raw input was compressed
+	my @unzipped = glob("*.$UNZIP_EXT");
+	for my $file (@unzipped){
+		print STDERR "[a5] Removing unzipped file $file\n";
+		`rm $file`;
+	}
 } else {
 	print STDERR "[a5] Libraries already preprocessed\n" if ($preproc);
 	%PAIR_LIBS = %RAW_LIBS;
@@ -543,10 +550,10 @@ sub check_and_unzip {
 	my $file_type = `file $file`;
 	my $ret = $file;
 	if ($file_type =~ /gzip/){
-		$ret = "$file.unzipped";
+		$ret = "$file.$UNZIP_EXT";
 		`gunzip -c $file > $ret`;
 	} elsif ($file_type =~ /bzip2/) {
-		$ret = "$file.unzipped";
+		$ret = "$file.$UNZIP_EXT";
 		`bunzip2 -c $file > $ret`;
 	}
 	return $ret;
