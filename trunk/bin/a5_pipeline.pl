@@ -132,9 +132,27 @@ if(@ARGV==3){
 	$libfile = $ARGV[0];
 	$OUTBASE = $ARGV[1];
 }
+my $start_millis = time();
+my @start_date = localtime();
+$start_date[5] += 1900;	
+print STDERR "[a5] Begin: $start_date[2]:$start_date[1] on $start_date[4]-$start_date[3]-$start_date[5]\n";
 
 my $DIR = dirname(abs_path($0));
-my $TIME = "/usr/bin/time ";
+# Format for output of time resource statistics
+my $TIME_FMT = "###PROCESS\n".
+               "%C\n".
+               "###\n".
+               "%Uuser %Ssystem %Eelapsed %PCPU (%Xtext+%Ddata %Mmax)k\n".
+               "%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps";
+my $STAT_FILE = "$OUTBASE.res_stat";
+my $TIME = "/usr/bin/time -o $STAT_FILE -a -f $TIME_FMT ";
+if ($debug){
+	open(FILE,">>$STAT_FILE");
+	print FILE "BEGIN A5 PIPELINE: $start_date[2]:$start_date[1] on $start_date[4]-$start_date[3]-$start_date[5]\n";
+	close FILE;
+}
+
+# An extension to give unzipped files.
 my $UNZIP_EXT = "a5unzipped";
 my %RAW_LIBS = read_lib_file($libfile);
 print STDERR "[a5] Found the following libraries:\n";
@@ -282,8 +300,22 @@ if ($end == 5){
 	print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
 }
 
-
-
+my $end_millis = time();
+my $diff = $end_millis - $start_millis;
+$diff = int($diff/1000);
+my $hrs = int($diff/3600);
+my $min = int(($diff % 3600)/60);
+my $sec = int($diff % 60);
+my @end_date = localtime();
+$end_date[5] += 1900;	
+print STDERR "[a5] Finish:  $end_date[2]:$end_date[1] $end_date[4]-$end_date[3]-$end_date[5]\n";
+print STDERR "[a5] Took $hrs:$min:$sec to complete\n";
+if ($debug){
+	open(FILE,">>$STAT_FILE");
+	print FILE "END A5 PIPELINE: $end_date[2]:$end_date[1] on $end_date[4]-$end_date[3]-$end_date[5]\n";
+	print FILE "TOTAL WALL CLOCK RUNTIME: $hrs:$min:$sec\n";
+	close FILE;
+}
 
 
 #
