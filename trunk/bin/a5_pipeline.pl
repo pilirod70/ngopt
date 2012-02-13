@@ -74,12 +74,13 @@ use constant {
 	SGA_MIN_READ_LENGTH => 29,
 };
 
+
 my $AVAILMEM = 4000000;
 my $def_up_id="upReads";
 my @KEYS = ("id","p1","p2","shuf","up","rc","ins","err","nlibs","libfile");
 my $pname = basename($0);
 my $usage= qq{
-Usage: $pname [--begin=1-5] [--end=1-5] [--preprocessed] <lib_file> <out_base>
+Usage: $pname [--begin=1-5] [--end=1-5] [--preprocessed] [--debug] <lib_file> <out_base>
 
 Or: $pname <Read 1 FastQ> <Read 2 FastQ> <out_base>
 
@@ -98,14 +99,16 @@ Getopt::Long::Configure(qw{no_auto_abbrev no_ignore_case_always pass_through});
 my $start = 1;
 my $end = 5;
 my $preproc = 0;
+my $debug = 0;
 GetOptions( 'begin=i' => \$start,
             'end=i' => \$end,
-			'preprocessed' => \$preproc);
+			'preprocessed' => \$preproc,
+			'debug' => \$debug);
 
 die $usage if (@ARGV < 2);
 
 $AVAILMEM = get_availmem();
-
+print $AVAILMEM."\n";
 #
 # Check that java is available and in the path
 #
@@ -131,11 +134,13 @@ if(@ARGV==3){
 }
 
 my $DIR = dirname(abs_path($0));
+my $TIME = "/usr/bin/time ";
 my %RAW_LIBS = read_lib_file($libfile);
 print STDERR "[a5] Found the following libraries:\n";
 print_lib_info(\%RAW_LIBS);
 for my $lib (keys %RAW_LIBS){
 	for my $att (keys %{$RAW_LIBS{$lib}}){
+		$RAW_LIBS{$lib}{$att} = check_and_unzip($RAW_LIBS{$lib}{$att}) if ($att eq "p1" || $att eq "p2" || $att eq "shuf");
 		if ($att eq "shuf"){
 			my ($fq1, $fq2) = split_shuf($RAW_LIBS{$lib}{$att},"$OUTBASE.".$RAW_LIBS{$lib}{"id"});
 			$RAW_LIBS{$lib}{"p1"} = $fq1;
@@ -343,31 +348,6 @@ sub qfilter_paired_easy {
 	my $r1file_out = "$r1file.pp";
 	my $r2file_out = "$r2file.pp";
 	
-	# check if the input files are zipped, and unzip if so
-	my $r1file_type = `file $r1file`;
-	if ($r1file_type =~ /gzip/){
-		print STDERR "[a5] $r1file is gzipped\n";
-		$r1file_in = "$r1file.unzipped";
-		`gunzip -c $r1file > $r1file_in`;
-	} elsif ($r1file_type =~ /bzip2/) {
-		print STDERR "[a5] $r1file is bzipped\n";
-		$r1file_in = "$r1file.unzipped";
-		`bunzip2 -c $r1file > $r1file_in`;
-	} else {
-		print STDERR "$r1file is of the following type: $r1file_type\n";
-	}
-	my $r2file_type = `file $r2file`;
-	if ($r2file_type =~ /gzip/){
-		print STDERR "[a5] $r2file is gzipped\n";
-		$r2file_in = "$r2file.unzipped";
-		`gunzip -c $r2file > $r2file_in`;
-	} elsif ($r2file_type =~ /bzip2/) {
-		print STDERR "[a5] $r2file is bzipped\n";
-		$r2file_in = "$r2file.unzipped";
-		`bunzip2 -c $r2file > $r2file_in`;
-	} else {
-		print STDERR "$r2file is of the following type: $r1file_type\n";
-	}
 
 	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
 	$cmd .= "--phred64 " if (get_phred64($r1file_in));
@@ -375,6 +355,8 @@ sub qfilter_paired_easy {
 	print STDERR "[a5] $cmd\n";
 	open(R1OUT, ">$r1file_out");
 	open(R2OUT, ">$r2file_out");
+	$cmd = "$DIR/$cmd";
+	$cmd = $TIME.$cmd if $debug;	
 	open(PPPIPE, "$DIR/$cmd |");
 	my $lc = -1;
 	while( my $line = <PPPIPE> ){
@@ -382,9 +364,6 @@ sub qfilter_paired_easy {
 		print R1OUT $line if( $lc % 8 < 4 );
 		print R2OUT $line if( $lc % 8 >= 4 );
 	}
-	# if we had to unzip files, remove the unzipped files to save space
-	`rm $r1file_in` if ($r1file_in =~ /.*\.unzipped/);
-	`rm $r2file_in` if ($r2file_in =~ /.*\.unzipped/);
 }
 #
 # does paired-end read filtering with SGA, discards unpaired reads
@@ -397,42 +376,27 @@ sub qfilter_correct_tagdust_paired {
 
 
 	# quality filter
-	# first check if the input files are zipped, and unzip if so
-	my $r1file_in = $r1file;
-	my $r2file_in = $r2file;
-	my $r1file_type = `file $r1file`;
-	if ($r1file_type =~ /gzip/){
-		$r1file_in = "$r1file.unzipped";
-		`gunzip -c $r1file > $r1file_in`;
-	} elsif ($r1file_type =~ /bzip2/) {
-		$r1file_in = "$r1file.unzipped";
-		`bunzip2 -c $r1file > $r1file_in`;
-	}
-	my $r2file_type = `file $r2file`;
-	if ($r2file_type =~ /gzip/){
-		$r2file_in = "$r2file.unzipped";
-		`gunzip -c $r2file > $r2file_in`;
-	} elsif ($r2file_type =~ /bzip2/) {
-		$r2file_in = "$r2file.unzipped";
-		`bunzip2 -c $r2file > $r2file_in`;
-	}
-	my $pp_cmd = "$DIR/sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
-	$pp_cmd .= "--phred64 " if (get_phred64($r1file_in));
-	$pp_cmd .= " $r1file_in $r2file_in > $r1file.both.pp";
+	my $pp_cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
+	$pp_cmd .= "--phred64 " if (get_phred64($r1file));
+	$pp_cmd .= " $r1file $r2file > $r1file.both.pp";
 	print STDERR "[a5] $pp_cmd\n";
+	$pp_cmd = "$DIR/$pp_cmd";
+	$pp_cmd = $TIME.$pp_cmd if $debug;	
 	system($pp_cmd);
-	system("rm $r1file_in") if ($r1file_in =~ /.*\.unzipped/); # clear up some disk space
-	system("rm $r2file_in") if ($r2file_in =~ /.*\.unzipped/); # clear up some disk space
 
 	# error correct
-	my $ec_cmd = "$DIR/sga correct -t $t -p $OUTBASE.pp -o $r1file.both.pp.ec.fastq $r1file.both.pp > $WD/$lib.correct.out";
+	my $ec_cmd = "sga correct -t $t -p $OUTBASE.pp -o $r1file.both.pp.ec.fastq $r1file.both.pp > $WD/$lib.correct.out";
 	print STDERR "[a5] $ec_cmd\n";
+	$ec_cmd = "$DIR/$ec_cmd";
+	$ec_cmd = $TIME.$ec_cmd if $debug;	
 	system($ec_cmd);
 	system("rm -rf $r1file.both.pp"); # clear up some disk space
 
 	# tagdust and repair
-	my $td_cmd = "$DIR/tagdust -s $DIR/../adapter.fasta -o $r1file.both.pp.ec.tagdust.fastq $r1file.both.pp.ec.fastq";
+	my $td_cmd = "tagdust -s $DIR/../adapter.fasta -o $r1file.both.pp.ec.tagdust.fastq $r1file.both.pp.ec.fastq";
 	print STDERR "[a5] $td_cmd\n";
+	$td_cmd = "$DIR/$td_cmd";
+	$td_cmd = $TIME.$td_cmd if $debug;	
 	system($td_cmd);
 	system("rm -rf $r1file.both.pp.ec.fastq"); # clear up some disk space
 	my $lc = -1;
@@ -507,13 +471,13 @@ sub sga_clean {
 	my $tail_file = "";
 	for my $lib (keys %libs) {
 		if (defined($libs{$lib}{"p1"})) {
-			my $fq1 = check_and_unzip($libs{$lib}{"p1"}); 
-			my $fq2 = check_and_unzip($libs{$lib}{"p2"}); 
+			my $fq1 = $libs{$lib}{"p1"}; 
+			my $fq2 = $libs{$lib}{"p2"}; 
 			$tail_file = $fq1 unless length($tail_file);
 			$files .= "$fq1 $fq2 ";
 		}
 		if (defined($libs{$lib}{"up"})){
-			my $up = check_and_unzip($libs{$lib}{"up"}); 
+			my $up = $libs{$lib}{"up"}; 
 			$tail_file = $up unless length($tail_file);
 			$files .= "$up ";
 		}
@@ -525,7 +489,9 @@ sub sga_clean {
 	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous ";
 	$cmd .= "--phred64 " if ($phred64);
 	$cmd .= " $files >$WD/$outbase.pp.fastq";
-	system("$DIR/$cmd");
+	$cmd = "$DIR/$cmd";
+	$cmd = $TIME.$cmd if $debug;	
+	system("$cmd");
 	die "[a5] Error preprocessing reads with SGA\n" if( $? != 0 );
 
 	# build a bwt index for all of the reads
@@ -535,7 +501,9 @@ sub sga_clean {
 	do{
 		$cmd = "sga index -d ".($sga_ind_kb)." -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
 		print STDERR "[a5] $cmd\n";
-		$sga_ind = `$DIR/$cmd`;
+		$cmd = "$DIR/$cmd";
+		$cmd = $TIME.$cmd if $debug;	
+		$sga_ind = `$cmd`;
 		$sga_ind = read_file($err_file);
 		$sga_ind_kb = int($sga_ind_kb/2);
 	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 500000);
@@ -548,7 +516,9 @@ sub sga_clean {
 	print STDERR "[a5] $cmd\n";
 	`rm $WD/$OUTBASE.pp.*` if (-f "$WD/$OUTBASE.pp.*");
 	`rm $OUTBASE.pp.*` if (-f "$OUTBASE.pp.*");
-	system("$DIR/$cmd");
+	$cmd = "$DIR/$cmd";
+	$cmd = $TIME.$cmd if $debug;	
+	system("$cmd");
 
 	#
 	# error correct individual paired-end libraries
@@ -586,37 +556,53 @@ sub map_all_libs {
 	my $outbase = shift;
 	my $libsref = shift;
 	my %libs = %$libsref;
-	my $index_cmd = "$DIR/bwa index $OUTBASE.final.scaffolds.fasta";
+	my $index_cmd = "bwa index $OUTBASE.final.scaffolds.fasta";
 	print STDERR "[a5] $index_cmd\n";
+	$index_cmd = "$DIR/$index_cmd";
+	$index_cmd = $TIME.$index_cmd if $debug;	
 	system($index_cmd);
 	for my $lib (keys %libs) {
 		if (defined($libs{$lib}{"p1"})) {
 			my $fq1 = $libs{$lib}{"p1"}; 
 			my $fq2 = $libs{$lib}{"p2"};
-			my $aln1_cmd = "$DIR/bwa aln $OUTBASE.final.scaffolds.fasta $fq1 > $fq1.sai";
-			my $aln2_cmd = "$DIR/bwa aln $OUTBASE.final.scaffolds.fasta $fq2 > $fq2.sai";
-			my $sampe_cmd = "$DIR/bwa sampe $OUTBASE.final.scaffolds.fasta $fq1.sai $fq2.sai $fq1 $fq2 | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.pe";
-			my $bamindex_cmd = "$DIR/samtools index $lib.pe.bam";
+			my $aln1_cmd = "bwa aln $OUTBASE.final.scaffolds.fasta $fq1 > $fq1.sai";
+			my $aln2_cmd = "bwa aln $OUTBASE.final.scaffolds.fasta $fq2 > $fq2.sai";
+			my $sampe_cmd = "bwa sampe $OUTBASE.final.scaffolds.fasta $fq1.sai $fq2.sai $fq1 $fq2 | samtools view -b -S - | samtools sort - $lib.pe";
+			my $bamindex_cmd = "samtools index $lib.pe.bam";
 			print STDERR "[a5] $aln1_cmd\n";
+			$aln1_cmd = "$DIR/$aln1_cmd";
+			$aln1_cmd = $TIME.$aln1_cmd if $debug;	
 			system($aln1_cmd);
 			print STDERR "[a5] $aln2_cmd\n";
+			$aln2_cmd = "$DIR/$aln2_cmd";
+			$aln2_cmd = $TIME.$aln2_cmd if $debug;	
 			system($aln2_cmd);
 			print STDERR "[a5] $sampe_cmd\n";
+			$sampe_cmd = "$DIR/$sampe_cmd";
+			$sampe_cmd = $TIME.$sampe_cmd if $debug;	
 			system($sampe_cmd);
 			print STDERR "[a5] $bamindex_cmd\n";
+			$bamindex_cmd = "$DIR/$bamindex_cmd";
+			$bamindex_cmd = $TIME.$bamindex_cmd if $debug;	
 			system($bamindex_cmd);
 			`rm $fq1.sai $fq2.sai`;
 		}
 		if (defined($libs{$lib}{"up"})){
 			my $up = $libs{$lib}{"up"}; 
-			my $aln1_cmd = "$DIR/bwa aln $OUTBASE.final.scaffolds.fasta $up > $up.sai";
-			my $samse_cmd = "$DIR/bwa sampe $OUTBASE.final.scaffolds.fasta $up.sai $up | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.up";
-			my $bamindex_cmd = "$DIR/samtools index $lib.up.bam";
+			my $aln1_cmd = "bwa aln $OUTBASE.final.scaffolds.fasta $up > $up.sai";
+			my $samse_cmd = "bwa sampe $OUTBASE.final.scaffolds.fasta $up.sai $up | samtools view -b -S - | samtools sort - $lib.up";
+			my $bamindex_cmd = "samtools index $lib.up.bam";
 			print STDERR "[a5] $aln1_cmd\n";
+			$aln1_cmd = "$DIR/$aln1_cmd";
+			$aln1_cmd = $TIME.$aln1_cmd if $debug;	
 			system($aln1_cmd);
 			print STDERR "[a5] $samse_cmd\n";
+			$samse_cmd = "$DIR/$samse_cmd";
+			$samse_cmd = $TIME.$samse_cmd if $debug;	
 			system($samse_cmd);
 			print STDERR "[a5] $bamindex_cmd\n";
+			$bamindex_cmd = "$DIR/$bamindex_cmd";
+			$bamindex_cmd = $TIME.$bamindex_cmd if $debug;	
 			system($bamindex_cmd);
 			`rm $up.sai`;
 		}
@@ -718,7 +704,9 @@ sub tagdust {
 	my $readfile = shift;
 	my $tagdust_cmd = "tagdust -s -o $WD/$outbase.dusted.fq $DIR/../adapter.fasta $readfile";
 	print STDERR "[a5] $tagdust_cmd\n";
-	system("$DIR/$tagdust_cmd");
+	$tagdust_cmd = "$DIR/$tagdust_cmd";
+	$tagdust_cmd = $TIME.$tagdust_cmd if $debug;	
+	system("$tagdust_cmd");
 	return "$WD/$outbase.dusted.fq";
 }
 
@@ -730,7 +718,9 @@ sub idba_assemble {
 	$maxrdlen = IDBA_MAX_K if $maxrdlen > IDBA_MAX_K;	# idba seems to break if the max k gets too big
 	my $idba_cmd = "idba -r $reads -o $WD/$outbase --mink ".IDBA_MIN_K." --maxk $maxrdlen";
 	print STDERR "[a5] $idba_cmd\n";
-	`$DIR/$idba_cmd > $WD/idba.out`;
+	$idba_cmd = "$DIR/$idba_cmd";
+	$idba_cmd = $TIME.$idba_cmd if $debug;	
+	`$idba_cmd > $WD/idba.out`;
 	die "[a5] Error building contigs with IDBA\n" if ($? != 0);
 	`rm $WD/$outbase.kmer $WD/$outbase.graph`;
 	return "$WD/$outbase-contig.fa";
@@ -1036,7 +1026,11 @@ sub break_misasms {
 	my $mem = (int((($AVAILMEM)*0.66)/1024))."m";
 	my $cmd = "A5qc.jar $sam $ctgs $WD/$outbase.broken.fasta $nlibs > $WD/$outbase.qc.out";
 	print STDERR "[a5] java -Xmx$mem -jar $cmd\n"; 
-	`java -Xmx$mem -jar $DIR/$cmd`;
+	if ($debug) {
+		`$TIME java -Xmx$mem -jar $DIR/$cmd`;
+	} else {
+		`java -Xmx$mem -jar $DIR/$cmd`;
+	}
 	die "[a5] Error in detecting misassemblies.\n" if ($? != 0);
 	`gzip -f $sam`;
 	my $qc_stdout = read_file("$WD/$outbase.qc.out");
