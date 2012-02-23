@@ -97,3 +97,8 @@ ins=6500
 [LIB]
 up=unpaired_library.fastq
 }}}
+
+
+=== Other notes ===
+
+Various stages of the A5 pipeline estimate assembly parameters from subsets of the input reads. This parameter estimation can vary from run to run, and can be dependent on the order of the input reads. Therefore it is possible that two runs of A5 on the same data will not generate the exact same assembly.
