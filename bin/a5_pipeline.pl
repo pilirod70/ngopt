@@ -606,7 +606,7 @@ sub map_all_libs {
 			my $fq2 = $libs{$lib}{"p2"};
 			my $aln1_cmd = "bwa aln $OUTBASE.final.scaffolds.fasta $fq1 > $fq1.sai";
 			my $aln2_cmd = "bwa aln $OUTBASE.final.scaffolds.fasta $fq2 > $fq2.sai";
-			my $sampe_cmd = "bwa sampe $OUTBASE.final.scaffolds.fasta $fq1.sai $fq2.sai $fq1 $fq2 | samtools view -b -S - | samtools sort - $lib.pe";
+			my $sampe_cmd = "bwa sampe $OUTBASE.final.scaffolds.fasta $fq1.sai $fq2.sai $fq1 $fq2 | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.pe";
 			my $bamindex_cmd = "samtools index $lib.pe.bam";
 			print STDERR "[a5] $aln1_cmd\n";
 			$aln1_cmd = "$DIR/$aln1_cmd";
@@ -629,7 +629,7 @@ sub map_all_libs {
 		if (defined($libs{$lib}{"up"})){
 			my $up = $libs{$lib}{"up"}; 
 			my $aln1_cmd = "bwa aln $OUTBASE.final.scaffolds.fasta $up > $up.sai";
-			my $samse_cmd = "bwa sampe $OUTBASE.final.scaffolds.fasta $up.sai $up | samtools view -b -S - | samtools sort - $lib.up";
+			my $samse_cmd = "bwa sampe $OUTBASE.final.scaffolds.fasta $up.sai $up | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.up";
 			my $bamindex_cmd = "samtools index $lib.up.bam";
 			print STDERR "[a5] $aln1_cmd\n";
 			$aln1_cmd = "$DIR/$aln1_cmd";
