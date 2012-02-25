@@ -238,7 +238,7 @@ The A5 assemblies of \textbf{Volc} and \textbf{Tn5} were conducted on a 8 core 6
 
 When constructing assemblies directly from Illumina sequence output in a single step, A5 produces higher quality assemblies 
 than SOAPdenovo on the datasets we analyzed. 
-In particular, A5 assemblies have a $>50\%$ lower rate of broken coding sequences relative to SOAPdenovo assemblies.
+In particular, A5 assemblies have a $50\%$ lower rate of broken coding sequences relative to SOAPdenovo assemblies.
 For gene-oriented analyses such as inferring metabolic potential and surveys of natural selection via dN/dS ratios, the reduced error in coding sequences may be very advantageous.
  To obtain the SOAPdenovo results we conducted a parameter sweep 
 over 50 combinations of $k$-mer length ($K$) and the minimum $k$-mer frequency ($d$), while A5 required
@@ -254,7 +254,7 @@ to roughly lognormal depending on the enzyme concentration and what size selecti
 Most scaffolding programs to-date model the insert sizes for paired-end reads using a normal distribution with a particular
 mean and standard deviation. A5 also uses this model, but has been configured to be permissive of scaffolding
 using libraries with broadly distributed insert sizes.  We speculate that another explanation for A5's improved performance on transposon-catalyzed 
-libraries may be that method is more robust to low coverage regions.  Illumina libraries constructed by in-vitro 
+libraries may be that the method is more robust to low coverage regions.  Illumina libraries constructed by in-vitro 
 transposition with Tn5 transposase have considerable target site preference (data not shown), leading to highly nonuniform coverage around a genome.
 
 In all cases where reference data was available A5 produced fewer miscalled bases. This is to
