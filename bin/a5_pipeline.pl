@@ -84,6 +84,8 @@ Usage: $pname [--begin=1-5] [--end=1-5] [--preprocessed] [--debug] <lib_file> <o
 
 Or: $pname <Read 1 FastQ> <Read 2 FastQ> <out_base>
 
+Or: $pname <Read 1,2 Interleaved FastQ> <out_base>
+
 <out_base> is the base file name for all output files. When assembling from 
 a single library, the fastq files may be given directly on the command line.
 If using more than one library, a library file must be given as <lib_file>.
@@ -128,9 +130,30 @@ if(@ARGV==3){
 	print TMPLIBFILE "p2=$ARGV[1]\n";
 	close TMPLIBFILE;
 	$libfile = "$OUTBASE.tmplibs";
-}else{
-	$libfile = $ARGV[0];
+} else { 
 	$OUTBASE = $ARGV[1];
+	my $file = $ARGV[0];
+	my $file_type = `file $file`;
+	my $first_line = "";
+	if ($file_type =~ /gzip/){
+		$first_line = `gunzip -c $file | head -n 1`;
+	} elsif ($file_type =~ /bzip2/) {
+		$first_line = `bunzip2 -c $file | head -n 1`;
+	} else {
+		$first_line = `head -n 1 $file`;
+	}
+	if ($first_line =~ /^@/){ # assume interleaved
+		open(TMPLIBFILE, ">$OUTBASE.tmplibs");
+		print TMPLIBFILE "[LIB]\n";
+		print TMPLIBFILE "shuf=$ARGV[0]\n";
+		close TMPLIBFILE;
+		$libfile = "$OUTBASE.tmplibs";
+	} elsif ($first_line =~ /^[LIB]/) {
+		$libfile = $ARGV[0];
+	} else {
+		print STDERR "$file is neither a library file nor a fastq file.\n";
+		exit;
+	}
 }
 my $start_millis = time();
 my @start_date = localtime();
@@ -1257,4 +1280,3 @@ sub get_rdlen($$){
 	close FILE;
 	return length($line);
 }
-
