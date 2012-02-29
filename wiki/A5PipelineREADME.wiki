@@ -40,6 +40,8 @@ Usage: a5_pipeline.pl [--begin=1-5] [--end=1-5] [--preprocessed] <lib_file> <out
 
 Or:    a5_pipeline.pl <Read 1 FastQ> <Read 2 FastQ> <out_base>
 
+Or:    a5_pipeline.pl <Read 1,2 Interleaved FastQ> <out_base>
+
 <out_base> is the base file name for all output files. When assembling from 
 a single library, the fastq files may be given directly on the command line.
 If using more than one library, a library file must be given as <lib_file>.
