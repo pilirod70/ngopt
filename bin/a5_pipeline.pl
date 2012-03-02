@@ -294,7 +294,6 @@ if ($start <= 4) {
 		$need_qc = 0;
 		`cp $scafs $OUTBASE.final.scaffolds.fasta`;
 		print "[a5_s5] No misassemblies found.\n";
-		map_all_libs($OUTBASE, \%RAW_LIBS);
 	} else {
 		`mv $scafs $OUTBASE.broken.scaffolds.fasta`; 
 	}
@@ -317,7 +316,6 @@ if ($start <= 5 && $need_qc) {
 	mkdir($WD) if ! -d $WD;
 	$scafs = scaffold_sspace("$OUTBASE.rescaf",\%PAIR_LIBS,$scafs,1);
 	`mv $scafs $OUTBASE.final.scaffolds.fasta`;
-	map_all_libs($OUTBASE, \%RAW_LIBS);
 } 
 if ($end == 5){
 	print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
