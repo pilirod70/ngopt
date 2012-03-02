@@ -4,8 +4,8 @@
 # (c) 2011,2012 Andrew Tritt and Aaron Darling
 # This is free software licensed under the GPL, v3. Please see the file LICENSE for details.
 #
-# Usage: a5_pipeline <library file> <output directory or basename>
-#   Or:  a5_pipeline <fastq 1> <fastq 2> <output directory or basename>
+# Usage: a5_pipeline.pl <library file> <output directory or basename>
+#   Or:  a5_pipeline.pl <fastq 1> <fastq 2> <output directory or basename>
 #
 use strict;
 use warnings;
@@ -17,14 +17,14 @@ use Getopt::Long;
 
 =head1 NAME
 
-a5_pipeline -- Assemble isolate genomes from Illumina data with ease
+a5_pipeline.pl -- Assemble isolate genomes from Illumina data with ease
 
 =head1 SYNOPSIS
 
-a5_pipeline takes FastQ format sequence reads directly from the Illumina base-calling software and cleans, filters, and assembles them.
+a5_pipeline.pl takes FastQ format sequence reads directly from the Illumina base-calling software and cleans, filters, and assembles them.
 For example the command:
 
-a5_pipeline read1.fastq read2.fastq my_assembly
+a5_pipeline.pl read1.fastq read2.fastq my_assembly
 
 Will assemble the paired reads in read1.fastq and read2.fastq and store the result in files whose names begin with "my_assembly".
 The final scaffolded assembly will be named my_assembly.final.scaffolds.fasta
@@ -45,10 +45,10 @@ alignment parameters
 =head1 EXAMPLES
 
 With a single paired-end illumina library:
-a5_pipeline <read1.fastq> <read2.fastq> <output directory or basename>
+a5_pipeline.pl <read1.fastq> <read2.fastq> <output directory or basename>
 
 With two or more libraries:
-a5_pipeline <library file> <output directory or basename>
+a5_pipeline.pl <library file> <output directory or basename>
 
 =head1 AUTHORS
 
@@ -273,7 +273,7 @@ if ($start <= 3) {
 	die "[a5_s3] Can't find starting contigs $ctgs.\n" unless -f $ctgs;
 	print "[a5_s3] Scaffolding contigs from $ctgs with SSPACE\n";
 	print STDERR "[a5_s3] Scaffolding contigs from $ctgs with SSPACE\n";
-	$scafs = scaffold_sspace($libfile, $OUTBASE, \%PAIR_LIBS, $ctgs);
+	$scafs = scaffold_sspace($OUTBASE, \%PAIR_LIBS, $ctgs);
 	`mv $scafs $OUTBASE.crude.scaffolds.fasta`; 
 } 
 if ($end == 3){
@@ -315,7 +315,7 @@ if ($start <= 5 && $need_qc) {
 	print STDERR "[a5_s5] Scaffolding broken contigs with SSPACE\n";
 	$WD="$OUTBASE.s5";
 	mkdir($WD) if ! -d $WD;
-	$scafs = scaffold_sspace($libfile,"$OUTBASE.rescaf",\%PAIR_LIBS,$scafs,1);
+	$scafs = scaffold_sspace("$OUTBASE.rescaf",\%PAIR_LIBS,$scafs,1);
 	`mv $scafs $OUTBASE.final.scaffolds.fasta`;
 	map_all_libs($OUTBASE, \%RAW_LIBS);
 } 
@@ -346,7 +346,9 @@ if ($debug){
 #
 #
 
-# reads total installed memory in a platform-dependent way
+=item get_availmem 
+Reads total installed memory in a platform-dependent way
+=cut 
 sub get_availmem {
 	my $mem = 4000000;
 	if ($^O =~ m/darwin/) {
@@ -363,6 +365,12 @@ sub get_availmem {
 	return $mem
 }
 
+=item
+
+Read a single entry from an Illumina-platform generated FastQ file, and removed the paired 
+read id (e.g. "/1") from the end of the read id
+
+=cut
 sub readFastqEntry {
 	my $bufref = shift;
 	my $infile = shift;
@@ -378,10 +386,12 @@ sub readFastqEntry {
 	return $barename;
 }
 
-#
-# 3-read sequencing protocols can set the paired read ID to /3 instead of /2
-# and some softwares don't like this
-#
+=item
+
+3-read sequencing protocols can set the paired read ID to /3 instead of /2
+and some softwares don't like this
+
+=cut
 sub fix_read_id {
 	my $fastq = shift;
 	my $expected_id = shift;
@@ -399,9 +409,11 @@ sub fix_read_id {
 	}
 }
 
-#
-# does paired-end read filtering with SGA, discards unpaired reads
-#
+=item qfilter_paired_easy
+
+Preprocess paired reads with SGA by filtering and quality trimming. Discard unpaired reads.
+
+=cut
 sub qfilter_paired_easy {
 	my $r1file = shift;
 	my $r2file = shift;
@@ -427,9 +439,21 @@ sub qfilter_paired_easy {
 		print R2OUT $line if( $lc % 8 >= 4 );
 	}
 }
-#
-# does paired-end read filtering with SGA, discards unpaired reads
-#
+
+=item qfilter_correct_tagdust_paired
+
+Preprocesses paired reads with SGA by filtering low quality reads, quality trimming, 
+and discarding unpaired reads. After preprocessing reads, error corrects reads and 
+removes potential contaminants using TagDust.
+
+Takes 4 parameters: $r1file, $r2file, $t, and $lib
+where 
+	$r1file = read 1 in paired reads
+	$r2file = read 2 in paired reads.
+	$t = the number of threads to use when running SGA
+	$lib = the library name to use for output generating throughout this subroutine 
+
+=cut
 sub qfilter_correct_tagdust_paired {
 	my $r1file = shift;
 	my $r2file = shift;
@@ -507,6 +531,9 @@ sub qfilter_correct_tagdust_paired {
 	system("rm -rf $r1file.both.pp.ec.tagdust.fastq"); # clear up some disk space
 }
 
+=item get_phred64
+Returns whether or not the given FastQ file has phred64 quality scores
+=cut 
 sub get_phred64{
 	my $tail_file = shift;
 	my $qline = `head -n 1000 $tail_file | tail -n 1`;
@@ -521,7 +548,33 @@ sub get_phred64{
 	return $phred64;
 }
 
-#
+=item sga_clean
+Clean reads using SGA. Multi-thread if running in linux environment.
+
+Takes two parameters: an basename for output, $outbase, and a reference to a hash storing library information, $libsref.
+
+First, error correct all reads together to prepare for building contigs using IDBA. To do so, this function passes all 
+fastq files into the following command:
+
+	sga preprocess -q SGA_Q_TRIM -f SGA_Q_FILTER -m SGA_MIN_READ_LENGTH --permute-ambiguous <fastq1> <fastq2> . . . <fastqN>
+
+applying the --phred64 flag to sga if phred-64 quality scores are detected, and writing preprocessed reads to $outbase.pp.fastq.
+
+$outbase.pp.fastq is indexed using the following command:
+
+	sga index -d 0.5*AVAL_SYSTEM_MEMORY -t <n_threads> $outbase.pp.fastq
+
+
+$outbase.pp.fastq is error corrected using the following command:
+
+	sga correct -t <n_threads> -o $outbase.pp.ec.fa $outbase.pp.fastq 
+ 
+For the indexing and correcting step, n_threads is to 1 if running in a Macintosh environment, 4 otherwise. 
+
+Second, for each paired library in $libsref, error correct reads from each library individually for scaffolding using
+the qfilter_correct_tagdust_paired function.
+
+=cut 
 sub sga_clean {
 	my $outbase = shift;
 	my $libsref = shift;
@@ -600,6 +653,9 @@ sub sga_clean {
 	return $ec_file;
 }
 
+=item check_and_unzip
+Check if the given file is zipped up. If it is, unzip and return the file it was unzipped to.
+=cut
 sub check_and_unzip {
 	my $file = shift;
 	my $file_type = `file $file`;
@@ -614,6 +670,15 @@ sub check_and_unzip {
 	return $ret;
 }
 
+=item map_all_libs
+Maps all librarie back to the final scaffolds generated by the A5 pipeline. 
+Takes two parameters: $outbase, $libsref
+
+where 
+	$outbase = the basename for output files generated throughout this subroutine
+	$libsref = a hash storing information on all the libraries passed in.
+
+=cut
 sub map_all_libs {
 	my $outbase = shift;
 	my $libsref = shift;
@@ -671,10 +736,15 @@ sub map_all_libs {
 	}
 }
 
-#
-# return a hash of hashes index as such: $hash{$library}{$component}
-# where $component = 'up' || 'p1' || 'p2' || 'ins' 
-#
+=item read_lib_file
+
+Parses the library file, returning the given information stored in a hash. 
+Takes a singled parameter: $libfile, the path to the library file to be parsed.
+
+Returns a hash of hashes index as such: $hash{$library}{$component}
+where $component = 'up' || 'p1' || 'p2' || 'ins' || 'id'
+
+=cut
 sub read_lib_file {
 	my $libfile = shift;
 	my %libs = ();
@@ -709,6 +779,9 @@ sub read_lib_file {
 	return %libs;
 }
 
+=item read_file
+Read in entire file, returning its contents as a single string.
+=cut
 sub read_file {
 	my $file = shift;
 	local $/=undef;
@@ -717,6 +790,9 @@ sub read_file {
 	return $str;
 }
 
+=item fastq_to_fasta
+Convert a fastq file to fasta.
+=cut
 sub fastq_to_fasta {
 	my $fastq = shift;
 	my $fasta = shift;
@@ -736,6 +812,17 @@ sub fastq_to_fasta {
 	return ($fasta, $maxrdlen - 2); # -1 removes newline char
 }
 
+=item split_shuif
+Splits a shuffled (a.k.a. interleaved) fastq file into two separate fastq files. 
+
+Takes two parameters: $shuf, $outbase
+where
+	$shuf = the shuffled fastq file to split
+	$outbase = the basename for the two fastq files resulting from splitting $shuf. The two files output
+	           are $outbase_p1.fastq and $outbase_p2.fastq
+
+
+=cut
 sub split_shuf {
 	my $shuf = shift;
 	my $outbase = shift;
@@ -761,6 +848,16 @@ sub split_shuf {
 	return ($fq1, $fq2);
 }
 
+=item tagdust
+Run TagDust to remove any Illumina artifacts. The sequences for the artifact sequences must be stored in $DIR/../adapter.fasta,
+where $DIR is the location of this executable.
+
+Takes two parameters: $outbase, $readsfile
+where
+	$outbase = the basename for output generated throughout this subroutine
+	$readsfile = the path to the file containing the reads for remove artifact from.
+
+=cut
 sub tagdust {
 	my $outbase = shift;
 	my $readfile = shift;
@@ -772,7 +869,14 @@ sub tagdust {
 	return "$WD/$outbase.dusted.fq";
 }
 
-# expects a file called $outbase.clean.fa in the current working directory
+=item idba_assemble
+Assemble reads using IDBA. 
+Takes 3 parameters: $outbase, $reads, $maxrdlen
+where 
+	$outbase = the basename for output generated throughout this subroutine
+	$reads = the path to the file containing the reads to assemble into contigs
+	$maxrdlen = the maximum kmer to iterate up to. 
+=cut
 sub idba_assemble {
 	my $outbase = shift;
 	my $reads = shift;
@@ -788,10 +892,23 @@ sub idba_assemble {
 	return "$WD/$outbase-contig.fa";
 }
 
+=item scaffold_sspace
+Scaffold contigs using SSPACE. 
 
+Takes 3 or 4 parameters: $outbase, $libsref, $curr_ctgs, $rescaffold (optional)
+where
+	$outbase = the basename for output generated throughout this subroutine
+	$libsref = a hash storing information on all the libraries passed in.
+	$curr_ctgs = the contigs to scaffold
+	$rescaffold = a binary value indicating whether or not we are scaffolding our assembly 
+                  for the first time (i.e. scaffolding contigs generated from IDBA), indicated 
+                  by a 0, or if we are scaffolding for the second time (i.e. scaffolding 
+                  scaffolds broken by the A5qc algorithm), indicated by a 1. 
 
+Returns the contigs resulting from scaffolding.
+
+=cut 
 sub scaffold_sspace {
-	my $libfile = shift;
 	my $outbase = shift;
 	# build library file
 	my $libsref = shift;
@@ -827,7 +944,21 @@ sub scaffold_sspace {
 	return $curr_ctgs;
 }
 
-# Merge libraries with similar inserts to avoid gaps from complementary coverage
+=item preprocess_libs
+Process a library hash generated with the read_lib_file subroutine. For each library, check to see
+if an error corrected version exists, and swap that into the hash if so. Then, do initial insert size
+estimates for each library. After estimating insert sizes, merge libraries with similar insert size distributions
+using the subroutine aggregate_libs. Insert size distributions are deemed similiar if their calculated ranges overlap. 
+If two libraries are merged, the insert size of the resulting merged libarary is recalculated. Lastly, for each library,
+create a library file for SSPACE>
+
+Takes 2 parameters: $libsref, $ctgs
+where
+	$libsref = a hash storing information on all the libraries passed in.
+	$ctgs = contigs to use to estimate insert sizes
+
+Returns a new library hash containing insert size calculations and new library information for merged libraries.
+=cut
 sub preprocess_libs {
 	my $libsref = shift;
 	my %libs = %$libsref;
@@ -953,6 +1084,18 @@ sub preprocess_libs {
 	return %processed;
 }
 
+=item aggregate_libs
+Recreate the library hash for the given library/libraries. Merge files if an aggregate of libraries is passed in.
+Calculate the insert size of the final library. 
+
+Takes 3 parameters: $curr_lib_file, $curr_lib, $curr_ctgs
+where 
+	$curr_lib_file = an array of single-library hashes. If the array has multiple entries (i.e. if 
+	                 an aggregate has been passed in) the corresponding libraries are merged using the
+	                 subroutine merge_libraries
+	$curr_lib = the id of the library being processed here
+	$curr_ctgs = contigs to use for insert size calculations
+=cut
 sub aggregate_libs {
 	my $curr_lib_file = shift;
 	my $curr_lib = shift;
@@ -980,6 +1123,15 @@ sub aggregate_libs {
 	return \%fin_lib;		
 }
 
+=item print_libfile
+Print an SSPACE library file. 
+
+Takes 3 parameters: $file, $libref, $err_estimate
+where
+	$file = the file to write the SSPACE library file to
+	$libref = library hash to use to create the SSPACE library file.
+	$err_estimate = the error estimate for this library to give to SSPACE
+=cut
 sub print_libfile {
 	my $file = shift;
 	my $libref = shift;
@@ -991,6 +1143,9 @@ sub print_libfile {
 	return $file;
 }
 
+=item print_lib_info
+Print library information from the given library hash to standard error. 
+=cut
 sub print_lib_info {
 	my $LIBS = shift;
 	for my $lib (sort keys %$LIBS) {
@@ -1002,7 +1157,16 @@ sub print_lib_info {
 		}
 	}
 }
+=item merge_libraries
+Merge library files corresponding to the libraries given by the array of library hashes. 
 
+Takes 2 parameters: $curr_lib_file, $curr_lib
+where
+	$curr_lib_file = an array of single-library hashes. 
+	$curr_lib = the id of the library being processed here
+
+Returns an array with the resulting files.
+=cut
 sub merge_libraries {
 	my $curr_lib_file = shift; # array of hashes
 	my $curr_lib = shift;
@@ -1036,7 +1200,17 @@ sub merge_libraries {
 	close $uph if defined($uph);
 	return ($fq1, $fq2, $up);
 }
+=item break_all_misasms
+Using the A5QC algorithm, remove any misassembled regions from the given contigs using the given libraries. 
 
+Takes 3 parameters: $ctgs, $libsref, $outbase
+where
+	$ctgs = the contigs to remove misassemblies from
+	$libsref = a hash storing information on all the libraries passed in.
+	$outbase = the basename for output generated throughout this subroutine
+
+Return the contigs resulting from removing misassemblies.
+=cut
 sub break_all_misasms {
 	my $ctgs = shift;
 	my $libsref = shift;
@@ -1068,6 +1242,19 @@ sub break_all_misasms {
 	return $ctgs;
 }
 
+=item break_misasms
+Remove any misassmblies from the given contigs using the given paired library. 
+
+Takes 5 parameters: $ctgs, $fq1, $fq2, $outbase, $nlibs
+where
+	$ctgs = the contigs to remove misassemblies from
+	$fq1 = read 1 in the paired library
+	$fq2 = read 2 in the paired library
+	$outbase = the basename for output generated throughout this subroutine
+	$nlibs = the number of libraries in the paired library. Use to indicate if this
+	         library is the result of merging similiar libraries or if there is an 
+	         expected shadow library.
+=cut
 sub break_misasms {
 	my $ctgs = shift;
 	my $fq1 = shift;
@@ -1103,6 +1290,16 @@ sub break_misasms {
 	}
 }
 
+=item pipe_fastq
+Write fastq data from an input stream to an output stream, reverse completmenting 
+fastq entries if indicated.
+
+Takes 3 parameters: $from, $to, $rc
+where
+	$from = the input stream to read from
+	$to = the output stream to write to
+	$rc = a binary value indicating whethere or not fastq entries should be reverse complemented
+=cut
 sub pipe_fastq {
     my $from = shift;
     my $to = shift;
@@ -1135,8 +1332,9 @@ sub pipe_fastq {
         }   
     }   
 }
-
-# calculate the expected number of read pairs to span a point in the assembly
+=item calc_explinks
+Calculate the expected number of read pairs to span a point in the assembly.
+=cut
 sub calc_explinks {
 	my $genome_size = shift;
 	my $ins_len = shift;
@@ -1153,7 +1351,23 @@ sub calc_explinks {
 	my $exp_link = $cov * $ins_len / $maxrdlen;
 	return ($exp_link, $cov);
 }
-#run_sspace $genome_size $insert_size $exp_links $libfile $input_fa $unpaired_optional
+
+=item run_sspace
+Run SSPACE using the given parameters and data.
+Takes 7 parametes: $genome_size $insert_size $exp_links $outbase $libfile $input_fa $rescaffold
+	$genome_size = the expected size of the genome (used to calculate SSPACE parameters)
+	$insert_size = the insert size of the library (used to calculate SSPACE parameters)
+	$exp_links = the expected links to span a point in the contigs we are scaffold
+	$outbase = the basename for output generated throughout this subroutine
+	$libfile = the SSPACE library file to give SSPACE
+	$input_fa = the contigs to scaffold
+	$rescaffold = a binary value indicating whether or not we are scaffolding our assembly 
+                  for the first time (i.e. scaffolding contigs generated from IDBA), indicated 
+                  by a 0, or if we are scaffolding for the second time (i.e. scaffolding 
+                  scaffolds broken by the A5qc algorithm), indicated by a 1. 
+
+Return the scaffolds resulting from running SSPACE
+=cut
 sub run_sspace {
 	my $genome_size = shift;
 	my $insert_size = shift;
@@ -1206,7 +1420,9 @@ sub log2 {
 	my $n = shift;
 	return (log($n)/ log(2));
 }
-
+=item get_genome_size
+Read the given fasta file, calculating the size the genome in said file.
+=cut
 sub get_genome_size {
 	my $fasta = shift;
 	open( FASTA, $fasta );
@@ -1219,6 +1435,16 @@ sub get_genome_size {
 	return $len;
 }
 
+=item get_insert
+Calculate the insert size of the given library using the A5 GetInsertSize.jar code.
+
+Takes 4 parameters: $r1fq, $r2fq, $outbase, $ctgs
+where
+	$r1fq = read 1 in the paired library
+	$r2fq = read 2 in the paired library
+	$outbase = the basename for output generated throughout this subroutine
+	$ctgs = the contigs to use to calculate the insert size
+=cut
 sub get_insert($$$$) {
 	my $r1fq = shift;
 	my $r2fq = shift;
@@ -1272,6 +1498,9 @@ sub get_insert($$$$) {
 	return ($ins_mean, $ins_error, $ori);
 }
 
+=item get_rdlen
+Return the read length of reads in the given fastq/a. This assumes that all reads in the given file are the same length
+=cut
 sub get_rdlen($$){
 	open(FILE, shift);
 	my $line = <FILE>;
