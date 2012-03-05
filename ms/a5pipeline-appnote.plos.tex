@@ -179,7 +179,7 @@ We executed A5 and SOAPdenovo for each data set. Table~\ref{tab:tab01} reports t
 Table~\ref{tab:tab02} reports the assembly performance for \textbf{Tn} assemblies. \textbf{Volc} assemblies were scored using Mauve Assembly 
 Metrics~\cite{Darling2011}, which quantifies differences between the reference and assembly using whole genome alignment. We note that
 aligner error may cause additional errors to be found between the assembly and the reference. Although high quality reference assemblies exist for other \textit{E. coli} 
-isolates, none are available for strain CC118. We can not use another \textit{E. coli} as a reference due to the great deal of genomic divergence
+isolates, none are available for strain CC118. We can not use another \textit{E. coli} as a reference due to the potential for extensive genomic divergence
 among \textit{E. coli} isolates~\cite{Perna2001}. Contigs from A5 were broken using the A5QC algorithm. 
 \textbf{Volc} contigs were broken up into 859 contigs (N50 = 8170) and \textbf{Tn} contigs were broken up into 342 contigs (N50 = 27316). 
 N50 is defined as the contig length N for which 50\% of all bases in the assembly are in a contig (or scaffold) of length $L > N$.
@@ -207,6 +207,12 @@ Using this process, the optimal parameters were found to be
 Labels ``-CDS'', ``-N50'', and ``-LCB'' indicate SOAPdenovo assemblies run with parameter combinations that minimized broken coding 
 sequences, maximized scaffold N50, and minimized LCB (Locally Collinear Block) count, respectively. Locally collinear blocks are continuous regions of assembly which can span zero or more contigs and scaffolds which are free from rearrangement relative to the reference genome. See~\cite{mauve,Darling2011} for a more complete discussion.
 A5 assemblies were generated using source code from revision 625 of A5.
+
+In addition to the reference-based assembly metrics, we present the scaffold and contig size distribution as a ``length accumulation curve'' in Figure~\ref{fig:03}. 
+In that figure, scaffolds (contigs) are sorted in descending order by length and the cumulative length is plotted as additional scaffolds (contigs) are added. 
+The scaffold length distribution for A5 and SOAPdenovo appear to be very similar. However, the contig length distributions are quite different, with SOAPdenovo generating much shorter contigs than A5.
+This exemplifies a fundamental difference between the contig-generation strategies employed by SOAPdenovo and IDBA (used in the A5 pipeline).
+SOAPdenovo is conservative during contig generation and avoids introducing misassembly and chimerism, but produces only very short contigs, whereas IDBA produces long contigs that occasionally contain misassemblies that the A5 pipeline's QC step must resolve.
 
 \subsection*{A5 and SOAPdenovo assemblies on error corrected reads}
 
