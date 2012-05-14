@@ -1,0 +1,102 @@
+Requirement
+
+This software is suitable for all unix-like system with gcc installed.
+
+Installation Guide
+
+Exract the package, then use make to compile the source code.
+$ ./configure
+$ make
+
+
+
+IDBA: Iterative De Bruijn graph short read Assembler
+Version 0.18
+
+Usage: idba --read read-file [--output out] [options]
+
+Allowed Options: 
+  -h, --help                   produce help message
+  -r, --read arg               read file
+  -l, --long arg               long read file
+  -o, --output arg (=out)      prefix of output
+      --scaffold               use pair end information to merge contigs
+      --mink arg (=25)         minimum k value
+      --maxk arg (=50)         maximum k value
+      --minCount arg (=2)      filtering threshold for each k-mer
+      --cover arg (=0)         the cutting coverage for contigs
+      --minPairs arg (=5)      minimum number of pair-end connections to join two contigs
+      --prefixLength arg (=3)  length of the prefix of k-mer used to split k-mer table
+
+The output contigs will be found in file out-contig.fa and out-contig-mate.fa.
+The former is single end output, the latter is pair end output. If you want to 
+run pair-end version, please use --scaffold parameter.
+
+Example (using the sample input)
+$ bin/idba --read Lacto.reads-mate-30-0.01-75 --output lacto 
+
+
+
+T-IDBA: Iterative De Bruijn graph short read Assembler for transcriptome
+Version 0.18
+
+Usage: tidba --read read-file [--output out] [options]
+
+Allowed Options: 
+  -h, --help                   produce help message
+  -r, --read arg               read file
+  -o, --output arg (=out)      prefix of output
+      --mink arg (=25)         minimum k value
+      --modk arg (=50)         moderate k value
+      --maxk arg (=90)         maximum k value
+      --minCount arg (=2)      filtering threshold for each k-mer
+      --minPairs arg (=5)      minimum number of pair-end connections to join two contigs
+      --prefixLength arg (=3)  length of the prefix of k-mer used to split k-mer table
+
+Example
+$ bin/tidba --read mouse-tran-reads.fa --output mouse
+
+The output isoforms will be found in file out-isoforms.fa.
+
+
+
+Meta-IDBA: Iterative De Bruijn graph short read Assembler for metagenomic based on graph partition
+Version 0.19
+
+Usage: metaidba --read read-file [--output out] [options]
+
+Allowed Options: 
+  -h, --help                   produce help message
+  -r, --read arg               read file
+  -l, --long arg               long read file
+  -o, --output arg (=out)      prefix of output
+      --mink arg (=25)         minimum k value
+      --maxk arg (=50)         maximum k value
+      --minCount arg (=2)      filtering threshold for each k-mer
+      --cover arg (=0)         the cutting coverage for contigs
+      --connect                use paired-end reads to connect components
+      --minPairs arg (=5)      minimum number of pair-end connections to join two components
+      --prefixLength arg (=3)  length of the prefix of k-mer used to split k-mer table
+
+Example
+$ bin/metaidba --read meta-reads.fa --output meta
+
+The output consensus and alignment can be found in file meta.consensus and meta.alignment.
+
+
+
+Comment
+If the data is in fastq format, please use fq2fa tool to do conversion first.
+$ bin/fq2fa fq-file fa-file
+
+IDBA(pair end) and TIDBA requires pair end reads stored in single file and a pair of
+reads is in consecutive two lines. If not, please use mergeReads to merge two
+read files to single file.
+$ bin/mergeReads read-file1 read-file2 merge-read-file
+
+Reads with same length are prefered. normReads tool can help to normlize reads.
+If the read-file is merged by mergeReads program, please use mate flag to do 
+normalization.
+$ bin/normReads read-file output-read-file --length l --mate
+
+
