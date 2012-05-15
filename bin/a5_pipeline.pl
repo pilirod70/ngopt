@@ -110,7 +110,7 @@ GetOptions( 'begin=i' => \$start,
 die $usage if (@ARGV < 2);
 
 $AVAILMEM = get_availmem();
-print $AVAILMEM."\n";
+
 #
 # Check that java is available and in the path
 #
@@ -148,7 +148,7 @@ if(@ARGV==3){
 		print TMPLIBFILE "shuf=$ARGV[0]\n";
 		close TMPLIBFILE;
 		$libfile = "$OUTBASE.tmplibs";
-	} elsif ($first_line =~ /^[LIB]/) {
+	} elsif ($first_line =~ /^\[LIB\]/) {
 		$libfile = $ARGV[0];
 	} else {
 		print STDERR "$file is neither a library file nor a fastq file.\n";
@@ -401,7 +401,7 @@ sub fix_read_id {
 	if(defined($id) && $id != $expected_id){
 		# swap in the correct read id
 		print STDERR "[a5] Swapping read identifier from $id to $expected_id\n";
-		my $swap_cmd = "perl -p -i -e \"s/\\\/$id/\\\/$expected_id/g\" $fastq";
+		my $swap_cmd = "perl -p -i -e \"s/^(@.+)\\\/$id\$/\\\$1\\\/$expected_id/g\" $fastq";
 		print STDERR "[a5] $swap_cmd\n";
 		`$swap_cmd`;
 	}
@@ -609,7 +609,7 @@ sub sga_clean {
 
 	# build a bwt index for all of the reads
 	my $sga_ind = "";
-	my $sga_ind_kb = $AVAILMEM/2;
+	my $sga_ind_kb = $AVAILMEM/4;
 	my $err_file = "$WD/index.err";
 	do{
 		$cmd = "sga index -d ".($sga_ind_kb)." -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
