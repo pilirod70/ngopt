@@ -32,6 +32,7 @@
   my $min_links = $ARGV[9];
   my $max_link_ratio = $ARGV[10];
   my $outdir = $ARGV[11];
+  my $max_tig_length = $ARGV[12];
 
   my ($low_iz, $up_iz) = ($insert_size + $min_allowed, $insert_size - $min_allowed);
   my $bowtiefile = "$outdir/bowtieoutput/" . $base_name . ".$library.mapped";
@@ -288,8 +289,14 @@ sub computeLayout{
              my $link1 = $matchhash->{$linkmatch[1]}{'links'};
              my $link2 = $matchhash->{$linkmatch[0]}{'links'};
              $ratio = $link1 / $link2;        ## relative ratio of the two most abundant contig pairs
+		## AED: calculate an upper limit for this ratio based on the total number of links
+		## involved. This will allow repeat regions to be scaffolded if one contains at least a
+		## small amount of unique sequence and there are many links to support it.
+		my $dynamic_max = (0.9-$max_link_ratio)*($link1+$link2)/100 + $max_link_ratio;
+		$dynamic_max = $dynamic_max > 0.9 ? 0.9 : $dynamic_max;	# top out at 0.9 after 100 links.
              if ($ratio =~ /(\d+\.\d{2})/){$ratio = $1;}
-             if($ratio <= $max_link_ratio){
+#             if($ratio <= $dynamic_max){
+		if($ratio <= $max_link_ratio){
                  foreach my $mat (keys %$matchhash){
                    delete $matchhash->{$mat} if($mat ne $linkmatch[0]);
                  }
@@ -298,6 +305,16 @@ sub computeLayout{
 
              }
          }
+	 # AED
+	 # do not scaffold if both contigs are bigger than the cutoff size
+	 # useful when using a small insert lib before a large insert lib, and the large lib can be relied upon to get the big pieces together
+         if($max_tig_length > 0 && $foundlinks && $countmatches > 1){
+        	foreach my $othertig (keys %$matchhash){
+			if($tig_length->{$othertig} > $max_tig_length && $tig_length->{$tig} > $max_tig_length){
+				delete $matchhash->{$othertig};
+			}
+		}
+	}
          if((!$foundlinks) && $countmatches > 0){
            my $nummatch =0;
            my @chainlist;

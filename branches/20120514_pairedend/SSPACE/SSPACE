@@ -60,9 +60,9 @@
   use lib "$Bin/dotlib/";
   use DotLib;
 
-  use vars qw($opt_m $opt_o $opt_v $opt_p $opt_k $opt_a $opt_z $opt_s $opt_b $opt_d $opt_n $opt_l $opt_x $opt_u $opt_t);
-  &Getopts('m:o:v:p:k:a:z:s:b:d:n:l:x:u:t:');
-  my ($base_overlap,$min_overlap,$verbose,$MIN_READ_LENGTH,$SEQ_SLIDE,$min_base_ratio,$min_links,$max_link_ratio,$unpaired_file,$max_trim,$base_name, $outdir,$max_count_trim,$min_tig_overlap, $doplot, $extending)= (20, 32, 0, 16, 1, 1, 5, 0.70, "no-u", 0, "standard_output",".", 10, 15, 0, 1);
+  use vars qw($opt_m $opt_o $opt_v $opt_p $opt_k $opt_a $opt_z $opt_s $opt_b $opt_d $opt_n $opt_l $opt_x $opt_u $opt_t $opt_q);
+  &Getopts('m:o:v:p:k:a:z:s:b:d:n:l:x:u:t:q:');
+  my ($base_overlap,$min_overlap,$verbose,$MIN_READ_LENGTH,$SEQ_SLIDE,$min_base_ratio,$min_links,$max_link_ratio,$unpaired_file,$max_trim,$base_name, $outdir,$max_count_trim,$min_tig_overlap, $doplot, $extending, $max_tig_length)= (20, 32, 0, 16, 1, 1, 5, 0.70, "no-u", 0, "standard_output",".", 10, 15, 0, 1,-1);
 
   my $version = "[SSPACE_v1-1]";
   my $seplines = ("-" x 60)."\n";
@@ -105,6 +105,7 @@
   $unpaired_file = $opt_u if($opt_u);
   $doplot = $opt_p if($opt_p);
   $extending = $opt_x if($opt_x eq 1);
+  $max_tig_length = $opt_q if($opt_q);
   my $libraryfile = $opt_l if ($opt_l);
 
 #-------------------------------------------------CHECKING PARAMETERS
@@ -225,7 +226,7 @@
     my $bowtiefile = $outdir."/bowtieoutput/" . $base_name . ".$lib.mapped";
 
     if(-e $bowtiefile){
-      system("perl $Bin/bin/PairingAndScaffolding.pl $contig $base_name $issues $distribution $verbose $lib $insert_size $min_allowed $scaffold $min_links $max_link_ratio $outdir");
+      system("perl $Bin/bin/PairingAndScaffolding.pl $contig $base_name $issues $distribution $verbose $lib $insert_size $min_allowed $scaffold $min_links $max_link_ratio $outdir $max_tig_length");
 
       #retrieve the contigs that were stored
       my $contigstored = "$outdir/tmp.$base_name/contigs.stored";
