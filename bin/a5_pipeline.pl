@@ -460,7 +460,7 @@ sub qfilter_correct_tagdust_paired {
 
 
 	# quality filter
-	my $pp_cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
+	my $pp_cmd = "$DIR/sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH."  --permute-ambiguous --pe-mode=1 ";
 	$pp_cmd .= "--phred64 " if (get_phred64($r1file));
 	$pp_cmd .= " $r1file $r2file > $r1file.both.pp";
 	print STDERR "[a5] $pp_cmd\n";
@@ -599,7 +599,7 @@ sub sga_clean {
 	
 	# preprocess the reads with SGA -- quality trim and filter
 	# pipe in the reads so we can count how many passed the filter for each file
-	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous ";
+	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH."  --permute-ambiguous ";
 	$cmd .= "--phred64 " if ($phred64);
 	$cmd .= " $files >$WD/$outbase.pp.fastq";
 	$cmd = "$DIR/$cmd";
@@ -732,6 +732,7 @@ sub map_all_libs {
 			`rm $up.sai`;
 		}
 	}
+	remove_pcrfree_scafs($libsref);
 }
 
 =item read_lib_file
@@ -924,18 +925,26 @@ sub scaffold_sspace {
 	my $curr_ins = -1;
 	my %run_lib;
 	$rescaffold=0 unless defined($rescaffold);
-	# sort library.txt to so that we scaffold with smaller insert libraries first
+	my @lib_inserts;
 	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
+		push( @lib_inserts, $libs{$lib}{"ins"} );
+	}
+	# sort library.txt to so that we scaffold with smaller insert libraries first
+	my $libI=0;
+	for my $lib (sort { $libs{$a}{"ins"} <=> $libs{$b}{"ins"} } keys %libs) {
+		$libI++;
 		my ($exp_link, $cov) = calc_explinks( $genome_size, $libs{$lib}{"ins"}, $libs{$lib}{"p1"} ); 
 		printf STDERR "[a5] %s\: Insert %.0f, coverage %.2f, expected links %.0f\n", $libs{$lib}{"id"}, $libs{$lib}{"ins"}, $cov, $exp_link;
 #		if (-f "$OUTBASE.unpaired.fastq") { # run sspace with unpaired library if we have one
+		my $max_scaffolding_contig_length = 0;
+		$max_scaffolding_contig_length = $lib_inserts[$libI] if $libI < @lib_inserts && $rescaffold;
 		if (-f "$WD/$OUTBASE.ec.fa") { # run sspace with unpaired library if we have one
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
 #                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold, "$OUTBASE.unpaired.fastq");
-                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold, "$WD/$OUTBASE.ec.fa");
+                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold, $max_scaffolding_contig_length, "$WD/$OUTBASE.ec.fa");
 		} else {
 			$curr_ctgs = run_sspace($genome_size, $libs{$lib}{"ins"}, $exp_link, $outbase.".".$libs{$lib}{"id"},
-                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold);
+                                                  $libs{$lib}{"libfile"}, $curr_ctgs, $rescaffold, $max_scaffolding_contig_length);
 		}
 	}
 
@@ -1374,8 +1383,9 @@ sub run_sspace {
 	my $libfile = shift;
 	my $input_fa = shift;
 	my $rescaffold = shift;
+	my $max_scaffolding_contig_length = shift;
 
-	my $sspace_x = 0;
+	my $sspace_x = "-x 0"; # should contigs be extended?
 	my $sspace_m = int(log2($genome_size)+3.99);
 	$sspace_m = 15 if $sspace_m < 15; # min overlap of read during extension. as genome size goes down, k-mers of a particular size are more likely to be unique, thus overlaps can be trusted at smaller sizes in smaller genomes
 	my $sspace_n = int(log2($insert_size)*1.25+.99); # min overlap required to merge contigs. smaller the insert size, the more certain we can be about a short overlap being correct, so scale this up/down according to insert size
@@ -1392,16 +1402,19 @@ sub run_sspace {
 	if(defined($rescaffold)&&$rescaffold==1){
 		# when rescaffolding we want to pick up the low coverage
 		# and small pieces that were cut out from misassembled regions
-		$sspace_a = 0.3; # be stringent here -- do not want more misassembly
-		$sspace_k -= 2; # if( $insert_size > 1500 );
-		$sspace_x = 0; # do not extend contigs -- risks further misassembly
+		$sspace_a = 0.3; # be more stringent here -- do not want more misassembly
+#		$sspace_k += 1; # if( $insert_size > 1500 );
+#		$sspace_k += 2 if( $insert_size < 1500 );
+		# much more strict here.
+		$sspace_k = int($exp_links/50 + 1);
+		$sspace_x = ""; # do not extend contigs -- risks further misassembly
 		$libfile .= ".strict";
 	}
 
 	# require at least 1 link
 	$sspace_k = $sspace_k < 1 ? 1 : $sspace_k;
 
-	my $sspace_cmd = "SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a $sspace_a -o 1 -x $sspace_x ".
+	my $sspace_cmd = "SSPACE -m $sspace_m -n $sspace_n -k $sspace_k -a $sspace_a -o 1 $sspace_x ".
                                         "-l $libfile -s $input_fa -b $outbase -d $WD";
 #	if (@_) {
 #		print STDERR "[a5] Running SSPACE with unpaired reads\n";
@@ -1411,7 +1424,68 @@ sub run_sspace {
 	print STDERR "[a5] $sspace_cmd > $WD/$outbase.out\n";
 	`$DIR/SSPACE/$sspace_cmd > $WD/$outbase.out`;
 	`rm -rf $WD/bowtieoutput/ $WD/reads/`;
+	# if there will be another round of scaffolding with a larger insert size, break up the scaffolded large contigs which
+	# would be captured by that library since the large insert lib should (hopefully) be more accurate
+	split_large_contigs( $outbase, $max_scaffolding_contig_length ) if $max_scaffolding_contig_length > 0;
 	return "$WD/$outbase.final.scaffolds.fasta";
+}
+
+sub split_large_contigs {
+	my $outbase = shift;
+	my $max_tig_length = shift;
+	open( EVIDENCE, "$WD/$outbase.final.evidence" );
+	my @prev_tig;
+	my $cur_scaf;
+	my %split_scafs;
+	my $sizer = 0;
+	while( my $line = <EVIDENCE> ){
+		chomp $line;
+		if($line =~ /^>(.+?)\|/){
+			$cur_scaf = $1;
+			$sizer = 0;
+			@prev_tig = ();
+			next;
+		}
+		next if(length($line) < 2);
+		my @cur_tig = split(/\|/, $line);
+		$cur_tig[1] =~ s/size//g;
+		$cur_tig[3] =~ s/gaps//g if(@cur_tig > 3);
+
+		if(defined($prev_tig[1]) && $cur_tig[1] > $max_tig_length && $prev_tig[1] > $max_tig_length){
+			# split these guys
+			$split_scafs{$cur_scaf} = [] unless defined($split_scafs{$cur_scaf});
+			push( @{$split_scafs{$cur_scaf}}, $sizer );
+		}
+		$sizer += $cur_tig[1];
+		$sizer += $cur_tig[3] if(@cur_tig > 3);
+		@prev_tig = @cur_tig;
+	}
+	system("mv $WD/$outbase.final.scaffolds.fasta $WD/$outbase.unbroken.scaffolds.fasta");
+	open( INFASTA, "$WD/$outbase.unbroken.scaffolds.fasta" );
+	open( OUTFASTA, ">$WD/$outbase.final.scaffolds.fasta" );
+	while( my $line = <INFASTA> ){
+		chomp $line;
+		if( $line =~ /^>(.+)/ ){
+			my $cur_scaf = $1;
+			unless (defined($split_scafs{$cur_scaf})){
+				print OUTFASTA $line."\n";
+				next;
+			}
+			my $seqline = <INFASTA>;
+			my $prev_point = 0;
+			my $part = 1;
+			foreach my $point (sort {$a <=> $b} @{$split_scafs{$cur_scaf}} ){
+				my $curseq = substr( $seqline, $prev_point, $point - $prev_point );
+				print OUTFASTA ">$line.$part\n$curseq\n";
+				$prev_point = $point;
+				$part++;
+			}
+			my $lastseq = substr( $seqline, $prev_point, length($seqline) - $prev_point );
+			print OUTFASTA ">$line.$part\n$lastseq\n";
+		}else{
+			print OUTFASTA $line."\n";
+		}
+	}
 }
 
 sub log2 {
@@ -1507,3 +1581,59 @@ sub get_rdlen($$){
 	close FILE;
 	return length($line);
 }
+
+sub remove_pcrfree_scafs{
+	my $libsref = shift;
+	my %libs = %$libsref;
+	my %libscaf_readcount;
+	my %lib_readcount;
+	my $pcrfreelib="";
+	
+	# for each library, count up the number of reads mapped to each scaffold
+	for my $lib (keys %libs) {
+		next unless (defined($libs{$lib}{"p1"}));
+		my $samtools_cmd = "$DIR/samtools view $lib.pe.bam |";
+		open(SAMVIEW, $samtools_cmd);
+		my $rcount = 0;
+		while( my $line = <SAMVIEW> ){
+			my @dat = split(/\t/, $line);
+			$libscaf_readcount{$lib}{$dat[2]} = 0 unless defined($libscaf_readcount{$lib}{$dat[2]});
+			$libscaf_readcount{$lib}{$dat[2]}++;
+			$rcount++;
+		}
+		$lib_readcount{$lib} = $rcount;
+		$pcrfreelib = $lib if($libs{$lib}{"p1"} =~ /pcrfree/);
+	}
+
+	# identify scaffolds which have less PCRfree data than other data
+	# in at least one library, mark them to keep
+	my $pcrfree_count=0;
+	my $other_count=0;
+	my %keep_scafs;
+	for my $lib (keys %lib_readcount) {
+		next unless defined($lib_readcount{$pcrfreelib});
+		next unless($lib_readcount{$lib} > $lib_readcount{$pcrfreelib});
+		for my $scaf( keys( %{$libscaf_readcount{$lib}} ) ){
+			$keep_scafs{$scaf}=0;
+			if($libscaf_readcount{$lib}{$scaf} > $libscaf_readcount{$pcrfreelib}{$scaf}){
+				$keep_scafs{$scaf}=1;
+			}
+		}
+	}
+	
+	# write a filtered FastA with only the scaffolds to keep
+	open(FASTAIN, "$OUTBASE.final.scaffolds.fasta");
+	open(FASTAOUT, ">$OUTBASE.filtered.scaffolds.fasta");
+	my $printing=0;
+	while( my $line = <FASTAIN> ){
+		if($line =~ /^>(.+)/){
+			my $scaf = $1;
+			chomp $scaf;
+			$keep_scafs{$scaf} = 1 unless defined($keep_scafs{$scaf});
+			$printing = $keep_scafs{$scaf};
+		}
+		print FASTAOUT $line if $printing;
+	}
+}
+
+
