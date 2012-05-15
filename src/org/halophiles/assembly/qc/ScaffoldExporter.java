@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.lang.String;
 
 public class ScaffoldExporter {
 
@@ -29,13 +30,18 @@ public class ScaffoldExporter {
 	 */
 	public void export(String hdr, StringBuilder sequence, int left, int right){
 		int subSeq = -1;
-		if (counts.containsKey(hdr))
-			subSeq = counts.get(hdr)+1;
-		else 
-			subSeq = 1;
-		out.println(">"+hdr+"-");
-		out.println(sequence.substring(left-1, right));
-		counts.put(hdr, subSeq);
+		// check for long stretches of N
+		String seqstr = sequence.substring(left-1, right);
+		String[] brokenScaffolds = seqstr.split("[Nn]{200,}");
+		for(int i=0; i<brokenScaffolds.length; i++){
+			if (counts.containsKey(hdr))
+				subSeq = counts.get(hdr)+1;
+			else 
+				subSeq = 1;
+			out.println(">"+hdr+"-"+subSeq);
+			out.println(brokenScaffolds[i]);
+			counts.put(hdr, subSeq);
+		}
 	}
 	
 	/**
