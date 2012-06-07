@@ -1,0 +1,4 @@
+[LIB]
+p1=phiX_p1.fastq.bz2
+p2=phiX_p2.fastq.bz2
+ins=300

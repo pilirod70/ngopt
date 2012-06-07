@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project name="Build JAR for exporting FISH input from a SAM file" default="compile">
+    <!--this file was created by Eclipse Runnable JAR Export Wizard-->
+    <!--ANT 1.7 is required                                        -->
+	<property name="src" location="src"/>
+	<property name="ext" location="ext"/>
+	<property name="bin" location="bin"/>
+	
+	<mkdir dir="${bin}" />
+	
+	<!--includes="${src}/org/halophiles/assembly/qc/FISHInputExporter.java,${src}/org/halophiles/assembly/Contig.java,${src}/org/halophiles/assembly/ReadPair.java,${src}/org/halophiles/assembly/SAMFileParser.java,${src}/org/halophiles/tools/SummaryStats.java" listfiles="true" includeantruntime="false"-->
+	<target name="compile" description="compile java code">
+		<javac srcdir="${src}" destdir="${bin}" target="1.5" source="1.5" classpath="${ext}/jgrapht-jdk1.6.jar" debug="true" includeantruntime="false"/>
+    </target>
+
+    <target name="jar">
+		<delete file="bin/GetInsertSize.jar"/>
+		<jar destfile="bin/GetInsertSize.jar">
+            <manifest>
+                <attribute name="Main-Class" value="org.halophiles.assembly.InsertSizeExporter"/>
+            </manifest>
+            <fileset dir="${bin}">
+				<include name="**/org/halophiles/assembly/InsertSizeExporter*.class"/>
+				<include name="**/org/halophiles/assembly/qc/EMClusterer*.class"/>
+				<include name="**/org/halophiles/assembly/Contig.class"/>
+				<include name="**/org/halophiles/assembly/ContigTerminal.class"/>
+				<include name="**/org/halophiles/assembly/ReadSet.class"/>
+				<include name="**/org/halophiles/assembly/ReadPair.class"/>
+				<include name="**/org/halophiles/assembly/SAMFileParser.class"/>
+				<include name="**/org/halophiles/tools/SummaryStats.class"/>
+			</fileset>
+        </jar>
+		<delete file="bin/A5qc.jar"/>
+        <jar destfile="bin/A5qc.jar">
+            <manifest>
+                <attribute name="Main-Class" value="org.halophiles.assembly.qc.MisassemblyBreaker"/>
+            </manifest>
+            <fileset dir="${bin}">
+				<include name="**/org/halophiles/assembly/qc/MisassemblyBreaker*.class"/>
+				<include name="**/org/halophiles/assembly/qc/EMClusterer*.class"/>
+				<include name="**/org/halophiles/assembly/qc/ReadCluster.class"/>
+				<include name="**/org/halophiles/assembly/qc/MatchBuilder*.class"/>
+				<include name="**/org/halophiles/assembly/qc/SpatialClusterer*.class"/>
+				<include name="**/org/halophiles/assembly/qc/MatchPoint.class"/>
+				<include name="**/org/halophiles/assembly/qc/ScaffoldExporter.class"/>
+				<include name="**/org/halophiles/assembly/Contig.class"/>
+				<include name="**/org/halophiles/assembly/ContigTerminal.class"/>
+				<include name="**/org/halophiles/assembly/ReadSet.class"/>
+				<include name="**/org/halophiles/assembly/ReadPair.class"/>
+				<include name="**/org/halophiles/tools/SummaryStats.class"/>
+			</fileset>
+        </jar>
+    </target>
+
+</project>
