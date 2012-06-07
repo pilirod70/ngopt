@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
 			tmp = new fa_entry;
 			in->getline(buf,256,'\n');	
 			tmp->name=buf;
-		} else if (c == '\n') {
+		} else if (c == '\n' || c == ' ') {
 		}  else {
 			tmp->seq.push_back(c);
 		}

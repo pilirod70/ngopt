@@ -109,6 +109,9 @@ void initlzSeq(deque<char>& win, list<double>& prof, ifstream& in){
 	char b;
 	for (int i = 0; i <= WIN_LEN/2; i++){
 		b = (char) in.get();
+		if (b == '\n') {
+			continue;
+		}
 		while (!isBase(b)){
 			cerr << "Found non-base character where I'm not supposed to: >" << b << "<"<< endl;
 			b = in.get();
@@ -154,6 +157,7 @@ int main (int argc, char** argv) {
 	wt = 1.0/WIN_LEN;
 	
 	list<string> seq_names;
+	// a list to store GC at each position for each entry in the fastq file
 	list< list<double> > profiles;
 	list<double> * tmp_prof = new list<double>();
 	string hdr;
@@ -164,7 +168,7 @@ int main (int argc, char** argv) {
 	hdr = str;
 	size_t spc_idx = hdr.find_first_of(split);
 	hdr = hdr.substr(0,spc_idx);
-	cerr << "counting sequence " << hdr << " spc_idx = " << spc_idx << endl;
+	cerr << "counting sequence " << hdr << endl;
 	initlzSeq(window,*tmp_prof,in);	
 	for(char b = in.get(); in.good(); b = in.get()){
 		if (b == '>' ){ 
@@ -175,7 +179,7 @@ int main (int argc, char** argv) {
 			hdr = str;
 			spc_idx = hdr.find_first_of(split);
 			hdr = hdr.substr(0,spc_idx);
-			cerr << "counting sequence " << hdr << " spc_idx = " << spc_idx << endl;
+			cerr << "counting sequence " << hdr << endl;
 			tmp_prof = new list<double>();
 			initlzSeq(window,*tmp_prof,in);
 			continue;
