@@ -7,8 +7,8 @@
 #include <map>
 using namespace std;
 
-int WIN_LEN = 21;
 double wt;
+int num_amb;
 
 map<char,int> tot;
 int A = 0;
@@ -40,8 +40,30 @@ void addbase(char& b) {
 		case 'G': G++; tot['g']++; break;
 		case 'c': C++; tot['c']++; break;
 		case 'C': C++; tot['c']++; break;
-		case 'n': break;
-		case 'N': break;
+		case 'M': num_amb++; break;
+		case 'm': num_amb++; break;
+		case 'R': num_amb++; break;
+		case 'r': num_amb++; break;
+		case 'W': num_amb++; break;
+		case 'w': num_amb++; break;
+		case 'S': num_amb++; break;
+		case 's': num_amb++; break;
+		case 'Y': num_amb++; break;
+		case 'y': num_amb++; break;
+		case 'K': num_amb++; break;
+		case 'k': num_amb++; break;
+		case 'V': num_amb++; break;
+		case 'v': num_amb++; break;
+		case 'H': num_amb++; break;
+		case 'h': num_amb++; break;
+		case 'D': num_amb++; break;
+		case 'd': num_amb++; break;
+		case 'B': num_amb++; break;
+		case 'b': num_amb++; break;
+		case 'X': num_amb++; break;
+		case 'x': num_amb++; break;
+		case 'n': num_amb++; break;
+		case 'N': num_amb++; break;
 		default: cerr << "Unrecognizable character: " << b << endl;
 	}
 }
@@ -72,7 +94,7 @@ int main (int argc, char** argv) {
 	tot['t']=0;
 	tot['g']=0;
 	tot['c']=0;
-
+	num_amb = 0;
 	string inFile = argv[1];
 	ifstream in(inFile.c_str());
 	list<string> seq_names;
@@ -129,5 +151,8 @@ int main (int argc, char** argv) {
 	cerr << "   C: " << tot['c'] << endl; 
 	tot_gc = 100*tot_gc/tot_bases;	
 	fprintf(stderr,"Genome-wide GC-content: %.2g%%\n",tot_gc);
+	if (num_amb > 0) {
+		cerr << "Ignored " << num_amb << " ambiguous bases." << endl;
+	}
 }
 

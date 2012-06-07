@@ -18,6 +18,8 @@ char comp(char b) {
 	switch(b){
 		case 'A': return 'T';
 		case 'a': return 't';
+		case 'U': return 'A';
+		case 'u': return 'a';
 		case 'T': return 'A';
 		case 't': return 'a';
 		case 'G': return 'C';

@@ -1,6 +1,4 @@
 #!/usr/bin/perl -w
-use strict;
-use warnings;
 
 if (@ARGV < 1) {
 	print "Usage: unshuffle.pl <output_basename> <in.fastq|stdin>\n";
