@@ -144,7 +144,7 @@ assemblies of \textit{Haloferax mediterranei} and \textit{Haloferax volcanii} DS
 
 We present comparison of the A5 pipeline's performance relative to the SOAPdenovo assembler~\cite{Li2010} on two datasets wherein we attempted to fix the \textit{human time budget}, in terms of the number of steps that must be performed by a user, to be roughly equal for the two approaches. We also compare against SOAPdenovo in an ideal setting where extra effort has been taken to clean and error correct the reads prior to use of SOAPdenovo.
 The first dataset
-is a halophilic archaeon for which a high quality published reference genome is available~\cite{Hartman2010}. For this dataset we are able to use
+is the halophilic archaeon, \textit{H. volcanii} DS2, for which a high quality published reference genome is available~\cite{Hartman2010}. For this dataset we are able to use
 reference-based assembly metrics to evaluate assembly quality~\cite{Darling2011}. We also evaluate assembly quality on an 
 \textit{Escherichia coli} CC118 isolate sequenced using transposon-catalyzed library preparation methods (Epicentre Nextera). 
 No high quality reference genome exists for the \textit{E. coli} isolate, so we report basic descriptive statistics for assemblies
@@ -233,13 +233,13 @@ In comparing the SOAPdenovo results on raw and cleaned reads, we observe that th
 \subsection*{Compute time and memory requirements}
 
 The A5 pipeline can construct genome assemblies with limited memory and CPU requirements. 
-For microbial genomes around 4Mbp sequenced to 100x coverage, memory as low as 4GB can be sufficient (data not shown). 
+For microbial genomes around 4 Mbp sequenced to 100x coverage, memory as low as 4 GB can be sufficient (data not shown). 
 Typically the error correction using SGA is the most resource intensive stage in the pipeline. 
 SGA's implementation of error correction offers a configurable space/time tradeoff wherein temporary files on a filesystem can be used to reduce RAM requirements at the expense of extra compute time. 
 A5 makes use of this configurable tradeoff by determining at runtime the available memory on the system and allocating a fixed fraction of it to SGA for error correction.
 This approach enables error correction to run faster on machines with larger available memory.
 
-The A5 assemblies of \textbf{Volc} and \textbf{Tn5} were conducted on a 8 core 64-bit system with 48GB RAM. On this machine, the \textbf{Volc} assembly took 1 hour, 20 minutes with a peak memory usage of 20GB during the SGA error correction step. The \textbf{Tn5} assembly completed in 1 hour, 29 minutes with a peak memory usage of 21GB.
+The A5 assemblies of \textbf{Volc} and \textbf{Tn5} were conducted on a 8 core 64-bit system with 48 GB RAM. On this machine, the \textbf{Volc} assembly took 1 hour, 20 minutes with a peak memory usage of 20 GB during the SGA error correction step. The \textbf{Tn5} assembly completed in 1 hour, 29 minutes with a peak memory usage of 21 GB.
 
 \section*{Discussion}
 
