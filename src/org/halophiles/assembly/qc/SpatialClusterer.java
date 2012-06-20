@@ -19,7 +19,7 @@ import java.util.Vector;
 import org.halophiles.assembly.Contig;
 /**
  * A data structure for storing match points (i.e. paired-read mapping locations)
- * between two contigs, and additional methods for running the DBSCAN spatial clusterin
+ * between two contigs, and additional methods for running the DBSCAN spatial clustering
  * algorithm.
  * 
  * @author Andrew Tritt
