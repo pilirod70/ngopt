@@ -6,8 +6,6 @@
 	<classpathentry kind="lib" path="ext/concurrent.jar"/>
 	<classpathentry kind="lib" path="ext/jgrapht-jdk1.6.debug.jar" sourcepath="/Users/andrew/JavaPackages/jgrapht-0.8.2/src"/>
 	<classpathentry kind="lib" path="ext/jsc.jar"/>
-	<classpathentry kind="lib" path="ext/biojava.jar"/>
-	<classpathentry kind="lib" path="ext/bytecode.jar"/>
-	<classpathentry kind="lib" path="ext/javaml-0.1.5.jar"/>
+	<classpathentry kind="lib" path="ext/commons-cli-1.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

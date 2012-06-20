@@ -166,7 +166,7 @@ public class MisassemblyBreaker {
 			long after = System.currentTimeMillis();
 			System.out.println("[a5_qc] Took "+((after-before)/1000)+" seconds to read in "+reads.size()+" read pairs.");
 			if (reads.size() <= 0) {
-				System.err.println("[a5_qc] No paired reads found. Cannot generate match files for running FISH misassembly detection.");
+				System.err.println("[a5_qc] No paired reads found -- Cannot detect misassemblies -- Exiting.");
 				System.exit(-1);
 			}
 			setOrientation(reads.values());
@@ -179,16 +179,7 @@ public class MisassemblyBreaker {
 			
 				
 			double[][] clusterStats = getLibraryStats(reads, numLibs);
-			double[][] ranges = new double[clusterStats.length][2];
-			for (int i = 0; i < clusterStats.length; i++){
-				if (clusterStats[i][0]>1000){
-					ranges[i][0] = clusterStats[i][0]-clusterStats[i][3]*clusterStats[i][1];
-					ranges[i][1] = clusterStats[i][0]+clusterStats[i][3]*clusterStats[i][1];
-				} else {
-					ranges[i][0] = 1;
-					ranges[i][1] = clusterStats[i][0]*2;
-				}
-			}
+			double[][] ranges = getFilterRanges(clusterStats);
 			setMAXBLOCKLEN(clusterStats);
 			loadData(samPath, contigs, ranges);
 			setParameters(clusterStats);
@@ -259,11 +250,15 @@ public class MisassemblyBreaker {
 			ScaffoldExporter out = new ScaffoldExporter(brokenScafFile); 
 			File ctgFile = new File(args[1]);
 			BufferedReader br = new BufferedReader(new FileReader(ctgFile));
+			// discard the first '>'
 			br.read();
 			int[][] tmpAr = null;
 			StringBuilder sb = null;
 			while(br.ready()){
 				String tmpCtg = br.readLine(); 
+				// Take only the first part of the contig header to be consistent with bwa
+				if (tmpCtg.contains(" "))
+					tmpCtg = tmpCtg.substring(0,tmpCtg.indexOf(" "));
 				sb = new StringBuilder();
 				char c = (char) br.read();
 				while(c != '>'){
@@ -536,6 +531,11 @@ public class MisassemblyBreaker {
 			if (tmpLen > rdLen)
 				rdLen = tmpLen;
 			
+			// Remove repetitive reads
+			if (line1[11].equals("XT:A:R")||line2[11].equals("XT:A:R")){
+				continue;
+			}
+			
 			/* begin: tally these read positions */
 			offset = coordOffset.get(ctg1.name);
 			index = Arrays.binarySearch(readCounts[0], offset+left1);
@@ -551,10 +551,6 @@ public class MisassemblyBreaker {
 			
 			
 			ctgNameComp = line1[2].compareTo(line2[2]);
-			
-			if (line1[11].equals("XT:A:R")||line2[11].equals("XT:A:R")){
-				continue;
-			}
 			
 			/*
 			 * if this pair spans two different contigs, we need to sort the names
@@ -639,12 +635,16 @@ public class MisassemblyBreaker {
 		 * compute key runtime parameters
 		 */
 		P = Double.POSITIVE_INFINITY;
+		int minWindow = -1;
 		for (int i = 0; i < readCounts[1].length; i++){
 			if (readCounts[1][i] == 0)
 				continue;
-			if (P > readCounts[1][i])
+			if (P > readCounts[1][i]){
 				P = readCounts[1][i];
+				minWindow = i;
+			}
 		}
+		System.out.println("[a5_load_data] Window with fewest mapped reads: "+readCounts[0][minWindow-1]+" - "+readCounts[0][minWindow]);
 		P = P/windowLen;
 		
 		Iterator<String> ctgIt = ctgClusterers.keySet().iterator();
@@ -881,6 +881,32 @@ public class MisassemblyBreaker {
 		
 		return ret;
 	}
+	
+	private static double[][] getFilterRanges(double[][] clusterStats){
+		double[][] ranges = new double[clusterStats.length][2];
+		for (int i = 0; i < clusterStats.length; i++){
+			ranges[i][0] = Math.max(1,clusterStats[i][0]-6*clusterStats[i][1]);
+			ranges[i][1] = clusterStats[i][0]+6*clusterStats[i][1];
+			/*
+			if (clusterStats[i][0]>1000){
+				/* Use as many standard deviations as possible without going negative
+				ranges[i][0] = clusterStats[i][0]-clusterStats[i][3]*clusterStats[i][1];
+				ranges[i][1] = clusterStats[i][0]+clusterStats[i][3]*clusterStats[i][1];
+				* /
+				// Use 6 standard devations to the right, and as many as possible to the left
+				ranges[i][0] = Math.max(1,clusterStats[i][0]-6*clusterStats[i][1]);
+				ranges[i][1] = clusterStats[i][0]+6*clusterStats[i][1];
+				
+			} else {
+				ranges[i][0] = 1;
+				ranges[i][1] = clusterStats[i][0]*2;
+			}
+			*/
+		}
+		return ranges;
+	}
+	
+	
 	/**
 	 * Run the EM-clustering algorithm with the given number of clusters
 	 * @param toFilt the ReadPairs to cluster
