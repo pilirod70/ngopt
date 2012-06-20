@@ -680,7 +680,8 @@ public class MisassemblyBreaker {
 		 * LAMBDA Rate of mapping points (Poisson rate parameter)
 		 */	
 		MAX_INTERPOINT_DIST = Math.max(ReadCluster.RDLEN, (int) (Math.log(ALPHA)/Math.log(Math.max(1-P,0)))-1);
-		MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
+		//MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
+		MIN_BLOCK_LEN = (int) (1/P)*2;
 		/*
 		 * apply some extreme value theory to get the minimum of points 
 		 * randomly sampled uniformally across an interval of MAX_BLOCK_LEN
@@ -702,7 +703,7 @@ public class MisassemblyBreaker {
 		for (double[] cluster: clusterStats){
 			if (cluster[0] > MEAN_BLOCK_LEN){
 				MEAN_BLOCK_LEN = (int) (cluster[0]);
-				MAX_BLOCK_LEN = (int) (cluster[0]+cluster[1]*cluster[3]);
+				MAX_BLOCK_LEN = (int) (cluster[0]+cluster[1]*6);
 			}
 		}
 	}
@@ -782,7 +783,8 @@ public class MisassemblyBreaker {
 		double maxL = models[0].likelihood();
 		double prevL = maxL;
 		int numWorseSteps = 0;
-		for (int i = 1; i < maxK && numWorseSteps < 3; i++){
+		int maxWorseSteps = 1;
+		for (int i = 1; i < maxK && numWorseSteps < maxWorseSteps; i++){
 			models[i] = runEM(toFilt, i+2, delta);
 			if (models[i].likelihood() > maxL){
 				bestModel = i;
