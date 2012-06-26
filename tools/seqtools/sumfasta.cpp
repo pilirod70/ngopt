@@ -5,16 +5,22 @@
 #include <vector>
 #include <limits>
 #include <algorithm>
+#include <cstring>
 
 using namespace std;
 
 void printStats(char* file) {
 	ifstream fa_in(file);
 
-	bool first = true;		
-	char c = (char) fa_in.get();
-	if (c != '>') {
-		cerr << "File " << file << " not in fasta format\n" << "c = " << c << endl;
+	char c;
+	if (fa_in) {
+		c = (char) fa_in.get();
+		if (c != '>') {
+			cerr << "File " << file << " not in fasta format\n";
+			return;
+		}
+	} else {
+		cerr << file << " does not exist.\n";
 		return;
 	}
 	int tot = 0;
@@ -58,14 +64,27 @@ void printStats(char* file) {
 	cout << file << "\t" << data.size() << "\t" << n50 << "\t" << (tot/data.size()) << "\t" << data.back() << "\t" << *data.begin() << "\t" << tot << "\t" << numNuc << "\t" << numN << endl;
 }
 
+void usage() {
+	cout << "Usage: sumfasta [options] <fasta1> <fasta2> ... <fastaN>\n" <<
+	        "   where options are:\n" <<
+	        "   --header           print a header indicating the fields of the output\n" <<
+	        "   -h, --help         print this message and exit\n";
+}
+
 int main(int argc, char** argv) {
-	
-	if (argc != 2) {
-		cout << "Usage: sumfasta <fasta1> <fasta2> ... <fastaN>\n" << "Output printed to standard out\n";
-		return -1;
+	if (argc == 1 || (argc == 2 && (strcmp(argv[1],"-h") == 0 || strcmp(argv[1],"--help") == 0))) {
+		usage();
+		return 1;	
 	}
-	for (int i = 1; i < argc; i++){
+	int start = 1;
+	if (strcmp(argv[1],"--header") == 0 ){
+		cout << "Fasta_File\tNum_Ctgs\tN50\tAvgCtgLen\tMaxCtgLen\tMinCtgLen\tTotal_Bases\tNum_Nucs\tNum_Unks\n"; 
+		start++;
+	}
+
+	for (int i = start; i < argc; i++){
 		printStats(argv[i]);
+		
 	}
 
 }	
