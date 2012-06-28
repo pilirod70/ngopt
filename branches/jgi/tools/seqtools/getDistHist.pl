@@ -27,9 +27,22 @@ while($line1 = <>){
 	tally($pos1,$pos2) if ($pos1 != 0 && $pos2 != 0);
 }
 
+my $mean;
+my $MoM; # the mean of means
+my $SoM; # the stdev of means
 for my $ar (@bins) {
-	print $ar->[0]."\t".$ar->[1]."\t".$ar->[2]."\n";
+	if ($ar->[2] == 0) {
+		$mean = 0;
+	} else {
+		$mean = $ar->[1]/$ar->[2];
+	}
+	print $ar->[0]."\t".$mean."\t".$ar->[2]."\n";
+	$MoM += $mean;
+	$SoM += $mean**2;
 }
+$MoM = $MoM/scalar(@bins);
+$SoM = $SoM/scalar(@bins) - $MoM**2;
+printf STDERR "%.3f,%.3f\n", $MoM, $SoM; 
 
 sub tally {
 	my $r1 = shift;
