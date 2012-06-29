@@ -169,9 +169,9 @@ public class SpatialClusterer {
 	 * @param y the location of the match on Contig 2
 	 * @return true if the point was not already contained in the underlying set of match points, false otherwise
 	 */
-	public boolean addMatch(int x, int y){
+	public boolean addMatch(int x, boolean xRev, int y, boolean yRev){
 		numPoints++;
-		return currPoints.add(new MatchPoint(x, y));
+		return currPoints.add(new MatchPoint(x, xRev, y, yRev));
 	}
 	
 	/**
@@ -248,14 +248,14 @@ public class SpatialClusterer {
 			// where is this point in x?
 			int i_in_x = xref.get(matchpoints[i]);
 			for(int j_x=i_in_x+1; j_x < x_order.length && 
-				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= EPS; 
-																	j_x++)
-				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS)
+				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= EPS; j_x++)
+				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS &&
+						matchpoints[x_order[j_x]].ori() == matchpoints[i].ori())
 					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 			for(int j_x=i_in_x-1; j_x >= 0 && 
-				matchpoints[i].x() - matchpoints[x_order[j_x]].x() <= EPS; 
-																	j_x--)
-				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS)
+				matchpoints[i].x() - matchpoints[x_order[j_x]].x() <= EPS; j_x--)
+				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS && 
+						matchpoints[x_order[j_x]].ori() == matchpoints[i].ori())
 					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 		}
 	}
