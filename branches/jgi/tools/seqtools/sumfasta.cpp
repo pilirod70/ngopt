@@ -27,9 +27,11 @@ void printStats(char* file) {
 	int numN = 0;
 	int numNuc = 0;
 	int len = 0;
+	int numGaps = 0;
  	char buf[256];	
 	fa_in.getline(buf,256,'\n');	
 	vector<int> data;
+	bool inGap = false;
 	while (fa_in.peek() != -1){
 		c = (char) fa_in.get();
 		if (c == '>'){
@@ -41,8 +43,13 @@ void printStats(char* file) {
 		}  else {
 			if (c == 'n' || c == 'N') {
 				numN++;
+				inGap = true;
 			} else {
 				numNuc++;
+				if (inGap) {
+					inGap = false;
+					numGaps++;	
+				}
 			}
 			len++;
 		}
@@ -60,8 +67,8 @@ void printStats(char* file) {
 			break;
 		}
 	}
-	// Fasta_File	Num_Ctgs	N50	AvgCtgLen	MaxCtgLen	MinCtgLen	Total_Bases	Num_Nucs	Num_Unks
-	cout << file << "\t" << data.size() << "\t" << n50 << "\t" << (tot/data.size()) << "\t" << data.back() << "\t" << *data.begin() << "\t" << tot << "\t" << numNuc << "\t" << numN << endl;
+	// Fasta_File	Num_Ctgs	N50	AvgCtgLen	MaxCtgLen	MinCtgLen	Total_Bases	Num_Nucs	Num_Unks	NumGaps
+	cout << file << "\t" << data.size() << "\t" << n50 << "\t" << (tot/data.size()) << "\t" << data.back() << "\t" << *data.begin() << "\t" << tot << "\t" << numNuc << "\t" << numN << numGaps << endl;
 }
 
 void usage() {
@@ -78,7 +85,7 @@ int main(int argc, char** argv) {
 	}
 	int start = 1;
 	if (strcmp(argv[1],"--header") == 0 ){
-		cout << "Fasta_File\tNum_Ctgs\tN50\tAvgCtgLen\tMaxCtgLen\tMinCtgLen\tTotal_Bases\tNum_Nucs\tNum_Unks\n"; 
+		cout << "Fasta_File\tNum_Ctgs\tN50\tAvgCtgLen\tMaxCtgLen\tMinCtgLen\tTotal_Bases\tNum_Nucs\tNum_Unks\tNumGaps\n"; 
 		start++;
 	}
 
