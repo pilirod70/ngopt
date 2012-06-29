@@ -93,7 +93,7 @@ public class MisassemblyBreaker {
 	private static double NOUT = 0;
 	
 	/** error rate for estimation of maximum values */
-	private static double ALPHA = 0.0001;
+	private static double ALPHA = 0.001;
 	
 	/**
 	 * The probability of success for the Geometric distrbution
@@ -498,6 +498,8 @@ public class MisassemblyBreaker {
 		int index = 0;
 		long before = System.currentTimeMillis();
 		int rdLen = 0;
+		boolean rev1 = false;
+		boolean rev2 = false;
 		
 		while (br.ready()){
 			currPos = fis.getChannel().position()-start;
@@ -536,6 +538,9 @@ public class MisassemblyBreaker {
 				continue;
 			}
 			
+			rev1 = isReverse(line1[1]);
+			rev2 = isReverse(line2[1]);
+			
 			/* begin: tally these read positions */
 			offset = coordOffset.get(ctg1.name);
 			index = Arrays.binarySearch(readCounts[0], offset+left1);
@@ -565,7 +570,7 @@ public class MisassemblyBreaker {
 						pc = new SpatialClusterer(ctg1, ctg2);
 						clusterers.put(ctgStr, pc);
 					}
-					pc.addMatch(left1, left2);
+					pc.addMatch(left1, rev1, left2, rev2);
 				} else {
 					ctgStr = line2[2]+"-"+line1[2];
 					if (clusterers.containsKey(ctgStr))
@@ -574,7 +579,7 @@ public class MisassemblyBreaker {
 						pc = new SpatialClusterer(ctg2, ctg1);
 						clusterers.put(ctgStr, pc);
 					}
-					pc.addMatch(left2, left1);
+					pc.addMatch(left2, rev2, left1, rev1);
 				}
 				if (counts.containsKey(ctg1.name))
 					counts.put(ctg1.name, counts.get(ctg1.name)+2);
@@ -597,9 +602,9 @@ public class MisassemblyBreaker {
 					clusterers.put(ctgStr, pc);
 				}
 				if (left2 < left1) // order for consistency
-					pc.addMatch(left2, left1);
+					pc.addMatch(left2, rev2, left1, rev1);
 				else 
-					pc.addMatch(left1, left2);
+					pc.addMatch(left1, rev1, left2, rev2);
 				if (counts.containsKey(ctg1.name)){
 					counts.put(ctg1.name, counts.get(ctg1.name)+2);
 				} else {
@@ -691,7 +696,7 @@ public class MisassemblyBreaker {
 		 */
 		MAX_INTERBLOCK_DIST = (int)(2*(Math.pow(1-ALPHA, 1/(P*MEAN_BLOCK_LEN))*MEAN_BLOCK_LEN-1));
 		MAX_INTERBLOCK_DIST = 2*MEAN_BLOCK_LEN;
-		SpatialClusterer.MIN_PTS = (int) (P * MIN_BLOCK_LEN);
+		SpatialClusterer.MIN_PTS = (int) (P * 2*MAX_INTERPOINT_DIST);
 		SpatialClusterer.EPS = MAX_INTERPOINT_DIST;
 	}
 	
