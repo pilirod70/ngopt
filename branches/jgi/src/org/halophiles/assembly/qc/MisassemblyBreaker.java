@@ -229,7 +229,7 @@ public class MisassemblyBreaker {
 				Iterator<int[]> blockIt = tmpBlocks.iterator();
 				while(blockIt.hasNext()){
 					int[] tmp = blockIt.next();
-					System.out.println("        "+tmp[0]+" - "+tmp[1]);
+					System.out.println("        "+tmp[0]+(tmp[2]==1?" -> ":" <- ")+tmp[1]);
 					
 				}
 				
@@ -287,7 +287,16 @@ public class MisassemblyBreaker {
 				int left = 1;
 				int right = 1;
 				for (int i = 1; i < tmpAr.length; i++){
-					if (tmpAr[i-1][1] > tmpAr[i][0]){ // if they overlap, split at the midpoint of overlap
+					// if they don't face each other, there isn't a misassembly in between this pair of blocks
+					int[] lb = tmpAr[i-1];
+					int[] rb = tmpAr[i];
+					if (lb[2] != 1 || rb[2] != -1) 
+						continue;
+
+					if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
+						continue;
+					// if they overlap, split at the midpoint of overlap
+					if (tmpAr[i-1][1] > tmpAr[i][0]){ 
 						right = (tmpAr[i-1][1] + tmpAr[i][0])/2;
 						System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
 						out.export(tmpCtg, sb, left, right);
@@ -320,37 +329,33 @@ public class MisassemblyBreaker {
 	 * @param yBlocks the Collection of blocks for Contig 2 (aka the y Contig)
 	 */
 	private static void addBlocks(SpatialClusterer sc, Vector<int[]> xBlocks, Vector<int[]> yBlocks){
-		ReadCluster[] kclumps = sc.getReadClusters();
+		ReadCluster[] rdClust = sc.getReadClusters();
 		int xlen = 0;
 		int ylen = 0;
 		int[] x = null;
 		int[] y = null;
-		for (int i = 0; i < kclumps.length; i++){
-			xlen = kclumps[i].xMax-kclumps[i].xMin;
-			ylen = kclumps[i].yMax-kclumps[i].yMin;
-			double xden = ((double)kclumps[i].size())/xlen;
-			double yden = ((double)kclumps[i].size())/ylen;
+		for (int i = 0; i < rdClust.length; i++){
+			xlen = rdClust[i].xMax-rdClust[i].xMin;
+			ylen = rdClust[i].yMax-rdClust[i].yMin;
 			
-			x = new int[2];
-			x[0] = kclumps[i].xMin;
-			x[1] = kclumps[i].xMax;
-			y = new int[2];
-			if (kclumps[i].yMin < 0){
-				y[0] = Math.abs(kclumps[i].yMax);
-				y[1] = Math.abs(kclumps[i].yMin);
+			x = new int[3];
+			x[0] = rdClust[i].xMin;
+			x[1] = rdClust[i].xMax;
+			x[2] = rdClust[i].xOri ? 1 : -1; 
+			y = new int[3];
+			if (rdClust[i].yMin < 0){
+				y[0] = Math.abs(rdClust[i].yMax);
+				y[1] = Math.abs(rdClust[i].yMin);
+				System.err.println ("y values are negative in MisassemblyBreaker.addBlocks");
 			} else {
-				y[0] = kclumps[i].yMin;
-				y[1] = kclumps[i].yMax;
+				y[0] = rdClust[i].yMin;
+				y[1] = rdClust[i].yMax;
 			}
+			y[2] = rdClust[i].yOri ? 1 : -1; 
 			if (xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN) {
 				xBlocks.add(x);
 				yBlocks.add(y);
-			} else {
-				if (xden >= P)
-					System.out.print("");
-				if (yden >= P)
-					System.out.print("");
-			}
+			} 
 		}
 	}
 	/**
@@ -788,7 +793,9 @@ public class MisassemblyBreaker {
 		double maxL = models[0].likelihood();
 		double prevL = maxL;
 		int numWorseSteps = 0;
-		int maxWorseSteps = 1;
+		//int maxWorseSteps = 1;		
+		int maxWorseSteps = 0;
+
 		for (int i = 1; i < maxK && numWorseSteps < maxWorseSteps; i++){
 			models[i] = runEM(toFilt, i+2, delta);
 			if (models[i].likelihood() > maxL){
