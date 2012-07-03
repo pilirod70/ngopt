@@ -1,4 +1,5 @@
 /**
+
  * This file is part of the A5 pipeline.
  * (c) 2011, 2012 Andrew Tritt and Aaron Darling
  * This software is licensed under the GPL, v3.0. Please see the file LICENSE for details
@@ -11,6 +12,7 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.text.NumberFormat;
 import java.util.Arrays;
@@ -212,11 +214,13 @@ public class MisassemblyBreaker {
 					blocks.put(pc.getContig2().name, yBlocks);
 				
 			}
-			
 			Iterator<String> it = blocks.keySet().iterator();
+			/*
 			while(it.hasNext())
 				removeRepeats(blocks.get(it.next()));
+				
 			it = blocks.keySet().iterator();
+			*/
 			Vector<String> toRm = new Vector<String>();
 			while(it.hasNext()){
 				String tmpCtg = it.next();
@@ -386,6 +390,7 @@ public class MisassemblyBreaker {
 		while (i < blocks.size()-1 && blocks.size() > 1){
 			block1 = blocks.get(i);
 			block2 = blocks.get(i+1);
+			// if they overlap, check to see if they overlap enough to constitute a repeat 
 			if (block1[0] < block2[1] && block2[0] < block1[1]){
 				double intersection = block1[1] - block2[0];
 				double union = block2[1] - block1[0];
@@ -397,6 +402,7 @@ public class MisassemblyBreaker {
 			} else
 				i++;
 		}
+		System.out.print("");
 	}
 	/**
 	 * Return true if the given character represents a non-ambiguity code.
@@ -447,39 +453,42 @@ public class MisassemblyBreaker {
 		BufferedReader br = new BufferedReader (new InputStreamReader(fis));
 		
 		
-		/* begin: build a lookup table for tallying coverage in windows */
-		int genomeLen = 0;
+		/* begin: build a lookup table for each contig for tallying coverage in windows */
+		
+		int contigLen = 0;
+		// require the window length to be at least 1000 base pairs
+		int windowLen = Math.max(1000, MEAN_BLOCK_LEN);
 		String[] hdr = null;
 		String contigName = null;
-		Map<String,Integer> coordOffset = new HashMap<String,Integer>();
+		//Map<String,Integer> coordOffset = new HashMap<String,Integer>();
+		Map<String,int[][]> readCounts = new HashMap<String,int[][]>();
 		int offset = 0;
+		int[][] tmpWin = null;
 		while(nextCharIs(br, '@')){
 			hdr = br.readLine().split("\t");
-			offset = genomeLen;
 			if (hdr[0].equals("@SQ")){
 				for (int i = 1; i < hdr.length; i++){
 					if (hdr[i].startsWith("LN:")){
-						genomeLen += Integer.parseInt(hdr[i].substring(hdr[i].indexOf("LN:")+3));
+						contigLen = Integer.parseInt(hdr[i].substring(hdr[i].indexOf("LN:")+3));
+						// calculate the number of windows we need for this contig
+						int numWindow = contigLen/windowLen;
+						if (contigLen % windowLen != 0)
+							numWindow++;
+						// now create the lookup table: add the upper bounds of each window to the array
+						tmpWin = new int[3][numWindow];
+						tmpWin[0][numWindow-1] = contigLen;
+						tmpWin[1][numWindow-1] = (contigLen - (numWindow-1)*windowLen);
+						for (int j = 0; j < numWindow-1; j++){
+							tmpWin[0][j] = (j+1)*windowLen;
+							tmpWin[1][j] = windowLen;
+						}
 					} else if (hdr[i].startsWith("SN:")){
 						contigName = hdr[i].substring(hdr[i].indexOf("SN:")+3);
 					}
 				}
-				coordOffset.put(contigName, offset);
+				// store our lookup table for this contig
+				readCounts.put(contigName,tmpWin);
 			}
-		}
-		// require the window length to be at least 1000 base pairs
-		int windowLen = Math.max(1000, MEAN_BLOCK_LEN);
-		int[][] readCounts = null;
-		int numWindow = genomeLen/windowLen;
-		if (genomeLen % windowLen != 0) {
-			readCounts = new int[2][numWindow+1];
-			readCounts[0][numWindow] = genomeLen;
-		} else {
-			readCounts = new int[2][numWindow];
-		}
-		for (int i = 0; i < numWindow; i++){
-			readCounts[0][i] = windowLen*(i+1);
-			readCounts[1][i] = 0;
 		}
 		/* end: build a lookup table for tallying coverage in windows */
 		
@@ -547,16 +556,18 @@ public class MisassemblyBreaker {
 			rev2 = isReverse(line2[1]);
 			
 			/* begin: tally these read positions */
-			offset = coordOffset.get(ctg1.name);
-			index = Arrays.binarySearch(readCounts[0], offset+left1);
+			// tally read 1
+			tmpWin = readCounts.get(ctg1.name);
+			index = Arrays.binarySearch(tmpWin[0], left1);
 			if (index < 0)
 				index = -1*(index+1);
-			readCounts[1][index]++;
-			offset = coordOffset.get(ctg2.name);
-			index = Arrays.binarySearch(readCounts[0], offset+left2);
+			tmpWin[2][index]++;
+			// tally read 2
+			tmpWin = readCounts.get(ctg2.name);
+			index = Arrays.binarySearch(tmpWin[0], left1);
 			if (index < 0)
 				index = -1*(index+1);
-			readCounts[1][index]++;
+			tmpWin[2][index]++;
 			/* end: tally these read positions */
 			
 			
@@ -646,18 +657,35 @@ public class MisassemblyBreaker {
 		 */
 		P = Double.POSITIVE_INFINITY;
 		int minWindow = -1;
-		for (int i = 0; i < readCounts[1].length; i++){
-			if (readCounts[1][i] == 0)
-				continue;
-			if (P > readCounts[1][i]){
-				P = readCounts[1][i];
-				minWindow = i;
+		File covFile = new File (samFile.getParentFile(),basename(samFile.getName(),".cov"));
+		covFile.createNewFile();
+		
+		PrintStream covOut = new PrintStream(covFile);
+		Iterator<String> ctgIt = readCounts.keySet().iterator();
+		String tmpCtg = null;
+		String minWinCtg = null;
+		double tmpFreq = 0.0;
+		while(ctgIt.hasNext()){
+			tmpCtg = ctgIt.next();
+			covOut.println("#"+tmpCtg);
+			tmpWin = readCounts.get(tmpCtg);
+			for (int i = 0; i < tmpWin[2].length; i++){
+				if (tmpWin[2][i] == 0)
+					continue;
+				tmpFreq = tmpWin[2][i];
+				tmpFreq = tmpFreq/tmpWin[1][i];
+				if (P > tmpFreq){
+					P = tmpFreq;
+					minWindow = i;
+					minWinCtg = tmpCtg;
+				}
+				covOut.println(tmpWin[0][i]+"\t"+tmpWin[1][i]+"\t"+tmpWin[2][i]);
 			}
 		}
-		System.out.println("[a5_load_data] Window with fewest mapped reads: "+readCounts[0][minWindow-1]+" - "+readCounts[0][minWindow]);
-		P = P/windowLen;
+		covOut.close();
+		System.out.println("[a5_load_data] Window with fewest mapped reads: "+minWinCtg+" "+readCounts.get(minWinCtg)[0][minWindow-1]+" - "+readCounts.get(minWinCtg)[0][minWindow]);
 		
-		Iterator<String> ctgIt = ctgClusterers.keySet().iterator();
+		ctgIt = ctgClusterers.keySet().iterator();
 		Set<String> ctgToRm = new HashSet<String>();
 		Set<String> psPairsToRm = new HashSet<String>();
 		while(ctgIt.hasNext()){
@@ -1201,6 +1229,14 @@ public class MisassemblyBreaker {
 			return s.substring(0,s.lastIndexOf("/"));
 		} else
 			return s;
+	}
+	
+	public static String basename(String path, String suffix){
+		int pos = path.indexOf(suffix);
+		if (pos < 0)
+			return path.substring(path.lastIndexOf('/')+1);
+		else 
+			return path.substring(path.lastIndexOf('/')+1,pos);
 	}
 	
 }
