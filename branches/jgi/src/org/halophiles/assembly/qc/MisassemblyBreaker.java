@@ -160,7 +160,12 @@ public class MisassemblyBreaker {
 			File samFile = new File(samPath);
 			RandomAccessFile raf = new RandomAccessFile(samFile, "r");
 			Map<String,Contig> contigs = readContigs(raf);
-			System.out.println("[a5_qc] Found "+contigs.size()+" contigs");
+			if (contigs.size() == 0){
+				System.out.println("[a5_qc] Could not find any contigs in SAM file. File is either not in SAM format, or is missing header.");
+				System.exit(-1);
+			} else {
+				System.out.println("[a5_qc] Found "+contigs.size()+" contigs");
+			}
 			System.out.println("[a5_qc] Reading in a subset of reads for insert size estimation.");
 			long before = System.currentTimeMillis();
 			Map<String,ReadPair> reads = readSubsetByChunk(raf, contigs);
@@ -657,7 +662,7 @@ public class MisassemblyBreaker {
 		 */
 		P = Double.POSITIVE_INFINITY;
 		int minWindow = -1;
-		File covFile = new File (samFile.getParentFile(),basename(samFile.getName(),".cov"));
+		File covFile = new File (samFile.getParentFile(),basename(samFile.getName(),".sam")+".cov");
 		covFile.createNewFile();
 		
 		PrintStream covOut = new PrintStream(covFile);
