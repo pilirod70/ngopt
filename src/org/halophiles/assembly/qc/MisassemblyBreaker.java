@@ -254,11 +254,15 @@ public class MisassemblyBreaker {
 			/*
 			 *  break on regions of a minimum distance that are flanked by two blocks
 			 */
-			File brokenScafFile = new File(args[2]);     
+			File brokenScafFile = new File(args[2]);
 			brokenScafFile.createNewFile();
 			ScaffoldExporter out = new ScaffoldExporter(brokenScafFile); 
 			File ctgFile = new File(args[1]);
 			BufferedReader br = new BufferedReader(new FileReader(ctgFile));
+			File bedFile = new File(samFile.getParentFile(),basename(samFile.getName(),".sam")+".regions.bed");
+			bedFile.createNewFile();
+			System.out.println("[a5_qc] Writing regions potentially containing misassemblies to "+bedFile.getAbsolutePath());
+			PrintStream bedOut = new PrintStream(bedFile);
 			// discard the first '>'
 			br.read();
 			int[][] tmpAr = null;
@@ -270,6 +274,7 @@ public class MisassemblyBreaker {
 					tmpCtg = tmpCtg.substring(0,tmpCtg.indexOf(" "));
 				sb = new StringBuilder();
 				char c = (char) br.read();
+				// read in this sequence
 				while(c != '>'){
 					if (isNuc(c))
 						sb.append(c);
@@ -297,21 +302,17 @@ public class MisassemblyBreaker {
 				int right = 1;
 				for (int i = 1; i < tmpAr.length; i++){
 					// if they don't face each other, there isn't a misassembly in between this pair of blocks
-					int[] lb = tmpAr[i-1];
-					int[] rb = tmpAr[i];
-					if (lb[2] != 1 || rb[2] != -1) 
-						continue;
-
 					if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
 						continue;
 					// if they overlap, split at the midpoint of overlap
 					if (tmpAr[i-1][1] > tmpAr[i][0]){ 
+						bedOut.println(tmpCtg+"\t"+tmpAr[i][0]+"\t"+tmpAr[i-1][1]);
 						right = (tmpAr[i-1][1] + tmpAr[i][0])/2;
 						System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
 						out.export(tmpCtg, sb, left, right);
 						left = right+1;
 					} else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST) {
-						
+						bedOut.println(tmpCtg+"\t"+tmpAr[i-1][1]+"\t"+tmpAr[i][0]);
 						right = tmpAr[i-1][1];
 						System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
 						out.export(tmpCtg, sb, left, right);
@@ -321,6 +322,10 @@ public class MisassemblyBreaker {
 				right = sb.length();
 				System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
 				out.export(tmpCtg, sb, left, right);
+				bedOut.close();
+				
+				
+				
 			}
 		} catch(IOException e){
 			e.printStackTrace();
