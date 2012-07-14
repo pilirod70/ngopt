@@ -326,6 +326,7 @@ public class MisassemblyBreaker {
 				
 				
 				
+				
 			}
 		} catch(IOException e){
 			e.printStackTrace();
@@ -1247,6 +1248,14 @@ public class MisassemblyBreaker {
 			return path.substring(path.lastIndexOf('/')+1);
 		else 
 			return path.substring(path.lastIndexOf('/')+1,pos);
+	}
+	
+	public static String dirname(String path){
+		int pos = path.indexOf("/");
+		if (pos < 0)
+			return ".";
+		else 
+			return path.substring(0,path.lastIndexOf('/'));
 	}
 	
 }
