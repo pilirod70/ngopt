@@ -31,6 +31,7 @@ import org.halophiles.assembly.Contig;
 import org.halophiles.assembly.ReadPair;
 import org.halophiles.assembly.ReadSet;
 
+
 public class MisassemblyBreaker {
 	
 	/**
@@ -420,7 +421,7 @@ public class MisassemblyBreaker {
 	 * @param c
 	 * @return
 	 */
-	private static boolean isNuc(char c){
+	public static boolean isNuc(char c){
 		switch (c) {
 			case 'a': return true;
 			case 'c': return true;
@@ -463,7 +464,6 @@ public class MisassemblyBreaker {
 		long len = fis.getChannel().size() - start;
 		BufferedReader br = new BufferedReader (new InputStreamReader(fis));
 		
-		
 		/* begin: build a lookup table for each contig for tallying coverage in windows */
 		
 		int contigLen = 0;
@@ -473,7 +473,6 @@ public class MisassemblyBreaker {
 		String contigName = null;
 		//Map<String,Integer> coordOffset = new HashMap<String,Integer>();
 		Map<String,int[][]> readCounts = new HashMap<String,int[][]>();
-		int offset = 0;
 		int[][] tmpWin = null;
 		while(nextCharIs(br, '@')){
 			hdr = br.readLine().split("\t");
