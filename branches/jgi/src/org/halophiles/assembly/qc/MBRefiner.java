@@ -22,48 +22,76 @@ public class MBRefiner {
 	
 	private static Map<String,double[][]> REGIONS;
 	
-	private static PileupScorer SCORER;
-	
 	public static void main(String[] args) {
-		if (args.length != 2){
-			System.out.println("Usage: MBRefiner <sam_file> <contig_file>");
+		if (args.length != 3){
+			System.out.println("Usage: MBRefiner <sam_file> <contig_file> <broken_ctgs_file>");
 			System.exit(-1);
 		}
-		try {
-		
+		try {		
 			String samPath = args[0];
 			String refPath = args[1];
+			String brokenPath = args[2];
+			File ctgFile = new File(refPath);
 			File samFile = new File(samPath);
+			File brokenFile = new File(brokenPath);
+			brokenFile.createNewFile();
 			samFile = new File(samFile.getAbsolutePath());
 			String base = samFile.getParentFile().getAbsolutePath()+"/"+MisassemblyBreaker.basename(samFile.getName(),".sam");
 			String bedPath = base + ".regions.bed";
 			String bamPath = base + ".bam";
-			String plpPath = base + ".regions.plp";
-			/*
-			String base = MisassemblyBreaker.dirname(samPath)+"/"+MisassemblyBreaker.basename(samPath, ".sam");
-			String bedPath = base+".regions.bed";
-			String bamPath = base+".bam";
-			 */
 			
 			REGIONS = getRegions(bedPath);
-			SCORER = new PileupScorer(0, 0, 0, 0);
 
-			String cmd = "ls -l "+samFile.getParent()+"/"+MisassemblyBreaker.basename(samFile.getName(),".sam")+".sam";
-			//runCmd (cmd);
-			cmd = SAMTOOLS + " mpileup -d 350 -f " + refPath + " -l " + bedPath + " " + bamPath;
-			//cmd = cmd +" > " + plpPath + " 2> /dev/null";
-			//cmd = cmd + " |";
-			runCmd (cmd);
+			runMPileup (bamPath,bedPath,refPath,REGIONS);
 			
 			Iterator<String> it = REGIONS.keySet().iterator();
 			String tmp = null;
 			double[][] reg = null;
+			System.out.println("Contig\tLeft\tRight\tMinPosition\tScore");
 			while(it.hasNext()) {
 				tmp = it.next();
 				reg = REGIONS.get(tmp);
 				for (int i = 0; i < reg[0].length; i++){
-					System.out.println("Contig " + tmp + " region " + reg[0][i]+"-"+reg[1][i]+" : score=" + reg[2][i]+ " position="+reg[3][i]);
+					System.out.println(tmp + "\t" + (int)reg[0][i]+"\t"+(int)reg[1][i] +"\t"+ (int)reg[3][i] +"\t"+ (reg[2][i]));
 				}
+			}
+			System.out.println("Breaking actual contigs now. Writing them to "+brokenFile.getAbsolutePath());
+			BufferedReader br = new BufferedReader(new FileReader(ctgFile));
+			StringBuilder sb = null;
+			ScaffoldExporter out = new ScaffoldExporter(brokenFile);
+			br.read();
+			while(br.ready()){
+				String tmpCtg = br.readLine(); 
+				// Take only the first part of the contig header to be consistent with bwa
+				if (tmpCtg.contains(" "))
+					tmpCtg = tmpCtg.substring(0,tmpCtg.indexOf(" "));
+				sb = new StringBuilder();
+				char c = (char) br.read();
+				// read in this sequence
+				while(c != '>'){
+					if (MisassemblyBreaker.isNuc(c))
+						sb.append(c);
+					if (!br.ready())
+						break;
+					c = (char) br.read();
+				}
+				if (!REGIONS.containsKey(tmpCtg)){
+					out.export(tmpCtg, sb);
+					continue;
+				}
+				int left = 1;
+				int right = 1;
+				reg = REGIONS.get(tmpCtg);
+				for (int i = 0; i < reg[3].length; i++){
+					right = (int)reg[3][i];
+					System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
+					out.export(tmpCtg, sb, left, right);
+					left = right+1;
+				}
+				right = sb.length();
+				System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
+				out.export(tmpCtg, sb, left, right);
+				
 			}
 			
 			
@@ -76,6 +104,19 @@ public class MBRefiner {
 		}
 	}
 	
+	
+	public static Map<String,double[]> refine(String bamPath, String bedPath, String ctgPath) throws IOException {
+		Map<String,double[][]> regions = getRegions(bedPath);
+		try {
+			runMPileup(bamPath, bedPath, ctgPath, regions);
+		} catch (InterruptedException e) {
+			System.err.println("Unable to run samtools mpileup. This is what I know:");
+			e.printStackTrace();
+			System.exit(-1);
+		}
+		
+		return null;
+	}
 		
 	
 	/**
@@ -114,7 +155,6 @@ public class MBRefiner {
 			} else {
 				vL = new Vector<Integer>();
 				vR = new Vector<Integer>();
-				System.out.println("Found contig " + dat[0]);
 				left.put(dat[0], vL);
 				right.put(dat[0], vR);
 			}
@@ -161,20 +201,17 @@ public class MBRefiner {
 		return ret;
 	}
 
-	private static void runCmd (String cmd) throws IOException, InterruptedException {
-		System.err.println("Executing command: " + cmd);
+	private static void runMPileup (String bamPath, String bedPath, String ctgPath, Map<String,double[][]> regions) throws IOException, InterruptedException {
+		//System.err.println("Executing command: " + cmd);
+		String cmd = SAMTOOLS + " mpileup -d 350 -f " + ctgPath + " -l " + bedPath + " " + bamPath;
 		Process p = Runtime.getRuntime().exec(cmd);
 		LineHandler errLH = new LineHandler(){
-
-			
 			public void handleLine(String line) {
 				System.err.println(line);
 			}
-			
 		};
-		
 		StreamReader errRdr = new StreamReader(p.getErrorStream(),System.err, errLH);
-		StreamReader outRdr = new StreamReader(p.getInputStream(),System.out,new PileupEvaluator(REGIONS, SCORER));
+		StreamReader outRdr = new StreamReader(p.getInputStream(),System.out,new PileupEvaluator(regions, new PileupScorer(0,0,0,0)));
 		errRdr.start();
 		outRdr.start();
 		p.waitFor();
