@@ -31,7 +31,6 @@ public class MBRefiner {
 			String samPath = args[0];
 			String refPath = args[1];
 			String brokenPath = args[2];
-			File ctgFile = new File(refPath);
 			File samFile = new File(samPath);
 			File brokenFile = new File(brokenPath);
 			brokenFile.createNewFile();
@@ -40,72 +39,19 @@ public class MBRefiner {
 			String bedPath = base + ".regions.bed";
 			String bamPath = base + ".bam";
 			
-			REGIONS = getRegions(bedPath);
-
-			runMPileup (bamPath,bedPath,refPath,REGIONS);
-			
-			Iterator<String> it = REGIONS.keySet().iterator();
-			String tmp = null;
-			double[][] reg = null;
-			System.out.println("Contig\tLeft\tRight\tMinPosition\tScore");
-			while(it.hasNext()) {
-				tmp = it.next();
-				reg = REGIONS.get(tmp);
-				for (int i = 0; i < reg[0].length; i++){
-					System.out.println(tmp + "\t" + (int)reg[0][i]+"\t"+(int)reg[1][i] +"\t"+ (int)reg[3][i] +"\t"+ (reg[2][i]));
-				}
-			}
-			System.out.println("Breaking actual contigs now. Writing them to "+brokenFile.getAbsolutePath());
-			BufferedReader br = new BufferedReader(new FileReader(ctgFile));
-			StringBuilder sb = null;
-			ScaffoldExporter out = new ScaffoldExporter(brokenFile);
-			br.read();
-			while(br.ready()){
-				String tmpCtg = br.readLine(); 
-				// Take only the first part of the contig header to be consistent with bwa
-				if (tmpCtg.contains(" "))
-					tmpCtg = tmpCtg.substring(0,tmpCtg.indexOf(" "));
-				sb = new StringBuilder();
-				char c = (char) br.read();
-				// read in this sequence
-				while(c != '>'){
-					if (MisassemblyBreaker.isNuc(c))
-						sb.append(c);
-					if (!br.ready())
-						break;
-					c = (char) br.read();
-				}
-				if (!REGIONS.containsKey(tmpCtg)){
-					out.export(tmpCtg, sb);
-					continue;
-				}
-				int left = 1;
-				int right = 1;
-				reg = REGIONS.get(tmpCtg);
-				for (int i = 0; i < reg[3].length; i++){
-					right = (int)reg[3][i];
-					System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
-					out.export(tmpCtg, sb, left, right);
-					left = right+1;
-				}
-				right = sb.length();
-				System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
-				out.export(tmpCtg, sb, left, right);
-				
-			}
-			
+			Map<String,int[]> junctions = refine(bamPath,bedPath,refPath);
+			breakContigs(junctions, refPath, brokenPath);
 			
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(-1);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			System.exit(-1);
-		}
+		} 
 	}
 	
-	
-	public static Map<String,double[]> refine(String bamPath, String bedPath, String ctgPath) throws IOException {
+	/**
+	 * Returns a Map (indexed by contig name) of arrays containing the misassembly junctions in a contig 
+	 */
+	public static Map<String,int[]> refine(String bamPath, String bedPath, String ctgPath) throws IOException {
 		Map<String,double[][]> regions = getRegions(bedPath);
 		try {
 			runMPileup(bamPath, bedPath, ctgPath, regions);
@@ -114,8 +60,65 @@ public class MBRefiner {
 			e.printStackTrace();
 			System.exit(-1);
 		}
+		Map<String,int[]> ret = new HashMap<String,int[]>();
+		Iterator<String> ctgIt = regions.keySet().iterator();
+		String tmpCtg;
+		double[][] reg;  
+		int[] junctions; // misassembly junctions
+		while(ctgIt.hasNext()){
+			tmpCtg = ctgIt.next();
+			reg = regions.get(tmpCtg);
+			junctions = new int[reg[3].length];
+			for (int i = 0; i < junctions.length; i++)
+				junctions[i] = (int) reg[3][i];
+			ret.put(tmpCtg, junctions);
+		}
+		return ret;
+	}
+	
+	public static void breakContigs(Map<String,int[]> breaks, String ctgPath, String destPath) throws IOException {
 		
-		return null;
+		File brokenFile = new File(destPath);
+		brokenFile.createNewFile();
+		ScaffoldExporter out = new ScaffoldExporter(brokenFile);
+		String tmpCtg;
+		BufferedReader br = new BufferedReader(new FileReader(new File(ctgPath)));
+		StringBuilder sb = null;
+		br.read();
+		int[] junctions;
+		while(br.ready()){
+			tmpCtg = br.readLine(); 
+			// Take only the first part of the contig header to be consistent with bwa
+			if (tmpCtg.contains(" "))
+				tmpCtg = tmpCtg.substring(0,tmpCtg.indexOf(" "));
+			sb = new StringBuilder();
+			char c = (char) br.read();
+			// read in this sequence
+			while(c != '>'){
+				if (MisassemblyBreaker.isNuc(c))
+					sb.append(c);
+				if (!br.ready())
+					break;
+				c = (char) br.read();
+			}
+			if (!REGIONS.containsKey(tmpCtg)){
+				out.export(tmpCtg, sb);
+				continue;
+			}
+			int left = 1;
+			int right = 1;
+			junctions = breaks.get(tmpCtg);
+			for (int i = 0; i < junctions.length; i++){
+				right = junctions[i];
+				System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
+				out.export(tmpCtg, sb, left, right);
+				left = right+1;
+			}
+			right = sb.length();
+			System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
+			out.export(tmpCtg, sb, left, right);
+			
+		}
 	}
 		
 	
