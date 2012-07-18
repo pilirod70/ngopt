@@ -153,6 +153,8 @@ public class MisassemblyBreaker {
 			NF.setMaximumFractionDigits(0);
 			NF.setGroupingUsed(false);
 			String samPath = args[0];
+			String ctgPath = args[1];
+			String brokenCtgPath = args[2];
 			int numLibs = 1;
 			if (args.length == 4){
 				numLibs = Integer.parseInt(args[3]);
@@ -255,6 +257,7 @@ public class MisassemblyBreaker {
 			/*
 			 *  break on regions of a minimum distance that are flanked by two blocks
 			 */
+			/* AJTRITT - Deprecating this code as of 07/17/2012
 			File brokenScafFile = new File(args[2]);
 			brokenScafFile.createNewFile();
 			ScaffoldExporter out = new ScaffoldExporter(brokenScafFile); 
@@ -324,11 +327,45 @@ public class MisassemblyBreaker {
 				System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
 				out.export(tmpCtg, sb, left, right);
 				bedOut.close();
-				
-				
-				
-				
 			}
+			*/
+			String base = samFile.getParentFile().getAbsolutePath()+"/"+basename(samFile.getName(),".sam");
+			File bedFile = new File(base+".regions.bed");
+			
+			PrintStream bedOut = null;
+			it = blocks.keySet().iterator();
+			String tmpCtg;
+			int[][] tmpAr = null;
+			while(it.hasNext()){
+				tmpCtg = it.next();
+				Vector<int[]> tmpBlks = blocks.get(tmpCtg);
+
+				if (tmpBlks.size() < 2)
+					continue;
+			
+				tmpAr = new int[tmpBlks.size()][];
+				tmpBlks.toArray(tmpAr);
+				Arrays.sort(tmpAr,BLOCK_COMP);
+				for (int i = 1; i < tmpAr.length; i++){
+					// if they don't face each other, there isn't a misassembly in between this pair of blocks
+					if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
+						continue;
+					// if they overlap, split at the midpoint of overlap
+					if (bedOut == null) { // don't create the file if we don't need to
+						bedFile.createNewFile();
+						bedOut = new PrintStream(bedFile);
+					}
+					if (tmpAr[i-1][1] > tmpAr[i][0])
+						bedOut.println(tmpCtg+"\t"+tmpAr[i][0]+"\t"+tmpAr[i-1][1]);
+					else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST)
+						bedOut.println(tmpCtg+"\t"+tmpAr[i-1][1]+"\t"+tmpAr[i][0]);
+				}
+			}
+			if (bedOut != null) { // if we created a bedFile, we have regions containing misassemblies
+				bedOut.close();
+				MBRefiner.breakContigs(MBRefiner.refine(base+".bam", bedFile.getAbsolutePath(), ctgPath), ctgPath, brokenCtgPath);
+			}
+			
 		} catch(IOException e){
 			e.printStackTrace();
 			System.exit(-1);
