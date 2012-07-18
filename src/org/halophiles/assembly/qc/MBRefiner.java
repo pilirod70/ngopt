@@ -101,7 +101,7 @@ public class MBRefiner {
 					break;
 				c = (char) br.read();
 			}
-			if (!REGIONS.containsKey(tmpCtg)){
+			if (!breaks.containsKey(tmpCtg)){
 				out.export(tmpCtg, sb);
 				continue;
 			}
