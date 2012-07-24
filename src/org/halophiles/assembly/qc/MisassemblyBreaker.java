@@ -9,6 +9,7 @@ package org.halophiles.assembly.qc;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -159,210 +160,15 @@ public class MisassemblyBreaker {
 			if (args.length == 4){
 				numLibs = Integer.parseInt(args[3]);
 			}
-			System.out.println("[a5_qc] Reading "+samPath);
-			File samFile = new File(samPath);
-			RandomAccessFile raf = new RandomAccessFile(samFile, "r");
-			Map<String,Contig> contigs = readContigs(raf);
-			if (contigs.size() == 0){
-				System.out.println("[a5_qc] Could not find any contigs in SAM file. File is either not in SAM format, or is missing header.");
-				System.exit(-1);
-			} else {
-				System.out.println("[a5_qc] Found "+contigs.size()+" contigs");
-			}
-			System.out.println("[a5_qc] Reading in a subset of reads for insert size estimation.");
-			long before = System.currentTimeMillis();
-			Map<String,ReadPair> reads = readSubsetByChunk(raf, contigs);
-			raf.close(); 
-			long after = System.currentTimeMillis();
-			System.out.println("[a5_qc] Took "+((after-before)/1000)+" seconds to read in "+reads.size()+" read pairs.");
-			if (reads.size() <= 0) {
-				System.err.println("[a5_qc] No paired reads found -- Cannot detect misassemblies -- Exiting.");
-				System.exit(-1);
-			}
-			setOrientation(reads.values());
-			if (INWARD && !OUTWARD)
-				System.out.println("[a5_qc] Found a substantial amount of innies, but found no outties.");
-			else if (!INWARD && OUTWARD)
-				System.out.println("[a5_qc] Found a substantial amount of outties, but found no innies.");
-			else 
-				System.out.println("[a5_qc] Found both innies and outties.");
-			
-				
-			double[][] clusterStats = getLibraryStats(reads, numLibs);
-			double[][] ranges = getFilterRanges(clusterStats);
-			setMAXBLOCKLEN(clusterStats);
-			loadData(samPath, contigs, ranges);
-			setParameters(clusterStats);
-			printParams();
-			
-			// collect all of our blocks for each contig
-			Iterator<SpatialClusterer> mbIt = matches.iterator();
-			Map<String,Vector<int[]>> blocks = new HashMap<String,Vector<int[]>>();
-			Vector<int[]> xBlocks = null;
-			Vector<int[]> yBlocks = null;
-			while(mbIt.hasNext()){
-				SpatialClusterer pc = mbIt.next();
-				// get Vector for holding contig X blocks
-				xBlocks = new Vector<int[]>();
-				// get Vector for holding contig Y blocks
-				yBlocks = new Vector<int[]>();
-				pc.buildReadPairClusters();
-				addBlocks(pc, xBlocks, yBlocks);
-				//pc.exportCurrState(new File(matchDir,"match."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
-				removeTerminalBlocks(pc.getContig1(), xBlocks);
-				removeTerminalBlocks(pc.getContig2(), yBlocks);
-				if (blocks.containsKey(pc.getContig1().name))
-					blocks.get(pc.getContig1().name).addAll(xBlocks);
-				else
-					blocks.put(pc.getContig1().name, xBlocks);
-				
-				if (blocks.containsKey(pc.getContig2().name))
-					blocks.get(pc.getContig2().name).addAll(yBlocks);
-				else
-					blocks.put(pc.getContig2().name, yBlocks);
-				
-			}
-			Iterator<String> it = blocks.keySet().iterator();
-			/*
-			while(it.hasNext())
-				removeRepeats(blocks.get(it.next()));
-				
-			it = blocks.keySet().iterator();
-			*/
-			Vector<String> toRm = new Vector<String>();
-			while(it.hasNext()){
-				String tmpCtg = it.next();
-				Vector<int[]> tmpBlocks = blocks.get(tmpCtg);
-				System.out.println("[a5_qc] Found "+tmpBlocks.size()+" blocks on contig " + contigs.get(tmpCtg).getId());
-				if (tmpBlocks.isEmpty())
-					toRm.add(tmpCtg);
-				else 
-					Collections.sort(tmpBlocks, BLOCK_COMP);
-				Iterator<int[]> blockIt = tmpBlocks.iterator();
-				while(blockIt.hasNext()){
-					int[] tmp = blockIt.next();
-					System.out.println("        "+tmp[0]+(tmp[2]==1?" -> ":" <- ")+tmp[1]);
-					
-				}
-				
-				
-			}
-			removeKeys(blocks, toRm);
-			
-			if (blocks.isEmpty()){
-				System.out.println("[a5_qc] No blocks were found. Not breaking scaffolds.");
-				System.exit(0);
-			}
-			
-			/*
-			 *  break on regions of a minimum distance that are flanked by two blocks
-			 */
-			/* AJTRITT - Deprecating this code as of 07/17/2012
-			File brokenScafFile = new File(args[2]);
-			brokenScafFile.createNewFile();
-			ScaffoldExporter out = new ScaffoldExporter(brokenScafFile); 
-			File ctgFile = new File(args[1]);
-			BufferedReader br = new BufferedReader(new FileReader(ctgFile));
-			File bedFile = new File(samFile.getParentFile(),basename(samFile.getName(),".sam")+".regions.bed");
-			bedFile.createNewFile();
-			System.out.println("[a5_qc] Writing regions potentially containing misassemblies to "+bedFile.getAbsolutePath());
-			PrintStream bedOut = new PrintStream(bedFile);
-			// discard the first '>'
-			br.read();
-			int[][] tmpAr = null;
-			StringBuilder sb = null;
-			while(br.ready()){
-				String tmpCtg = br.readLine(); 
-				// Take only the first part of the contig header to be consistent with bwa
-				if (tmpCtg.contains(" "))
-					tmpCtg = tmpCtg.substring(0,tmpCtg.indexOf(" "));
-				sb = new StringBuilder();
-				char c = (char) br.read();
-				// read in this sequence
-				while(c != '>'){
-					if (isNuc(c))
-						sb.append(c);
-					if (!br.ready())
-						break;
-					c = (char) br.read();
-				}
-				
-				if (!blocks.containsKey(tmpCtg)){
-					out.export(tmpCtg, sb);
-					continue;
-				}
-				
-				Vector<int[]> tmpBlks = blocks.get(tmpCtg);
-
-				if (tmpBlks.size() < 2){
-					out.export(tmpCtg, sb);
-					continue;
-				}
-			
-				tmpAr = new int[tmpBlks.size()][];
-				tmpBlks.toArray(tmpAr);
-				Arrays.sort(tmpAr,BLOCK_COMP);
-				int left = 1;
-				int right = 1;
-				for (int i = 1; i < tmpAr.length; i++){
-					// if they don't face each other, there isn't a misassembly in between this pair of blocks
-					if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
-						continue;
-					// if they overlap, split at the midpoint of overlap
-					if (tmpAr[i-1][1] > tmpAr[i][0]){ 
-						bedOut.println(tmpCtg+"\t"+tmpAr[i][0]+"\t"+tmpAr[i-1][1]);
-						right = (tmpAr[i-1][1] + tmpAr[i][0])/2;
-						System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
-						out.export(tmpCtg, sb, left, right);
-						left = right+1;
-					} else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST) {
-						bedOut.println(tmpCtg+"\t"+tmpAr[i-1][1]+"\t"+tmpAr[i][0]);
-						right = tmpAr[i-1][1];
-						System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
-						out.export(tmpCtg, sb, left, right);
-						left = tmpAr[i][0];
-					} 
-				}
-				right = sb.length();
-				System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
-				out.export(tmpCtg, sb, left, right);
-				bedOut.close();
-			}
-			*/
-			String base = samFile.getParentFile().getAbsolutePath()+"/"+basename(samFile.getName(),".sam");
+			String base = dirname(samPath)+"/"+basename(samPath,".sam");
 			File bedFile = new File(base+".regions.bed");
-			
-			PrintStream bedOut = null;
-			it = blocks.keySet().iterator();
-			String tmpCtg;
-			int[][] tmpAr = null;
-			while(it.hasNext()){
-				tmpCtg = it.next();
-				Vector<int[]> tmpBlks = blocks.get(tmpCtg);
-
-				if (tmpBlks.size() < 2)
-					continue;
-			
-				tmpAr = new int[tmpBlks.size()][];
-				tmpBlks.toArray(tmpAr);
-				Arrays.sort(tmpAr,BLOCK_COMP);
-				for (int i = 1; i < tmpAr.length; i++){
-					// if they don't face each other, there isn't a misassembly in between this pair of blocks
-					if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
-						continue;
-					// if they overlap, split at the midpoint of overlap
-					if (bedOut == null) { // don't create the file if we don't need to
-						bedFile.createNewFile();
-						bedOut = new PrintStream(bedFile);
-					}
-					if (tmpAr[i-1][1] > tmpAr[i][0])
-						bedOut.println(tmpCtg+"\t"+tmpAr[i][0]+"\t"+tmpAr[i-1][1]);
-					else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST)
-						bedOut.println(tmpCtg+"\t"+tmpAr[i-1][1]+"\t"+tmpAr[i][0]);
-				}
+			boolean foundMisassemblies = true;
+			if (!bedFile.exists() || (bedFile.exists() && !isEmpty(bedFile))) {
+				foundMisassemblies = findMisasmRegions(samPath,bedFile.getAbsolutePath());
+			} else {
+				System.out.println("[a5_qc] Found a bed file. Assuming I generated this in a past run and proceeding");
 			}
-			if (bedOut != null) { // if we created a bedFile, we have regions containing misassemblies
-				bedOut.close();
+			if (foundMisassemblies) { // if we created a bedFile, we have regions containing misassemblies
 				MBRefiner.breakContigs(MBRefiner.refine(base+".bam", bedFile.getAbsolutePath(), ctgPath), ctgPath, brokenCtgPath);
 			}
 			
@@ -373,6 +179,219 @@ public class MisassemblyBreaker {
 			e.printStackTrace();
 			System.exit(-1);
 		}
+	}
+	/**
+	 * Identifies regions containing misassemblies using the provided SAM file, and writes
+	 * these regions to a BED file under the given path. If no regions are found, nothing 
+	 * is written to <code>bedPath</code>.
+	 * 
+	 * @returns true if any regions containing misassemblies are found, false otherwise
+	 */
+	private static boolean findMisasmRegions(String samPath, String bedPath) throws IOException{
+
+		System.out.println("[a5_qc] Reading "+samPath);
+		File samFile = new File(samPath);
+		RandomAccessFile raf = new RandomAccessFile(samFile, "r");
+		Map<String,Contig> contigs = readContigs(raf);
+		if (contigs.size() == 0){
+			System.out.println("[a5_qc] Could not find any contigs in SAM file. File is either not in SAM format, or is missing header.");
+			System.exit(-1);
+		} else {
+			System.out.println("[a5_qc] Found "+contigs.size()+" contigs");
+		}
+		System.out.println("[a5_qc] Reading in a subset of reads for insert size estimation.");
+		long before = System.currentTimeMillis();
+		Map<String,ReadPair> reads = readSubsetByChunk(raf, contigs);
+		raf.close(); 
+		long after = System.currentTimeMillis();
+		System.out.println("[a5_qc] Took "+((after-before)/1000)+" seconds to read in "+reads.size()+" read pairs.");
+		if (reads.size() <= 0) {
+			System.err.println("[a5_qc] No paired reads found -- Cannot detect misassemblies -- Exiting.");
+			System.exit(-1);
+		}
+		setOrientation(reads.values());
+		if (INWARD && !OUTWARD)
+			System.out.println("[a5_qc] Found a substantial amount of innies, but found no outties.");
+		else if (!INWARD && OUTWARD)
+			System.out.println("[a5_qc] Found a substantial amount of outties, but found no innies.");
+		else 
+			System.out.println("[a5_qc] Found both innies and outties.");
+		
+			
+		double[][] clusterStats = getLibraryStats(reads, 1);
+		double[][] ranges = getFilterRanges(clusterStats);
+		setMAXBLOCKLEN(clusterStats);
+		loadData(samPath, contigs, ranges);
+		setParameters(clusterStats);
+		printParams();
+		
+		// collect all of our blocks for each contig
+		Iterator<SpatialClusterer> mbIt = matches.iterator();
+		Map<String,Vector<int[]>> blocks = new HashMap<String,Vector<int[]>>();
+		Vector<int[]> xBlocks = null;
+		Vector<int[]> yBlocks = null;
+		while(mbIt.hasNext()){
+			SpatialClusterer pc = mbIt.next();
+			// get Vector for holding contig X blocks
+			xBlocks = new Vector<int[]>();
+			// get Vector for holding contig Y blocks
+			yBlocks = new Vector<int[]>();
+			pc.buildReadPairClusters();
+			addBlocks(pc, xBlocks, yBlocks);
+			//pc.exportCurrState(new File(matchDir,"match."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
+			removeTerminalBlocks(pc.getContig1(), xBlocks);
+			removeTerminalBlocks(pc.getContig2(), yBlocks);
+			if (blocks.containsKey(pc.getContig1().name))
+				blocks.get(pc.getContig1().name).addAll(xBlocks);
+			else
+				blocks.put(pc.getContig1().name, xBlocks);
+			
+			if (blocks.containsKey(pc.getContig2().name))
+				blocks.get(pc.getContig2().name).addAll(yBlocks);
+			else
+				blocks.put(pc.getContig2().name, yBlocks);
+			
+		}
+		Iterator<String> it = blocks.keySet().iterator();
+		/*
+		while(it.hasNext())
+			removeRepeats(blocks.get(it.next()));
+			
+		it = blocks.keySet().iterator();
+		*/
+		Vector<String> toRm = new Vector<String>();
+		while(it.hasNext()){
+			String tmpCtg = it.next();
+			Vector<int[]> tmpBlocks = blocks.get(tmpCtg);
+			System.out.println("[a5_qc] Found "+tmpBlocks.size()+" blocks on contig " + contigs.get(tmpCtg).getId());
+			if (tmpBlocks.isEmpty())
+				toRm.add(tmpCtg);
+			else 
+				Collections.sort(tmpBlocks, BLOCK_COMP);
+			Iterator<int[]> blockIt = tmpBlocks.iterator();
+			while(blockIt.hasNext()){
+				int[] tmp = blockIt.next();
+				System.out.println("        "+tmp[0]+(tmp[2]==1?" -> ":" <- ")+tmp[1]);
+				
+			}
+		}
+		removeKeys(blocks, toRm);
+		
+		if (blocks.isEmpty()){
+			return false;
+			//System.out.println("[a5_qc] No blocks were found. Not breaking scaffolds.");
+			//System.exit(0);
+		}
+		
+		/*
+		 *  break on regions of a minimum distance that are flanked by two blocks
+		 */
+		/* AJTRITT - Deprecating this code as of 07/17/2012
+		File brokenScafFile = new File(args[2]);
+		brokenScafFile.createNewFile();
+		ScaffoldExporter out = new ScaffoldExporter(brokenScafFile); 
+		File ctgFile = new File(args[1]);
+		BufferedReader br = new BufferedReader(new FileReader(ctgFile));
+		File bedFile = new File(samFile.getParentFile(),basename(samFile.getName(),".sam")+".regions.bed");
+		bedFile.createNewFile();
+		System.out.println("[a5_qc] Writing regions potentially containing misassemblies to "+bedFile.getAbsolutePath());
+		PrintStream bedOut = new PrintStream(bedFile);
+		// discard the first '>'
+		br.read();
+		int[][] tmpAr = null;
+		StringBuilder sb = null;
+		while(br.ready()){
+			String tmpCtg = br.readLine(); 
+			// Take only the first part of the contig header to be consistent with bwa
+			if (tmpCtg.contains(" "))
+				tmpCtg = tmpCtg.substring(0,tmpCtg.indexOf(" "));
+			sb = new StringBuilder();
+			char c = (char) br.read();
+			// read in this sequence
+			while(c != '>'){
+				if (isNuc(c))
+					sb.append(c);
+				if (!br.ready())
+					break;
+				c = (char) br.read();
+			}
+			
+			if (!blocks.containsKey(tmpCtg)){
+				out.export(tmpCtg, sb);
+				continue;
+			}
+			
+			Vector<int[]> tmpBlks = blocks.get(tmpCtg);
+
+			if (tmpBlks.size() < 2){
+				out.export(tmpCtg, sb);
+				continue;
+			}
+		
+			tmpAr = new int[tmpBlks.size()][];
+			tmpBlks.toArray(tmpAr);
+			Arrays.sort(tmpAr,BLOCK_COMP);
+			int left = 1;
+			int right = 1;
+			for (int i = 1; i < tmpAr.length; i++){
+				// if they don't face each other, there isn't a misassembly in between this pair of blocks
+				if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
+					continue;
+				// if they overlap, split at the midpoint of overlap
+				if (tmpAr[i-1][1] > tmpAr[i][0]){ 
+					bedOut.println(tmpCtg+"\t"+tmpAr[i][0]+"\t"+tmpAr[i-1][1]);
+					right = (tmpAr[i-1][1] + tmpAr[i][0])/2;
+					System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
+					out.export(tmpCtg, sb, left, right);
+					left = right+1;
+				} else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST) {
+					bedOut.println(tmpCtg+"\t"+tmpAr[i-1][1]+"\t"+tmpAr[i][0]);
+					right = tmpAr[i-1][1];
+					System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
+					out.export(tmpCtg, sb, left, right);
+					left = tmpAr[i][0];
+				} 
+			}
+			right = sb.length();
+			System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
+			out.export(tmpCtg, sb, left, right);
+			bedOut.close();
+		}
+		*/
+		File bedFile = new File(bedPath);
+		if (!bedFile.exists())
+			bedFile.createNewFile();
+		PrintStream bedOut = null;
+		Iterator<String> ctgIt = blocks.keySet().iterator();
+		String tmpCtg;
+		int[][] tmpAr = null;
+		while(ctgIt.hasNext()){
+			tmpCtg = ctgIt.next();
+			Vector<int[]> tmpBlks = blocks.get(tmpCtg);
+
+			if (tmpBlks.size() < 2)
+				continue;
+		
+			tmpAr = new int[tmpBlks.size()][];
+			tmpBlks.toArray(tmpAr);
+			Arrays.sort(tmpAr,BLOCK_COMP);
+			for (int i = 1; i < tmpAr.length; i++){
+				// if they don't face each other, there isn't a misassembly in between this pair of blocks
+				if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
+					continue;
+				// if they overlap, split at the midpoint of overlap
+				if (bedOut == null) { // don't create the file if we don't need to
+					bedFile.createNewFile();
+					bedOut = new PrintStream(bedFile);
+				}
+				if (tmpAr[i-1][1] > tmpAr[i][0])
+					bedOut.println(tmpCtg+"\t"+tmpAr[i][0]+"\t"+tmpAr[i-1][1]);
+				else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST)
+					bedOut.println(tmpCtg+"\t"+tmpAr[i-1][1]+"\t"+tmpAr[i][0]);
+			}
+		}
+		bedOut.close();
+		return true;
 	}
 	
 	/**
@@ -730,7 +749,16 @@ public class MisassemblyBreaker {
 			}
 		}
 		covOut.close();
-		System.out.println("[a5_load_data] Window with fewest mapped reads: "+minWinCtg+" "+readCounts.get(minWinCtg)[0][minWindow-1]+" - "+readCounts.get(minWinCtg)[0][minWindow]);
+		int minWinL;
+		int minWinR;
+		if (minWindow == 0) {
+			minWinL = 1;
+			minWinR = readCounts.get(minWinCtg)[0][minWindow];
+		} else {
+			minWinL = readCounts.get(minWinCtg)[0][minWindow-1];
+			minWinR = readCounts.get(minWinCtg)[0][minWindow];
+		}
+		System.out.println("[a5_load_data] Window with fewest mapped reads: "+minWinCtg+" "+minWinL+" - "+minWinR);
 		
 		ctgIt = ctgClusterers.keySet().iterator();
 		Set<String> ctgToRm = new HashSet<String>();
@@ -1292,6 +1320,26 @@ public class MisassemblyBreaker {
 			return ".";
 		else 
 			return path.substring(0,path.lastIndexOf('/'));
+	}
+	
+	private static boolean isEmpty (File file){
+		if (!file.exists())
+			return true;
+		try {
+			BufferedReader br = new BufferedReader(new FileReader(file));
+			if (br.ready())
+				return false;
+			else
+				return true;
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+			System.exit(-1);
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(-1);
+		}
+		return false;
+		
 	}
 	
 }
