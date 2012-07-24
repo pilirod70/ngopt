@@ -147,6 +147,9 @@ public class MBRefiner {
 		Map<String,Vector<Integer> > right = new HashMap<String, Vector<Integer> >();		
 		Vector<Integer> vL = null; // temp variable
 		Vector<Integer> vR = null; // temp variable
+		int l = 0;
+		int r = 0;
+		int expectedLines = 0;
 		while (in.ready()){
 			dat = in.readLine().split("\t");
 			// skip any header in the file
@@ -161,9 +164,13 @@ public class MBRefiner {
 				left.put(dat[0], vL);
 				right.put(dat[0], vR);
 			}
-			vL.add(Integer.parseInt(dat[1]));
-			vR.add(Integer.parseInt(dat[2]));
+			l = Integer.parseInt(dat[1]);
+			r = Integer.parseInt(dat[2]);
+			expectedLines += r - l;
+			vL.add(l);
+			vR.add(r);
 		}
+		System.out.println ("[a5_qc] Expecting to evaluate " + expectedLines + " lines of pileup");
 		/*
 		 * END: build boundaries
 		 * 
@@ -207,17 +214,20 @@ public class MBRefiner {
 	private static void runMPileup (String bamPath, String bedPath, String ctgPath, Map<String,double[][]> regions) throws IOException, InterruptedException {
 		//System.err.println("Executing command: " + cmd);
 		String cmd = SAMTOOLS + " mpileup -d 350 -f " + ctgPath + " -l " + bedPath + " " + bamPath;
+		System.out.println("[a5_qc] Executing: "+cmd);
 		Process p = Runtime.getRuntime().exec(cmd);
 		LineHandler errLH = new LineHandler(){
 			public void handleLine(String line) {
 				System.err.println(line);
 			}
 		};
+		PileupEvaluator plpEval = new PileupEvaluator(regions, new PileupScorer(0,0,0,0));
 		StreamReader errRdr = new StreamReader(p.getErrorStream(),System.err, errLH);
-		StreamReader outRdr = new StreamReader(p.getInputStream(),System.out,new PileupEvaluator(regions, new PileupScorer(0,0,0,0)));
+		StreamReader outRdr = new StreamReader(p.getInputStream(),System.out,plpEval);
 		errRdr.start();
 		outRdr.start();
 		p.waitFor();
+		System.out.println("[a5_qc] Evaluated " + plpEval.numLines + " total lines of pileup");
 	}
 	
 	static class StreamReader extends Thread {
@@ -252,9 +262,11 @@ public class MBRefiner {
 	static class PileupEvaluator implements LineHandler {
 		Map<String,double[][]> regions;
 		PileupScorer scorer;
+		int numLines;
 		PileupEvaluator (Map<String,double[][]> regions, PileupScorer scorer){
 			this.regions = regions;
 			this.scorer = scorer;
+			this.numLines = 0;
 		}
 
 		public void handleLine(String line) {
@@ -270,6 +282,7 @@ public class MBRefiner {
 				tmpReg[2][idx] = score;
 				tmpReg[3][idx] = pos;
 			}
+			numLines++;
 		}
 	}
 	
