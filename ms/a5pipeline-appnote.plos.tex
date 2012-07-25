@@ -208,7 +208,7 @@ Labels ``-CDS'', ``-N50'', and ``-LCB'' indicate SOAPdenovo assemblies run with 
 sequences, maximized scaffold N50, and minimized LCB (Locally Collinear Block) count, respectively. Locally collinear blocks are continuous regions of assembly which can span zero or more contigs and scaffolds which are free from rearrangement relative to the reference genome. See~\cite{mauve,Darling2011} for a more complete discussion.
 A5 assemblies were generated using source code from revision 625 of A5.
 
-In addition to the reference-based assembly metrics, we present the scaffold and contig size distribution as a ``length accumulation curve'' in Figure~\ref{fig:03}. 
+In addition to the reference-based assembly metrics, we present the scaffold and contig size distribution as a ``length accumulation curve'' in Figure~\ref{fig:01}. 
 In that figure, scaffolds (contigs) are sorted in descending order by length and the cumulative length is plotted as additional scaffolds (contigs) are added. 
 The scaffold length distribution for A5 and SOAPdenovo appear to be very similar. However, the contig length distributions are quite different, with SOAPdenovo generating much shorter contigs than A5.
 This exemplifies a fundamental difference between the contig-generation strategies employed by SOAPdenovo and IDBA (used in the A5 pipeline).
@@ -321,7 +321,7 @@ Broad performance comparisons of many assemblers on many datasets is a major und
 
 The A5 (\textbf{A}ndrew \textbf{A}nd \textbf{A}aron's \textbf{A}wesome \textbf{A}ssembly) pipeline consists of five 
 stages: 1) read cleaning, 2) contigging, 3) scaffolding, 4) misassembly checking, and 5) rescaffolding. 
-Figure~\ref{fig:01} provides an overview of these stages. 
+Figure~\ref{fig:02} provides an overview of these stages. 
 
 \subsubsection*{Stage 1}
 For the first stage A5 uses two previously published programs. First, 
@@ -385,7 +385,7 @@ summarizes the many parameters in the pipeline.
 
 After crude scaffolds have been built, A5 performs an automated quality control step.
 
-As exemplified in Figure~\ref{fig:02}, reads are first mapped to scaffolds, and then read pairs are spatially clustered on the
+As exemplified in Figure~\ref{fig:03}, reads are first mapped to scaffolds, and then read pairs are spatially clustered on the
 points where they map. After mapping, read pairs that support the current assembly architecture, which we 
 refer to as \emph{proper connections}, must be removed before spatial clustering. Without their removal, \emph{proper connections}
 among read pairs would form large spatial clusters. Including these data in the clustering input would not only waste considerable 
@@ -475,8 +475,7 @@ The source code has been licensed under the GNU Public License (GPL) v3.0.
 
 % Do NOT remove this, even if you are not including acknowledgments
 \section*{Acknowledgments}
-This work was supported by National Science Foundation award ER 0949453. We thank Vadim Mozhayskiy for beta testing a
-version of the A5 software.
+We thank Vadim Mozhayskiy for beta testing a version of the A5 software.
 
 %\section*{References}
 % The bibtex filename
@@ -497,13 +496,23 @@ version of the A5 software.
 %\label{Figure_label}
 %\end{figure}
 \begin{figure}[hp]
+\caption{\textbf{Sequence length accumulation curve for six assemblies of the model archaeon \textit{H. volcanii} DS2.} Curves represent the number of bases 
+in an assembly as a function of the $N$ largest sequences. Assemblies generated from SOAPdenovo and A5 are labelled with ``SOAP'' and ``A5'', 
+respectively. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates 
+no scaffolding. For A5, assembly ``scaf-QC'' has been broken using the A5QC algorithm and rescaffolded using SSPACE.
+A perfect assembly would have exactly the number of sequences as the organism has replicons (5 in this case), and the curve would be
+in the extreme upper left corner.}
+\label{fig:01}
+\end{figure}
+
+\begin{figure}[hp]
 \begin{center}
 \end{center}
 \caption{\textbf{Overview of the stages in A5.} The first stage of the A5 pipeline cleans reads, removing any contaminant
 reads and correcting base-call errors. Then the pipeline assembles contigs with IDBA using these error corrected reads. These
 contigs are then scaffolded using the original read set. Scaffolds are then checked for misassemblies, and broken at regions
 containing misassemblies. Finally, the broken scaffolds are rescaffolded using the original read set.}
-\label{fig:01}
+\label{fig:02}
 \end{figure}
 
 \begin{figure}[hp]
@@ -514,16 +523,6 @@ connections between contigs and orange connecting lines represent erroneous conn
 blocks identified by the DBSCAN algorithm. \textbf{Upper Right and Bottom Row:} Plots of connected points between contigs. Black and orange dots 
 correspond to black and orange connections lines from left figure, respectively. Dotted lines correspond
 to misassembly breakpoints. Gray circles highlight the set of points that are clustered by DBSCAN. }
-\label{fig:02}
-\end{figure}
-
-\begin{figure}[hp]
-\caption{\textbf{Sequence length accumulation curve for six assemblies of the model archaeon \textit{H. volcanii} DS2.} Curves represent the number of bases 
-in an assembly as a function of the $N$ largest sequences. Assemblies generated from SOAPdenovo and A5 are labelled with ``SOAP'' and ``A5'', 
-respectively. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates 
-no scaffolding. For A5, assembly ``scaf-QC'' has been broken using the A5QC algorithm and rescaffolded using SSPACE.
-A perfect assembly would have exactly the number of sequences as the organism has replicons (5 in this case), and the curve would be
-in the extreme upper left corner.}
 \label{fig:03}
 \end{figure}
 
@@ -593,90 +592,6 @@ broken using the A5QC algorithm and rescaffolded using SSPACE.
 
 
 \clearpage
-
-\section*{Supplementary Material}
-\subsection*{Description of internal assembly pipeline parameters}
-
-The A5 pipeline incorporates many algorithms, each of which require certain parameters to be set.
-Table~\ref{tab:tab03} lists all of the parameters used in A5, along with how the value
-of that parameter is calculated. We now discuss the effect of each of these parameter settings in turn.  
-The SGA Quality Trim parameter sets a PHRED Q-score cutoff~\cite{Ewing1998} used for read trimming with the algorithm
-implemented in BWA~\cite{bwa}. The SGA Quality Filter parameter sets a maximum number of bases
-with a PHRED Q-score of below 3 that are permitted in a read before the read is discarded entirely.
-The SGA Min Read Length sets the minimum allowed read length after quality trimming, reads shorter
-than that will be discarded.
-
-The IDBA min $k$-mer sets the starting $k$-mer size for \emph{de Bruijn} graph construction, and the max $k$-mer sets
-the largest $k$ that will be used during graph simplification.
-
-The SSPACE Overhang MinOverlap sets the number of nucleotides that a read must overlap with an existing
-contig to be used for contig extension during scaffold gap filling. The SSPACE ExtendCall MinBases sets the minimum
-number of reads covering a base that are required to call the base during contig extension. The SSPACE minimum
-links sets the minimum number of read pairs that must be connecting a pair of contigs in order for them to be considered
-for scaffolding, the reads must map to the region of the contig expected based on the insert size distribution.
-For three contigs A, B, and C, where read pairs link A,B and A,C, the SSPACE Min Link Ratio sets the 
-maximum allowable ratio between the number of links connecting A,C and A,B. If the ratio is below the threshold,
-A,B will be scaffolded, otherwise A will not be scaffolded. Here A,B and A,C have the highest and 2$^{nd}$ highest number
-of links between A and any other contig.
-
-The SSPACE Merge MinOverlap sets the minimum number of bases that two scaffolded contigs must overlap in order to be merged
-into a single contig.  The SSPACE Insert Mean is the mean value of the insert size for a paired-end or mate-pair library. 
-The SSPACE Insert StDev is the standard deviation.
-
-\begin{table}[hp]
-\caption{\bf{Supplementary Table: Automatically set parameters}}
-\footnotesize
-{\begin{tabular}{l|c|l}
-Parameter                       & Stage & Default setting  \\
-SGA Quality Trim (-q)           & 1     & fixed to 10, not optimized \\
-SGA Quality Filter (-f)         & 1     & fixed to 20, not optimized \\
-SGA Min Read Length (-m)        & 1     & fixed to 30, this should be larger than IDBA's min $k$-mer \\
-IDBA min $k$-mer                & 2     & 29, most $k$-mers of this size are unique in a microbial genome but larger values may be better for larger genomes \\
-IDBA max $k$-mer                & 2     & maximum read length of trimmed reads \\
-SSPACE Overhang MinOverlap (-m) & 3,5   & Max of 15 and floor of binary logarithm of genome size, plus 3.99  \\
-SSPACE ExtendCall MinBases (-o) & 3,5   & fixed to 1 \\
-SSPACE Minimum Links (-k)       & 3,5   & base 1.4 logarithm of $E\_links$, minus 11.5, where $E\_links$ = $\dfrac{2c\mu}{l_r}$ and $c$ is coverage \\
-SSPACE Min Link Ratio (-a)      & 3,5   & fixed to 0.6,0.3. These values give higher accuracy than SSPACE defaults  \\
-SSPACE Merge MinOverlap (-n)    & 3,5   & floor of (binary logarithm of mean insert size, scaled by 1.24, plus 0.99) \\
-SSPACE Insert Mean 	        & 3,5   & Calculated using EM-clustering \\
-SSPACE Insert StDev             & 3,5   & Calculated using EM-clustering \\
-DBSCAN $\varepsilon$            & 4     & Derived from coverage as described in main text \\
-DBSCAN $MinPts$                 & 4     & Derived from coverage as described in main text \\
-\end{tabular}}
-\begin{flushleft} Assembly parameters within the A5 pipeline and how their values are chosen. $\varepsilon$ is the maximum inter-point distance 
-used for spatial clustering and $MinPts$ is the minimum number of points in a cluster.
-\end{flushleft}
-\label{tab:tab03}
-\end{table}
-
-
-\begin{table}[hp] 
-\caption{ 
-\bf{Assembly metrics for SOAPdenovo running on error corrected reads from \textit{H. volcanii} DS2}}
-\footnotesize
-\begin{tabular}{l|cccccc|ccc}
-&\multicolumn{6}{c|}{SOAPdenovo on clean reads} \\
-Assembly           & ctg-CDS & scaf-CDS & ctg-N50 & scaf-N50 & ctg-LCB & scaf-LCB \\
-Sequence count     & 6965    & 237      & 6965    & 237      & 4101    & 227      \\
-N50                & 3781    & 125630   & 3781    & 125630   & 2457    & 85544   \\
-Miscalled bases    & 187     & 385      & 187     & 385      & 249     & 417      \\
-Uncalled bases     & 0       & 11567    & 0       & 11567    & 0       & 22162    \\
-Extra bases        & 31091   & 14830    & 31091   & 14830    & 65895   & 23369    \\
-Missing bases      & 154938  & 150235   & 154938  & 150235   & 160316  & 176787   \\
-Extra sequences    & 4964    & 92       & 4964    & 92       & 1206    & 81       \\
-Missing replicons  & 0       & 0        & 0       & 0        & 0       & 0        \\
-DCJ Distance       & 2005    & 150      & 2005    & 150      & 2897    & 148      \\
-LCB Count          & 9       & 13       & 9       & 13       & 10      & 10       \\
-Broken CDS         & 524     & 539      & 524     & 539      & 760     & 769      \\
-\end{tabular}
-\begin{flushleft} Reference-based assembly metrics for SOAPdenovo assemblies of \textit{H. volcanii} DS2 
-(\textbf{Volc}) reads cleaned by stage 1 of the A5 pipeline. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates no scaffolding. 
-Labels ``-CDS'', ``-N50'', and ``-LCB'' indicate SOAPdenovo assemblies run with parameter combinations that minimized broken coding 
-sequences, maximized scaffold N50, and minimized LCB (Locally Collinear Block) count, respectively.
-SOAPdenovo with $K=27$ produced the best assemblies for -CDS, -N50, while $K=41$ was optimal for -LCB. Contig statistics are on the contigs matching the optimal scaffold assemblies.
-\end{flushleft}
-\label{tab:soapcleanvolc}
-\end{table}
 
 
 \end{document}
