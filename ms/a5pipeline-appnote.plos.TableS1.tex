@@ -48,17 +48,18 @@
 \renewcommand{\@biblabel}[1]{\quad#1.}
 \makeatother
 
-\newcommand\startsupplement{%
-    \makeatletter 
-       \renewcommand{\thetable}{S\arabic}
-    \makeatother}
+%\newcommand\startsupplement{%
+%       \renewcommand{\thetable}{S\arabic}
+%}
 
 \begin{document}
 
-\startsupplement
+%\startsupplement
+
+\renewcommand{\thetable}{S\arabic{table}}
+
 
 \begin{table}[hp]
-\makeatother
 \caption{\bf{Supplementary Table: Automatically set parameters}}
 \footnotesize
 {\begin{tabular}{l|c|l}
