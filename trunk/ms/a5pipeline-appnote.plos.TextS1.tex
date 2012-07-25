@@ -48,7 +48,13 @@
 \renewcommand{\@biblabel}[1]{\quad#1.}
 \makeatother
 
-\section*{Supplementary Material}
+
+\begin{document}
+
+\renewcommand{\thesection}{S\arabic{section}
+\renewcommand{\thesubsection}{\arabic{subsection}}
+
+\section*{Supplementary Text}
 \subsection*{Description of internal assembly pipeline parameters}
 
 The A5 pipeline incorporates many algorithms, each of which require certain parameters to be set.
@@ -76,5 +82,6 @@ of links between A and any other contig.
 The SSPACE Merge MinOverlap sets the minimum number of bases that two scaffolded contigs must overlap in order to be merged
 into a single contig.  The SSPACE Insert Mean is the mean value of the insert size for a paired-end or mate-pair library. 
 The SSPACE Insert StDev is the standard deviation.
+
 
 \end{document}
