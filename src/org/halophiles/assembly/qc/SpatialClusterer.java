@@ -183,10 +183,6 @@ public class SpatialClusterer {
 		runDBSCAN();
 		if (readPairClusters.isEmpty())
 			return;
-		System.out.println("[a5_qc] Found "+readPairClusters.size()+" initial blocks between contigs "+ctg1.getId()+" and "+ctg2.getId());
-		Iterator<ReadCluster> kcIt = readPairClusters.iterator();
-		while(kcIt.hasNext())
-			System.out.println("        "+kcIt.next().toString());
 	}
 
 	/**

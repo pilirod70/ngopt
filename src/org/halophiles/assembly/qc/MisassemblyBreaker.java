@@ -220,7 +220,7 @@ public class MisassemblyBreaker {
 			
 		double[][] clusterStats = getLibraryStats(reads, 1);
 		double[][] ranges = getFilterRanges(clusterStats);
-		setMAXBLOCKLEN(clusterStats);
+		//setMAXBLOCKLEN(clusterStats);
 		loadData(samPath, contigs, ranges);
 		setParameters(clusterStats);
 		printParams();
@@ -279,92 +279,15 @@ public class MisassemblyBreaker {
 		
 		if (blocks.isEmpty()){
 			return false;
-			//System.out.println("[a5_qc] No blocks were found. Not breaking scaffolds.");
-			//System.exit(0);
 		}
 		
-		/*
-		 *  break on regions of a minimum distance that are flanked by two blocks
-		 */
-		/* AJTRITT - Deprecating this code as of 07/17/2012
-		File brokenScafFile = new File(args[2]);
-		brokenScafFile.createNewFile();
-		ScaffoldExporter out = new ScaffoldExporter(brokenScafFile); 
-		File ctgFile = new File(args[1]);
-		BufferedReader br = new BufferedReader(new FileReader(ctgFile));
-		File bedFile = new File(samFile.getParentFile(),basename(samFile.getName(),".sam")+".regions.bed");
-		bedFile.createNewFile();
-		System.out.println("[a5_qc] Writing regions potentially containing misassemblies to "+bedFile.getAbsolutePath());
-		PrintStream bedOut = new PrintStream(bedFile);
-		// discard the first '>'
-		br.read();
-		int[][] tmpAr = null;
-		StringBuilder sb = null;
-		while(br.ready()){
-			String tmpCtg = br.readLine(); 
-			// Take only the first part of the contig header to be consistent with bwa
-			if (tmpCtg.contains(" "))
-				tmpCtg = tmpCtg.substring(0,tmpCtg.indexOf(" "));
-			sb = new StringBuilder();
-			char c = (char) br.read();
-			// read in this sequence
-			while(c != '>'){
-				if (isNuc(c))
-					sb.append(c);
-				if (!br.ready())
-					break;
-				c = (char) br.read();
-			}
-			
-			if (!blocks.containsKey(tmpCtg)){
-				out.export(tmpCtg, sb);
-				continue;
-			}
-			
-			Vector<int[]> tmpBlks = blocks.get(tmpCtg);
-
-			if (tmpBlks.size() < 2){
-				out.export(tmpCtg, sb);
-				continue;
-			}
-		
-			tmpAr = new int[tmpBlks.size()][];
-			tmpBlks.toArray(tmpAr);
-			Arrays.sort(tmpAr,BLOCK_COMP);
-			int left = 1;
-			int right = 1;
-			for (int i = 1; i < tmpAr.length; i++){
-				// if they don't face each other, there isn't a misassembly in between this pair of blocks
-				if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
-					continue;
-				// if they overlap, split at the midpoint of overlap
-				if (tmpAr[i-1][1] > tmpAr[i][0]){ 
-					bedOut.println(tmpCtg+"\t"+tmpAr[i][0]+"\t"+tmpAr[i-1][1]);
-					right = (tmpAr[i-1][1] + tmpAr[i][0])/2;
-					System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
-					out.export(tmpCtg, sb, left, right);
-					left = right+1;
-				} else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST) {
-					bedOut.println(tmpCtg+"\t"+tmpAr[i-1][1]+"\t"+tmpAr[i][0]);
-					right = tmpAr[i-1][1];
-					System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
-					out.export(tmpCtg, sb, left, right);
-					left = tmpAr[i][0];
-				} 
-			}
-			right = sb.length();
-			System.out.println("[a5_qc] Exporting "+tmpCtg+" at "+left+"-"+right);
-			out.export(tmpCtg, sb, left, right);
-			bedOut.close();
-		}
-		*/
 		File bedFile = new File(bedPath);
-		if (!bedFile.exists())
-			bedFile.createNewFile();
 		PrintStream bedOut = null;
 		Iterator<String> ctgIt = blocks.keySet().iterator();
 		String tmpCtg;
 		int[][] tmpAr = null;
+		int left = -1;
+		int right = -1;
 		while(ctgIt.hasNext()){
 			tmpCtg = ctgIt.next();
 			Vector<int[]> tmpBlks = blocks.get(tmpCtg);
@@ -379,19 +302,33 @@ public class MisassemblyBreaker {
 				// if they don't face each other, there isn't a misassembly in between this pair of blocks
 				if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
 					continue;
-				// if they overlap, split at the midpoint of overlap
-				if (bedOut == null) { // don't create the file if we don't need to
-					bedFile.createNewFile();
-					bedOut = new PrintStream(bedFile);
+				left = -1;
+				right = -1;
+				if (tmpAr[i-1][1] > tmpAr[i][0]) {
+					left = tmpAr[i][0];
+					right = tmpAr[i-1][1];
+				} else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST) {
+					left = tmpAr[i-1][1];
+					right = tmpAr[i][0];
 				}
-				if (tmpAr[i-1][1] > tmpAr[i][0])
-					bedOut.println(tmpCtg+"\t"+tmpAr[i][0]+"\t"+tmpAr[i-1][1]);
-				else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST)
-					bedOut.println(tmpCtg+"\t"+tmpAr[i-1][1]+"\t"+tmpAr[i][0]);
+				
+				if (left != -1 && right != -1){
+					// if they overlap, split at the midpoint of overlap
+					if (bedOut == null) { // don't create the file if we don't need to
+						bedFile.createNewFile();
+						bedOut = new PrintStream(bedFile);
+						System.out.println("[a5_qc] Writing regions containing misassemblies to " + bedFile.getAbsolutePath());
+					}
+					bedOut.println(tmpCtg+"\t"+left+"\t"+right);
+				}
 			}
 		}
-		bedOut.close();
-		return true;
+		if (bedOut != null) {
+			bedOut.close();
+			return true;
+		} else {
+			return false;
+		}
 	}
 	
 	/**
@@ -402,6 +339,9 @@ public class MisassemblyBreaker {
 	 */
 	private static void addBlocks(SpatialClusterer sc, Vector<int[]> xBlocks, Vector<int[]> yBlocks){
 		ReadCluster[] rdClust = sc.getReadClusters();
+		System.out.println("[a5_qc] Found "+rdClust.length+" initial blocks between contigs "+sc.getContig1().getId()+" and "+sc.getContig2().getId());
+		for (ReadCluster r: rdClust)
+			System.out.println("        "+r.toString());
 		int xlen = 0;
 		int ylen = 0;
 		int[] x = null;
@@ -524,7 +464,7 @@ public class MisassemblyBreaker {
 		
 		int contigLen = 0;
 		// require the window length to be at least 1000 base pairs
-		int windowLen = Math.max(1000, MEAN_BLOCK_LEN);
+		int windowLen = 1000;
 		String[] hdr = null;
 		String contigName = null;
 		//Map<String,Integer> coordOffset = new HashMap<String,Integer>();
@@ -541,7 +481,7 @@ public class MisassemblyBreaker {
 						if (contigLen % windowLen != 0)
 							numWindow++;
 						// now create the lookup table: add the upper bounds of each window to the array
-						tmpWin = new int[3][numWindow];
+						tmpWin = new int[4][numWindow];
 						tmpWin[0][numWindow-1] = contigLen;
 						tmpWin[1][numWindow-1] = (contigLen - (numWindow-1)*windowLen);
 						for (int j = 0; j < numWindow-1; j++){
@@ -627,13 +567,19 @@ public class MisassemblyBreaker {
 			index = Arrays.binarySearch(tmpWin[0], left1);
 			if (index < 0)
 				index = -1*(index+1);
-			tmpWin[2][index]++;
+			if (rev1)
+				tmpWin[3][index]++;
+			else 
+				tmpWin[2][index]++;
 			// tally read 2
 			tmpWin = readCounts.get(ctg2.name);
 			index = Arrays.binarySearch(tmpWin[0], left1);
 			if (index < 0)
 				index = -1*(index+1);
-			tmpWin[2][index]++;
+			if (rev1)
+				tmpWin[3][index]++;
+			else 
+				tmpWin[2][index]++;
 			/* end: tally these read positions */
 			
 			
@@ -736,16 +682,16 @@ public class MisassemblyBreaker {
 			covOut.println("#"+tmpCtg);
 			tmpWin = readCounts.get(tmpCtg);
 			for (int i = 0; i < tmpWin[2].length; i++){
-				if (tmpWin[2][i] == 0)
-					continue;
-				tmpFreq = tmpWin[2][i];
-				tmpFreq = tmpFreq/tmpWin[1][i];
-				if (P > tmpFreq){
-					P = tmpFreq;
-					minWindow = i;
-					minWinCtg = tmpCtg;
+				if (tmpWin[2][i] != 0){
+					tmpFreq = tmpWin[2][i];
+					tmpFreq = tmpFreq/tmpWin[1][i];
+					if (P > tmpFreq){
+						P = tmpFreq;
+						minWindow = i;
+						minWinCtg = tmpCtg;
+					}
 				}
-				covOut.println(tmpWin[0][i]+"\t"+tmpWin[1][i]+"\t"+tmpWin[2][i]);
+				covOut.println(tmpWin[0][i]+"\t"+tmpWin[1][i]+"\t"+tmpWin[2][i]+"\t"+tmpWin[3][i]);
 			}
 		}
 		covOut.close();
@@ -760,6 +706,9 @@ public class MisassemblyBreaker {
 		}
 		System.out.println("[a5_load_data] Window with fewest mapped reads: "+minWinCtg+" "+minWinL+" - "+minWinR);
 		
+		/*
+		 * Remove contigs that don't have enough points on them. 
+		 */
 		ctgIt = ctgClusterers.keySet().iterator();
 		Set<String> ctgToRm = new HashSet<String>();
 		Set<String> psPairsToRm = new HashSet<String>();
@@ -795,6 +744,12 @@ public class MisassemblyBreaker {
 		MAX_INTERPOINT_DIST = Math.max(ReadCluster.RDLEN, (int) (Math.log(ALPHA)/Math.log(Math.max(1-P,0)))-1);
 		//MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
 		MIN_BLOCK_LEN = (int) (1/P)*2;
+		for (double[] cluster: ranges){
+			if (cluster[0] > MEAN_BLOCK_LEN){
+				MEAN_BLOCK_LEN = (int) (cluster[0]);
+				MAX_BLOCK_LEN = (int) (cluster[0]+cluster[1]*6);
+			}
+		}
 		/*
 		 * apply some extreme value theory to get the minimum of points 
 		 * randomly sampled uniformally across an interval of MAX_BLOCK_LEN
@@ -825,6 +780,7 @@ public class MisassemblyBreaker {
 	 */
 	private static void printParams(){
 		System.out.println("[a5_qc] parameters:");
+		System.out.println("        ALPHA               = " + ALPHA);
 		System.out.println("        P                   = " + P);
 		System.out.println("        MIN_BLOCK_LEN       = " + MIN_BLOCK_LEN);
 		System.out.println("        MEAN_BLOCK_LEN      = " + MEAN_BLOCK_LEN);
@@ -1340,6 +1296,21 @@ public class MisassemblyBreaker {
 		}
 		return false;
 		
+	}
+	
+	public static void logInputs (String mainClass, String[] args) {
+		System.out.print("[a5_qc] "+mainClass);
+		if (args.length > 0){
+			System.out.println(" "+args[0]);
+			String space = "";
+			for (int i = 0; i < mainClass.length(); i++)
+				space += " ";
+			for (int i = 1; i < args.length; i++){
+				System.out.println("        "+space+" "+args[i]);
+			}
+		} else {
+			System.out.println();
+		}
 	}
 	
 }
