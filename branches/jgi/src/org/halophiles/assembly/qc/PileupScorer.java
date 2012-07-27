@@ -9,7 +9,11 @@ public class PileupScorer {
 	private static final Pattern GAP_PATTERN = Pattern.compile("[+,-][0-9]+[ACGTNacgtn]+");
 	private static final Pattern CLIP_PATTERN = Pattern.compile("^[^,$]");
 	private static final Pattern MATCH_PATTERN = Pattern.compile("[,.]");
-	
+
+	/**
+	 * The gain for a match
+	 */
+	private double match;
 	/**
 	 * The mismatch penalty 
 	 */
@@ -26,12 +30,24 @@ public class PileupScorer {
 	 * The penalty for truncating a read 
 	 */
 	private double clip;
+	/**
+	 * Score errors if we have non-zero penalties.
+	 * i.e. don't bother adding or subtracting if this is a simple scorer 
+	 * and our penalties will not have an effect on score.
+	 */
+	private boolean scoreErrors;
 	
-	public PileupScorer(double mismatch, double gapOpen, double gapExtend, double clip){
+	public PileupScorer (){
+		this(1,0,0,0,0);
+	}
+	
+	public PileupScorer(double match, double mismatch, double gapOpen, double gapExtend, double clip){
+		this.match = match;
 		this.mismatch = mismatch;
 		this.gapOpen = gapOpen;
 		this.gapExtend = gapExtend;
 		this.clip = clip;
+		scoreErrors = this.mismatch != 0 && this.gapOpen != 0 && this.gapExtend != 0 && this.clip != 0;
 	}
 	
 	public double scorePileup(String bases) {
@@ -41,13 +57,17 @@ public class PileupScorer {
 		while(pbp.hasNextBase()){
 			tmpBase = pbp.nextBase();
 			if (MATCH_PATTERN.matcher(tmpBase).matches()){
-				score++;
-			} else if (MISMATCH_PATTERN.matcher(tmpBase).matches()) {
-				continue;
-			} else if (GAP_PATTERN.matcher(tmpBase).matches()) {
-				continue;
-			} else if (CLIP_PATTERN.matcher(tmpBase).matches()){
-				continue;
+				score += match;
+			} else if (scoreErrors) {
+				if (MISMATCH_PATTERN.matcher(tmpBase).matches()) {
+					score -= mismatch;
+				} else if (GAP_PATTERN.matcher(tmpBase).matches()) {
+					score -= gapOpen;
+				} else if (tmpBase.equals("*")) {
+					score -= gapExtend;
+				} else if (CLIP_PATTERN.matcher(tmpBase).matches()){
+					score -= clip;
+				}
 			}
 		}
 		return score;
@@ -92,7 +112,8 @@ public class PileupScorer {
 			} else if (bases[idx] == '*'){
 				ret = ret + bases[idx++];
 			}
-			
+			if (ret.length() == 0)
+				System.out.print("");
 			return ret;
 		}
 		
@@ -101,7 +122,8 @@ public class PileupScorer {
 					c == 'g' || c == 'G' ||
 					c == 'c' || c == 'C' ||
 					c == 'a' || c == 'A' ||
-					c == 't' || c == 'T';
+					c == 't' || c == 'T' ||
+					c == 'n' || c == 'N';
 			
 		}
 		
