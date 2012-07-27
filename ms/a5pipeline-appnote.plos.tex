@@ -48,6 +48,9 @@
 \renewcommand{\@biblabel}[1]{\quad#1.}
 \makeatother
 
+%\newcommand{\tmpsection}[1]{}
+%\let\tmpsection=\subsection
+%\renewcommand{\subsection}[1]{\tmpsection{\underline{#1}}}
 
 % Leave date blank
 \date{}
@@ -106,7 +109,7 @@ Finally, A5 has modest compute requirements, and can assemble a typical bacteria
 % Please keep the Author Summary between 150 and 200 words
 % Use first person. PLoS ONE authors please skip this step. 
 % Author Summary not valid for PLoS ONE submissions.   
-\section*{Author Summary}
+%\section*{Author Summary}
 
 \section*{Introduction}
 High throughput DNA sequencing continues to revolutionize our understanding of biological systems. In particular,
@@ -595,6 +598,99 @@ broken using the A5QC algorithm and rescaffolded using SSPACE.
 
 \clearpage
 
+\renewcommand{\thesection}{S\arabic{section}}
+
+\section{Supplementary Text}
+\subsection*{Description of internal assembly pipeline parameters}
+
+The A5 pipeline incorporates many algorithms, each of which require certain parameters to be set.
+Supplementary Table~\ref{tab:tab03} lists all of the parameters used in A5, along with how the value
+of that parameter is calculated. We now discuss the effect of each of these parameter settings in turn.  
+The SGA Quality Trim parameter sets a PHRED Q-score cutoff~\cite{Ewing1998} used for read trimming with the algorithm
+implemented in BWA~\cite{bwa}. The SGA Quality Filter parameter sets a maximum number of bases
+with a PHRED Q-score of below 3 that are permitted in a read before the read is discarded entirely.
+The SGA Min Read Length sets the minimum allowed read length after quality trimming, reads shorter
+than that will be discarded.
+
+The IDBA min $k$-mer sets the starting $k$-mer size for \emph{de Bruijn} graph construction, and the max $k$-mer sets
+the largest $k$ that will be used during graph simplification.
+
+The SSPACE Overhang MinOverlap sets the number of nucleotides that a read must overlap with an existing
+contig to be used for contig extension during scaffold gap filling. The SSPACE ExtendCall MinBases sets the minimum
+number of reads covering a base that are required to call the base during contig extension. The SSPACE minimum
+links sets the minimum number of read pairs that must be connecting a pair of contigs in order for them to be considered
+for scaffolding, the reads must map to the region of the contig expected based on the insert size distribution.
+For three contigs A, B, and C, where read pairs link A,B and A,C, the SSPACE Min Link Ratio sets the 
+maximum allowable ratio between the number of links connecting A,C and A,B. If the ratio is below the threshold,
+A,B will be scaffolded, otherwise A will not be scaffolded. Here A,B and A,C have the highest and 2$^{nd}$ highest number
+of links between A and any other contig.
+
+The SSPACE Merge MinOverlap sets the minimum number of bases that two scaffolded contigs must overlap in order to be merged
+into a single contig.  The SSPACE Insert Mean is the mean value of the insert size for a paired-end or mate-pair library. 
+The SSPACE Insert StDev is the standard deviation.
+
+
+\clearpage
+
+\renewcommand{\thetable}{S\arabic{table}}
+
+\setcounter{table}{0}
+
+\begin{table}[hp]
+\caption{\bf{Supplementary Table: Automatically set parameters}}
+\footnotesize
+{\begin{tabular}{l|c|l}
+Parameter                       & Stage & Default setting  \\
+SGA Quality Trim (-q)           & 1     & fixed to 10, not optimized \\
+SGA Quality Filter (-f)         & 1     & fixed to 20, not optimized \\
+SGA Min Read Length (-m)        & 1     & fixed to 30, this should be larger than IDBA's min $k$-mer \\
+IDBA min $k$-mer                & 2     & 29, most $k$-mers of this size are unique in a microbial genome but larger values may be better for larger genomes \\
+IDBA max $k$-mer                & 2     & maximum read length of trimmed reads \\
+SSPACE Overhang MinOverlap (-m) & 3,5   & Max of 15 and floor of binary logarithm of genome size, plus 3.99  \\
+SSPACE ExtendCall MinBases (-o) & 3,5   & fixed to 1 \\
+SSPACE Minimum Links (-k)       & 3,5   & base 1.4 logarithm of $E\_links$, minus 11.5, where $E\_links$ = $\dfrac{2c\mu}{l_r}$ and $c$ is coverage \\
+SSPACE Min Link Ratio (-a)      & 3,5   & fixed to 0.6,0.3. These values give higher accuracy than SSPACE defaults  \\
+SSPACE Merge MinOverlap (-n)    & 3,5   & floor of (binary logarithm of mean insert size, scaled by 1.24, plus 0.99) \\
+SSPACE Insert Mean 	        & 3,5   & Calculated using EM-clustering \\
+SSPACE Insert StDev             & 3,5   & Calculated using EM-clustering \\
+DBSCAN $\varepsilon$            & 4     & Derived from coverage as described in main text \\
+DBSCAN $MinPts$                 & 4     & Derived from coverage as described in main text \\
+\end{tabular}}
+\begin{flushleft} Assembly parameters within the A5 pipeline and how their values are chosen. $\varepsilon$ is the maximum inter-point distance 
+used for spatial clustering and $MinPts$ is the minimum number of points in a cluster.
+\end{flushleft}
+\label{tab:tab03}
+\end{table}
+
+\clearpage
+
+\begin{table}[hp] 
+\caption{ 
+\bf{Assembly metrics for SOAPdenovo running on error corrected reads from \textit{H. volcanii} DS2}}
+\footnotesize
+\begin{tabular}{l|cccccc|ccc}
+&\multicolumn{6}{c|}{SOAPdenovo on clean reads} \\
+Assembly           & ctg-CDS & scaf-CDS & ctg-N50 & scaf-N50 & ctg-LCB & scaf-LCB \\
+Sequence count     & 6965    & 237      & 6965    & 237      & 4101    & 227      \\
+N50                & 3781    & 125630   & 3781    & 125630   & 2457    & 85544   \\
+Miscalled bases    & 187     & 385      & 187     & 385      & 249     & 417      \\
+Uncalled bases     & 0       & 11567    & 0       & 11567    & 0       & 22162    \\
+Extra bases        & 31091   & 14830    & 31091   & 14830    & 65895   & 23369    \\
+Missing bases      & 154938  & 150235   & 154938  & 150235   & 160316  & 176787   \\
+Extra sequences    & 4964    & 92       & 4964    & 92       & 1206    & 81       \\
+Missing replicons  & 0       & 0        & 0       & 0        & 0       & 0        \\
+DCJ Distance       & 2005    & 150      & 2005    & 150      & 2897    & 148      \\
+LCB Count          & 9       & 13       & 9       & 13       & 10      & 10       \\
+Broken CDS         & 524     & 539      & 524     & 539      & 760     & 769      \\
+\end{tabular}
+\begin{flushleft} Reference-based assembly metrics for SOAPdenovo assemblies of \textit{H. volcanii} DS2 
+(\textbf{Volc}) reads cleaned by stage 1 of the A5 pipeline. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates no scaffolding. 
+Labels ``-CDS'', ``-N50'', and ``-LCB'' indicate SOAPdenovo assemblies run with parameter combinations that minimized broken coding 
+sequences, maximized scaffold N50, and minimized LCB (Locally Collinear Block) count, respectively.
+SOAPdenovo with $K=27$ produced the best assemblies for -CDS, -N50, while $K=41$ was optimal for -LCB. Contig statistics are on the contigs matching the optimal scaffold assemblies.
+\end{flushleft}
+\label{tab:soapcleanvolc}
+\end{table}
 
 \end{document}
 
