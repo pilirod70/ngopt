@@ -24,9 +24,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.Vector;
+
+import net.sf.samtools.AbstractBAMFileIndex;
+import net.sf.samtools.SAMFileReader;
+import net.sf.samtools.SAMRecord;
+import net.sf.samtools.SAMRecordIterator;
 
 import org.halophiles.assembly.Contig;
 import org.halophiles.assembly.ReadPair;
@@ -730,6 +736,10 @@ public class MisassemblyBreaker {
 	 * @param ranges <code>[ mean, sd, n, nSd , min, max ]</code>
 	 */
 	private static void setParameters(double[][] ranges){
+		P = 0.025;
+		NumberFormat nf = NumberFormat.getInstance();
+		nf.setMaximumFractionDigits(3);
+		System.out.println("[a5_qc] Setting P to "+nf.format(P));
 		int maxSd = 0;
 		for (int i = 0; i < ranges.length; i++)
 			if (ranges[i][1] > maxSd)
@@ -1311,6 +1321,51 @@ public class MisassemblyBreaker {
 		} else {
 			System.out.println();
 		}
+	}
+	private static Map<String,ReadPair> sampleBamFile(SAMFileReader sam, Map<String,Contig> contigs, long seed){	
+		Map<String,ReadPair> pairs = new HashMap<String,ReadPair>();
+		Random rand = new Random(seed);
+		/* First we need to count the number of reads in the BAM file
+		 * so we know the frequency at which to sample pairs
+		 */
+		double count = 0;
+		AbstractBAMFileIndex index = (AbstractBAMFileIndex) sam.getIndex();
+		int nRefs = index.getNumberOfReferences();
+		for (int i = 0; i < nRefs; i++)
+			count += index.getMetaData(i).getAlignedRecordCount();
+		
+		count = count/2; // divide by two to get the number of pairs
+		double freq = 100000/count;
+		SAMRecordIterator it = sam.iterator();
+		SAMRecord tmpRecord = null;
+		ReadPair tmpPair = null;
+		while (it.hasNext()){
+			tmpRecord = it.next();
+			// if the two reads in this fragment don't map to the same contig
+			if (!tmpRecord.getReferenceName().equals(tmpRecord.getMateReferenceName()))
+				continue;
+			// we already came across this guys mate
+			if (tmpRecord.getAlignmentStart() > tmpRecord.getMateAlignmentStart()) { 
+				// and it didn't get sampled, so move on
+				if (!pairs.containsKey(tmpRecord.getReadName())) 
+					continue;
+				else 
+					tmpPair = pairs.get(tmpRecord.getReadName());
+			} else { // keep with probability=freq
+				if (rand.nextDouble() > freq)
+					continue;
+				else // keeping this fragment
+					tmpPair = new ReadPair(tmpRecord.getReadName());
+			}
+			tmpPair.addRead(tmpRecord.getAlignmentStart(), 
+					        tmpRecord.getReadNegativeStrandFlag(), 
+					        tmpRecord.getAlignmentEnd() - tmpRecord.getAlignmentStart(), 
+					        contigs.get(tmpRecord.getReferenceName()), 
+					        tmpRecord.getMappingQuality(), 
+					        tmpRecord.getCigarString());
+			pairs.put(tmpRecord.getReadName(), tmpPair);
+		}
+		return pairs;
 	}
 	
 }
