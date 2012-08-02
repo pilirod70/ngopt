@@ -1194,6 +1194,7 @@ FUNCTION {proceedings}
     }
     { format.editors output.nonnull }
   if$
+  format.authors "author" output.check
   format.date "year" output.check
   date.block
   format.btitle "title" output.check
