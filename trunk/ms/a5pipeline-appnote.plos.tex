@@ -329,7 +329,7 @@ The A5 (\textbf{A}ndrew \textbf{A}nd \textbf{A}aron's \textbf{A}wesome \textbf{A
 stages: 1) read cleaning, 2) contigging, 3) scaffolding, 4) misassembly checking, and 5) rescaffolding. 
 Figure~\ref{fig:02} provides an overview of these stages. 
 
-%\subsubsection*{Stage 1}
+\subsubsection*{Stage 1}
 For the first stage A5 uses two previously published programs. First, 
 ambiguous and low quality portions of reads are removed from the dataset. Then sequencing errors are corrected in the reads. Both of these 
 steps use tools from from the SGA software package~\cite{Simpson2010}.  Although many read error correction packages have been published,
@@ -339,7 +339,7 @@ sequencing adapter contamination that may be present in the data. The default se
 include the standard Illumina TruSeq adapters and those used in Epicentre Nextera (transposon-catalyzed) library preparation protocols~\cite{Adey2010}. 
 User-specified adapter sequences can be screened by adding them to a FastA file. 
 
-%\subsubsection*{Stage 2}
+\subsubsection*{Stage 2}
 Using the newly cleaned reads derived from stage 1, stage 2 of the A5 pipeline builds contigs
 with the the assembler IDBA~\cite{Peng2010}. We selected IDBA due 
 to its ability to produce long contigs in the presence of inconsistent depth of sequence coverage more robustly than other methods (data not shown).
@@ -354,10 +354,10 @@ ability to generate highly contiguous sequence even with unpaired sequence reads
 contigging can often produce exceptional results~\cite{Gnerre2011, SASSY}, we did not want to impose the requirement of paired reads (or multiple
 libraries with different insert sizes) upon users of the pipeline. This keeps applicability of A5 as broad as possible.
 
-%\subsubsection*{Stage 3}
+\subsubsection*{Stage 3}
 In stage 3 of A5, contigs are scaffolded and extended using the software SSPACE~\cite{Boetzer2011}. 
 
-%\subsubsection*{Stage 4}
+\subsubsection*{Stage 4}
 In stage 4 of A5, crude 
 scaffolds are subjected to a quality control check for misassemblies. 
 An undesirable side-effect of using a contigging algorithm that is unaware of read pairing information is that misassemblies can occur in contigs 
@@ -369,7 +369,7 @@ BWA~\cite{bwa}. Custom code (described in detail below in section \ref{sec:qc}) 
 crude scaffold assembly and two-dimensional spatial clustering~\cite{DBSCAN} is used to identify clusters of discordant read pairs that are 
 suggestive of a misassembly. The A5 pipeline then breaks the crude scaffolds at the estimated position of the misassembly.
 
-%\subsubsection*{Stage 5}
+\subsubsection*{Stage 5}
 Finally, in stage 5 the broken-up scaffolds are rescaffolded using SSPACE~\cite{Boetzer2011}.
 
 \subsection*{Automated parameter selection}
