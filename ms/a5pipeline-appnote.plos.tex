@@ -28,6 +28,9 @@
 %\usepackage{setspace} 
 %\doublespacing
 
+\usepackage{sectsty}
+
+%\titleformat{\section}{\large\bfseries}{\thesection}{1em}{\hrule}
 
 % Text layout
 \topmargin 0.0cm
@@ -598,10 +601,28 @@ broken using the A5QC algorithm and rescaffolded using SSPACE.
 
 \clearpage
 
-\renewcommand{\thesection}{S\arabic{section}}
 
-\section{Supplementary Text}
-\subsection*{Description of internal assembly pipeline parameters}
+
+\section*{Supporting Information}
+\subsection*{Legends to Supplementary Tables}
+
+%\subsection*{Supplementary Tables}
+
+\subsubsection*{Supplementary Table S1}
+Assembly parameters within the a5 pipeline and how their values are chosen. $\varepsilon$ is the maximum inter-point distance 
+used for spatial clustering and $minpts$ is the minimum number of points in a cluster.
+
+\subsubsection*{Supplementary Table S2}
+ Reference-based assembly metrics for SOAPdenovo assemblies of \textit{H. volcanii} DS2 
+(\textbf{Volc}) reads cleaned by stage 1 of the A5 pipeline. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates no scaffolding. 
+Labels ``-CDS'', ``-N50'', and ``-LCB'' indicate SOAPdenovo assemblies run with parameter combinations that minimized broken coding 
+sequences, maximized scaffold N50, and minimized LCB (Locally Collinear Block) count, respectively.
+SOAPdenovo with $K=27$ produced the best assemblies for -CDS, -N50, while $K=41$ was optimal for -LCB. Contig statistics are on the contigs matching the optimal scaffold assemblies.
+
+\clearpage
+
+\renewcommand{\thesubsection}{Text S\arabic{subsection}.}
+\subsection{Description of internal assembly pipeline parameters}
 
 The A5 pipeline incorporates many algorithms, each of which require certain parameters to be set.
 Supplementary Table~\ref{tab:tab03} lists all of the parameters used in A5, along with how the value
@@ -637,7 +658,7 @@ The SSPACE Insert StDev is the standard deviation.
 \setcounter{table}{0}
 
 \begin{table}[hp]
-\caption{\bf{Supplementary Table: Automatically set parameters}}
+\caption{\bf{Automatically set parameters}}
 \footnotesize
 {\begin{tabular}{l|c|l}
 Parameter                       & Stage & Default setting  \\
@@ -656,9 +677,9 @@ SSPACE Insert StDev             & 3,5   & Calculated using EM-clustering \\
 DBSCAN $\varepsilon$            & 4     & Derived from coverage as described in main text \\
 DBSCAN $MinPts$                 & 4     & Derived from coverage as described in main text \\
 \end{tabular}}
-\begin{flushleft} Assembly parameters within the A5 pipeline and how their values are chosen. $\varepsilon$ is the maximum inter-point distance 
-used for spatial clustering and $MinPts$ is the minimum number of points in a cluster.
-\end{flushleft}
+%\begin{flushleft} assembly parameters within the a5 pipeline and how their values are chosen. $\varepsilon$ is the maximum inter-point distance 
+%used for spatial clustering and $minpts$ is the minimum number of points in a cluster.
+%\end{flushleft}
 \label{tab:tab03}
 \end{table}
 
@@ -683,12 +704,12 @@ DCJ Distance       & 2005    & 150      & 2005    & 150      & 2897    & 148    
 LCB Count          & 9       & 13       & 9       & 13       & 10      & 10       \\
 Broken CDS         & 524     & 539      & 524     & 539      & 760     & 769      \\
 \end{tabular}
-\begin{flushleft} Reference-based assembly metrics for SOAPdenovo assemblies of \textit{H. volcanii} DS2 
-(\textbf{Volc}) reads cleaned by stage 1 of the A5 pipeline. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates no scaffolding. 
-Labels ``-CDS'', ``-N50'', and ``-LCB'' indicate SOAPdenovo assemblies run with parameter combinations that minimized broken coding 
-sequences, maximized scaffold N50, and minimized LCB (Locally Collinear Block) count, respectively.
-SOAPdenovo with $K=27$ produced the best assemblies for -CDS, -N50, while $K=41$ was optimal for -LCB. Contig statistics are on the contigs matching the optimal scaffold assemblies.
-\end{flushleft}
+%\begin{flushleft} Reference-based assembly metrics for SOAPdenovo assemblies of \textit{H. volcanii} DS2 
+%(\textbf{Volc}) reads cleaned by stage 1 of the A5 pipeline. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates no scaffolding. 
+%Labels ``-CDS'', ``-N50'', and ``-LCB'' indicate SOAPdenovo assemblies run with parameter combinations that minimized broken coding 
+%sequences, maximized scaffold N50, and minimized LCB (Locally Collinear Block) count, respectively.
+%SOAPdenovo with $K=27$ produced the best assemblies for -CDS, -N50, while $K=41$ was optimal for -LCB. Contig statistics are on the contigs matching the optimal scaffold assemblies.
+%\end{flushleft}
 \label{tab:soapcleanvolc}
 \end{table}
 
