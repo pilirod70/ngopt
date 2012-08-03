@@ -130,7 +130,7 @@ public class ReadCluster {
 	 * <code>xMin-xMax <-> yMin-yMax</code>
 	 */
 	public String toString(){
-		return xMin+"-"+xMax +" <-> "+yMin+"-"+yMax;
+		return xMin+"-"+xMax +(xOri?" >":" <")+"-"+(yOri?"> ":"< ")+yMin+"-"+yMax + " ("+points.size()+")";
 	}
 	
 	/**

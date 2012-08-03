@@ -9,12 +9,12 @@ package org.halophiles.assembly.qc;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.Collection;
@@ -25,19 +25,22 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.Vector;
-
+/*
 import net.sf.samtools.AbstractBAMFileIndex;
+import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
-
+import net.sf.samtools.SAMSequenceRecord;
+*/
 import org.halophiles.assembly.Contig;
 import org.halophiles.assembly.ReadPair;
 import org.halophiles.assembly.ReadSet;
-
+import org.halophiles.tools.HelperFunctions;
 
 public class MisassemblyBreaker {
 	
@@ -155,7 +158,7 @@ public class MisassemblyBreaker {
 			System.exit(-1);
 		}
 		try{
-			
+			HelperFunctions.logInputs("A5qc", args);
 			NF = NumberFormat.getInstance();
 			NF.setMaximumFractionDigits(0);
 			NF.setGroupingUsed(false);
@@ -166,16 +169,16 @@ public class MisassemblyBreaker {
 			if (args.length == 4){
 				numLibs = Integer.parseInt(args[3]);
 			}
-			String base = dirname(samPath)+"/"+basename(samPath,".sam");
+			String base = HelperFunctions.dirname(samPath)+"/"+HelperFunctions.basename(samPath,".sam");
 			File bedFile = new File(base+".regions.bed");
 			boolean foundMisassemblies = true;
-			if (!bedFile.exists() || (bedFile.exists() && !isEmpty(bedFile))) {
+			if (!bedFile.exists() || (bedFile.exists() && HelperFunctions.isEmpty(bedFile))) {
 				foundMisassemblies = findMisasmRegions(samPath,bedFile.getAbsolutePath());
 			} else {
 				System.out.println("[a5_qc] Found a bed file. Assuming I generated this in a past run and proceeding");
 			}
 			if (foundMisassemblies) { // if we created a bedFile, we have regions containing misassemblies
-				MBRefiner.breakContigs(MBRefiner.refine(base+".bam", bedFile.getAbsolutePath(), ctgPath), ctgPath, brokenCtgPath);
+				MBRefiner.breakContigs(MBRefiner.refine(MBRefiner.scoreAtBaseLevel(base+".bam", bedFile.getAbsolutePath(), ctgPath)), ctgPath, brokenCtgPath);
 			}
 			
 		} catch(IOException e){
@@ -199,6 +202,10 @@ public class MisassemblyBreaker {
 		File samFile = new File(samPath);
 		RandomAccessFile raf = new RandomAccessFile(samFile, "r");
 		Map<String,Contig> contigs = readContigs(raf);
+		
+	//	SAMFileReader samRdr = new SAMFileReader(samFile);
+	//	Map<String,Contig> contigs = getContigs(samRdr); 
+		
 		if (contigs.size() == 0){
 			System.out.println("[a5_qc] Could not find any contigs in SAM file. File is either not in SAM format, or is missing header.");
 			System.exit(-1);
@@ -208,9 +215,12 @@ public class MisassemblyBreaker {
 		System.out.println("[a5_qc] Reading in a subset of reads for insert size estimation.");
 		long before = System.currentTimeMillis();
 		Map<String,ReadPair> reads = readSubsetByChunk(raf, contigs);
-		raf.close(); 
+		raf.close();
+		
+	//	Map<String, ReadPair> reads = sampleBAMFile(samRdr,contigs,samPath.hashCode());
+		
 		long after = System.currentTimeMillis();
-		System.out.println("[a5_qc] Took "+((after-before)/1000)+" seconds to read in "+reads.size()+" read pairs.");
+		System.out.println("[a5_qc] Took "+HelperFunctions.millisToTimeString(after-before)+" to read in "+reads.size()+" read pairs.");
 		if (reads.size() <= 0) {
 			System.err.println("[a5_qc] No paired reads found -- Cannot detect misassemblies -- Exiting.");
 			System.exit(-1);
@@ -227,8 +237,16 @@ public class MisassemblyBreaker {
 		double[][] clusterStats = getLibraryStats(reads, 1);
 		double[][] ranges = getFilterRanges(clusterStats);
 		//setMAXBLOCKLEN(clusterStats);
+		//loadBAMData(samPath, contigs, ranges);
 		loadData(samPath, contigs, ranges);
+		
+		Scanner stdin = new Scanner (System.in);
+		PrintStream bedOut = null;
+		String base = HelperFunctions.dirname(samPath)+"/"+HelperFunctions.basename(samPath, ".bam");
+		String response = "";
 		setParameters(clusterStats);
+		do {
+		
 		printParams();
 		
 		// collect all of our blocks for each contig
@@ -238,6 +256,8 @@ public class MisassemblyBreaker {
 		Vector<int[]> yBlocks = null;
 		while(mbIt.hasNext()){
 			SpatialClusterer pc = mbIt.next();
+			String statePath = base+".matches."+HelperFunctions.basename(pc.getContig1().name)+".v."+HelperFunctions.basename(pc.getContig2().name)+".txt";
+			pc.exportCurrState(statePath);
 			// get Vector for holding contig X blocks
 			xBlocks = new Vector<int[]>();
 			// get Vector for holding contig Y blocks
@@ -283,56 +303,115 @@ public class MisassemblyBreaker {
 		}
 		removeKeys(blocks, toRm);
 		
-		if (blocks.isEmpty()){
+		/*if (blocks.isEmpty()){
 			return false;
-		}
-		
-		File bedFile = new File(bedPath);
-		PrintStream bedOut = null;
-		Iterator<String> ctgIt = blocks.keySet().iterator();
-		String tmpCtg;
-		int[][] tmpAr = null;
-		int left = -1;
-		int right = -1;
-		while(ctgIt.hasNext()){
-			tmpCtg = ctgIt.next();
-			Vector<int[]> tmpBlks = blocks.get(tmpCtg);
-
-			if (tmpBlks.size() < 2)
-				continue;
-		
-			tmpAr = new int[tmpBlks.size()][];
-			tmpBlks.toArray(tmpAr);
-			Arrays.sort(tmpAr,BLOCK_COMP);
-			for (int i = 1; i < tmpAr.length; i++){
-				// if they don't face each other, there isn't a misassembly in between this pair of blocks
-				if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
+		}*/
+		if (!blocks.isEmpty()) {
+			File bedFile = new File(bedPath);
+			
+			Iterator<String> ctgIt = blocks.keySet().iterator();
+			String tmpCtg;
+			int[][] tmpAr = null;
+			int left = -1;
+			int right = -1;
+			while(ctgIt.hasNext()){
+				tmpCtg = ctgIt.next();
+				Vector<int[]> tmpBlks = blocks.get(tmpCtg);
+	
+				if (tmpBlks.size() < 2)
 					continue;
-				left = -1;
-				right = -1;
-				if (tmpAr[i-1][1] > tmpAr[i][0]) {
-					left = tmpAr[i][0];
-					right = tmpAr[i-1][1];
-				} else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST) {
-					left = tmpAr[i-1][1];
-					right = tmpAr[i][0];
-				}
-				
-				if (left != -1 && right != -1){
-					// if they overlap, split at the midpoint of overlap
-					if (bedOut == null) { // don't create the file if we don't need to
-						bedFile.createNewFile();
-						bedOut = new PrintStream(bedFile);
-						System.out.println("[a5_qc] Writing regions containing misassemblies to " + bedFile.getAbsolutePath());
+			
+				tmpAr = new int[tmpBlks.size()][];
+				tmpBlks.toArray(tmpAr);
+				Arrays.sort(tmpAr,BLOCK_COMP);
+				for (int i = 1; i < tmpAr.length; i++){
+					// if they don't face each other, there isn't a misassembly in between this pair of blocks
+					if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
+						continue;
+					left = -1;
+					right = -1;
+					if (tmpAr[i-1][1] > tmpAr[i][0]) {
+						left = tmpAr[i][0];
+						right = tmpAr[i-1][1];
+					} else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST) {
+						left = tmpAr[i-1][1];
+						right = tmpAr[i][0];
 					}
-					bedOut.println(tmpCtg+"\t"+left+"\t"+right);
+					
+					if (left != -1 && right != -1){
+						// if they overlap, split at the midpoint of overlap
+						if (bedOut == null) { // don't create the file if we don't need to
+							bedFile.createNewFile();
+							bedOut = new PrintStream(bedFile);
+							System.out.println("[a5_qc] Writing regions containing misassemblies to " + bedFile.getAbsolutePath());
+						}
+						bedOut.println(tmpCtg+"\t"+left+"\t"+right);
+					}
 				}
 			}
 		}
 		if (bedOut != null) {
 			bedOut.close();
+		} 
+		
+		
+		while(true){
+			System.out.println("Enter new value:");
+			response = stdin.nextLine();
+			if (response.startsWith("cont") || response.startsWith("done"))
+				break;
+			if (resetParam(response))
+				setParameters(clusterStats);
+		}
+		
+		} while (!response.equals("done"));	
+		
+		if (bedOut != null) {
+			bedOut.close();
 			return true;
 		} else {
+			return false;
+		}
+	}
+	
+	private static boolean resetParam(String in){
+		if (!in.contains("="))
+			return false;
+		String[] pair = in.split("=");
+		String key = pair[0];
+		String value = pair[1];
+		if (key.equals("ALPHA")){
+			ALPHA = Double.parseDouble(value);
+			return true;
+		} else if (key.equals("P")){
+			P = Double.parseDouble(value);
+			return true;
+		} else if (key.equals("MIN_BLOCK_LEN")) {
+			MIN_BLOCK_LEN = Integer.parseInt(value);
+			return false;
+		} else if (key.equals("MEAN_BLOCK_LEN")) {	
+			MEAN_BLOCK_LEN = Integer.parseInt(value);
+			return false;
+		} else if (key.equals("MAX_BLOCK_LEN")) {
+			MAX_BLOCK_LEN = Integer.parseInt(value);
+			return false;
+		} else if (key.equals("MAX_INTERBLOCK_DIST")) {
+			MAX_INTERBLOCK_DIST = Integer.parseInt(value);
+			return false;
+		} else if (key.equals("MAX_INTERPOINT_DIST")) {
+			MAX_INTERPOINT_DIST = Integer.parseInt(value);
+			return false;
+		} else if (key.startsWith("EPS")) {
+			SpatialClusterer.EPS = Double.parseDouble(value);
+			return false;
+		} else if (key.equals("MIN_POINTS")) {
+			SpatialClusterer.MIN_PTS = Integer.parseInt(value);
+			return false;
+		} else if (key.equals("RDLEN")) {
+			ReadCluster.RDLEN = Integer.parseInt(value);
+			return false;
+		} else {
+			System.out.println("Unrecognized key: " + key);
 			return false;
 		}
 	}
@@ -476,7 +555,7 @@ public class MisassemblyBreaker {
 		//Map<String,Integer> coordOffset = new HashMap<String,Integer>();
 		Map<String,int[][]> readCounts = new HashMap<String,int[][]>();
 		int[][] tmpWin = null;
-		while(nextCharIs(br, '@')){
+		while(HelperFunctions.nextCharIs(br, '@')){
 			hdr = br.readLine().split("\t");
 			if (hdr[0].equals("@SQ")){
 				for (int i = 1; i < hdr.length; i++){
@@ -535,12 +614,12 @@ public class MisassemblyBreaker {
 			}
 			line1 = br.readLine().split("\t");
 			line2 = br.readLine().split("\t");
-			line1[0] = trimPairNumber(line1[0]);
-			line2[0] = trimPairNumber(line2[0]);
+			line1[0] = HelperFunctions.trimPairNumber(line1[0]);
+			line2[0] = HelperFunctions.trimPairNumber(line2[0]);
 			while (!line1[0].equals(line2[0]) && br.ready()){
 				line1 = line2;
 				line2 = br.readLine().split("\t");				
-				line2[0] = trimPairNumber(line2[0]);
+				line2[0] = HelperFunctions.trimPairNumber(line2[0]);
 			}
 			total++;
 			left1 = Integer.parseInt(line1[3]);
@@ -552,20 +631,23 @@ public class MisassemblyBreaker {
 			ctg1 = ctgs.get(line1[2]);
 			ctg2 = ctgs.get(line2[2]);
 
-			int tmpLen = cigarLength(line1[5]);
+			if (line1[5].equals("*") || line2[5].equals("*"))
+				continue;
+			
+			int tmpLen = HelperFunctions.cigarLength(line1[5]);
 			if (tmpLen > rdLen)
 				rdLen = tmpLen;
-			tmpLen = cigarLength(line2[5]);
+			tmpLen = HelperFunctions.cigarLength(line2[5]);
 			if (tmpLen > rdLen)
 				rdLen = tmpLen;
 			
 			// Remove repetitive reads
-			if (line1[11].equals("XT:A:R")||line2[11].equals("XT:A:R")){
-				continue;
-			}
+			//if (line1[11].equals("XT:A:R")||line2[11].equals("XT:A:R")){
+			//	continue;
+			//}
 			
-			rev1 = isReverse(line1[1]);
-			rev2 = isReverse(line2[1]);
+			rev1 = HelperFunctions.isReverse(line1[1]);
+			rev2 = HelperFunctions.isReverse(line2[1]);
 			
 			/* begin: tally these read positions */
 			// tally read 1
@@ -624,7 +706,7 @@ public class MisassemblyBreaker {
 				else
 					counts.put(ctg2.name, 2);
 			} else { // same contig, so check to see it's within the given ranges
-				int ins = (left2 > left1 ? left2+cigarLength(line2[5])-left1 : left1+cigarLength(line1[5])-left2);
+				int ins = (left2 > left1 ? left2+HelperFunctions.cigarLength(line2[5])-left1 : left1+HelperFunctions.cigarLength(line1[5])-left2);
 				if (inRange(ranges,ins)) 
 						continue;
 				
@@ -665,7 +747,7 @@ public class MisassemblyBreaker {
 			numKeep++;
 		}
 		long after = System.currentTimeMillis();
-		System.out.println("..100%... done!... Took "+(after-before)/1000+" seconds.");
+		System.out.println("..100%... done!... Took "+HelperFunctions.millisToTimeString(after-before));
 		perc = (double) numKeep / total * 100;
 		System.out.println("[a5_qc] Keeping "+NF.format(perc)+"% ("+numKeep+"/"+total+") of reads.");
 		ReadCluster.RDLEN = rdLen;
@@ -675,7 +757,7 @@ public class MisassemblyBreaker {
 		 */
 		P = Double.POSITIVE_INFINITY;
 		int minWindow = -1;
-		File covFile = new File (samFile.getParentFile(),basename(samFile.getName(),".sam")+".cov");
+		File covFile = new File (samFile.getParentFile(),HelperFunctions.basename(samFile.getName(),".sam")+".cov");
 		covFile.createNewFile();
 		
 		PrintStream covOut = new PrintStream(covFile);
@@ -736,10 +818,10 @@ public class MisassemblyBreaker {
 	 * @param ranges <code>[ mean, sd, n, nSd , min, max ]</code>
 	 */
 	private static void setParameters(double[][] ranges){
-		P = 0.025;
-		NumberFormat nf = NumberFormat.getInstance();
-		nf.setMaximumFractionDigits(3);
-		System.out.println("[a5_qc] Setting P to "+nf.format(P));
+	//	P = 0.025;
+	//	NumberFormat nf = NumberFormat.getInstance();
+	//	nf.setMaximumFractionDigits(3);
+	//	System.out.println("[a5_qc] Setting P to "+nf.format(P));
 		int maxSd = 0;
 		for (int i = 0; i < ranges.length; i++)
 			if (ranges[i][1] > maxSd)
@@ -755,9 +837,10 @@ public class MisassemblyBreaker {
 		//MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
 		MIN_BLOCK_LEN = (int) (1/P)*2;
 		for (double[] cluster: ranges){
-			if (cluster[0] > MEAN_BLOCK_LEN){
+			if (cluster[0] >= MEAN_BLOCK_LEN){
 				MEAN_BLOCK_LEN = (int) (cluster[0]);
 				MAX_BLOCK_LEN = (int) (cluster[0]+cluster[1]*6);
+				MIN_BLOCK_LEN = (int) Math.max(cluster[0]-cluster[1]*3,ReadCluster.RDLEN);
 			}
 		}
 		/*
@@ -770,6 +853,7 @@ public class MisassemblyBreaker {
 		MAX_INTERBLOCK_DIST = (int)(2*(Math.pow(1-ALPHA, 1/(P*MEAN_BLOCK_LEN))*MEAN_BLOCK_LEN-1));
 		MAX_INTERBLOCK_DIST = 2*MEAN_BLOCK_LEN;
 		SpatialClusterer.MIN_PTS = (int) (P * 2*MAX_INTERPOINT_DIST);
+		SpatialClusterer.MIN_PTS = 20;
 		SpatialClusterer.EPS = MAX_INTERPOINT_DIST;
 	}
 	
@@ -799,6 +883,8 @@ public class MisassemblyBreaker {
 		System.out.println("        MAX_INTERPOINT_DIST = " + MAX_INTERPOINT_DIST);
 		System.out.println("        EPSILON             = " + SpatialClusterer.EPS);
 		System.out.println("        MIN_POINTS          = " + SpatialClusterer.MIN_PTS);
+		System.out.println("        RDLEN               = " + ReadCluster.RDLEN);
+
 	}
 	
 	/**
@@ -904,11 +990,11 @@ public class MisassemblyBreaker {
 		Vector<ReadSet> signal = new Vector<ReadSet>();
 		for (int i = 0; i < clusters.length; i++){
 			NF.setMaximumFractionDigits(0);
-			System.out.print("[a5_qc] cluster"+NF.format(clusters[i].getId())+": mu="+pad(NF.format(clusters[i].mean()),10)+
-					"sd="+pad(NF.format(clusters[i].sd()),10)+"n="+pad(NF.format(clusters[i].size()),10));
+			System.out.print("[a5_qc] cluster"+NF.format(clusters[i].getId())+": mu="+HelperFunctions.pad(NF.format(clusters[i].mean()),10)+
+					"sd="+HelperFunctions.pad(NF.format(clusters[i].sd()),10)+"n="+HelperFunctions.pad(NF.format(clusters[i].size()),10));
 			NF.setMaximumFractionDigits(2);
 			double perc = 100*((double)clusters[i].size())/toFilt.size();
-			System.out.print("perc="+pad(NF.format(perc),10));
+			System.out.print("perc="+HelperFunctions.pad(NF.format(perc),10));
 			
 				
 			// if insert size distribution is under dispersed, add all these reads to the signal pile
@@ -1025,7 +1111,7 @@ public class MisassemblyBreaker {
 		Map<String,Contig> contigs = new HashMap<String,Contig>();
 		String[] hdr = null;
 		String name = null;
-		while(nextCharIs(raf,'@')){
+		while(HelperFunctions.nextCharIs(raf,'@')){
 			hdr = raf.readLine().split("\t");
 			if (!hdr[0].equals("@SQ"))
 				continue;
@@ -1081,8 +1167,8 @@ public class MisassemblyBreaker {
 			// if pair didn't map, just jump to next line instead of jumping a full step
 			if (left1 == 0 || left2 == 0) continue;
 			tmp = new ReadPair(line1[0]);
-			boolean rev1 = isReverse(line1[1]);
-			boolean rev2 = isReverse(line2[1]);
+			boolean rev1 = HelperFunctions.isReverse(line1[1]);
+			boolean rev2 = HelperFunctions.isReverse(line2[1]);
 			
 			if (contigs.get(line1[2]).equals(contigs.get(line2[2])) && rev1 != rev2 &&
 					// If this information is present, require this mapping to be unique. 
@@ -1105,9 +1191,13 @@ public class MisassemblyBreaker {
 					}
 				}
 			}
-			tmp.addRead(left1, rev1, cigarLength(line1[5]), 
+			
+			if (line1[5].equals("*") || line2[5].equals("*"))
+				continue;
+			
+			tmp.addRead(left1, rev1, HelperFunctions.cigarLength(line1[5]), 
 					contigs.get(line1[2]), Integer.parseInt(line1[4]), line1[5]);
-			tmp.addRead(left2, rev2, cigarLength(line2[5]), 
+			tmp.addRead(left2, rev2, HelperFunctions.cigarLength(line2[5]), 
 					contigs.get(line2[2]), Integer.parseInt(line2[4]), line2[5]);
 			reads.put(line1[0], tmp);
 			i++;
@@ -1187,162 +1277,31 @@ public class MisassemblyBreaker {
 			tokLeft = tok.countTokens()-1;
 		}
 	}
-	/**
-	 * Return true of the next character in this RandomAccessFile is equal 
-	 * to the given character <code>c</code>
-	 * @param raf the RandomAccessFile to check
-	 * @param c the character value to check against
-	 * @return true if the next character in <code>raf</code> is equal to <code>c</code>
-	 * @throws IOException if an I/O error occurs while trying to read from the given RandomAccessFIle
-	 */
-	private static boolean nextCharIs(RandomAccessFile raf, char c) throws IOException{
-		char next = (char) raf.read();
-		raf.seek(raf.getFilePointer()-1);
-		return next == c;
-	}
-	
-	private static boolean nextCharIs(BufferedReader br, char c) throws IOException{
-		if (!br.ready()){ return false; }
-		boolean ret = false;
-		br.mark(1);
-		char b = (char) br.read();
-		if (b == c) ret = true; 
-		else ret = false;
-		br.reset();
-		return ret;
-	}	
-	/**
-	 * Pad String <code>s</code> with <code>len</code> spaces on the right.
-	 */
-	private static String pad(String s, int len){
-		String ret = new String(s);
-		for (int i = 0; i < len-s.length(); i++){
-			ret = ret+" ";
-		}
-		return ret;
-	}
-
-	/**
-	 * Return mapping length for CIGAR String if there is a match (i.e. string contains 'M') else return -1
-	 * @param cig the CIGAR string to parse
-	 * @return the length of the match indicated by the CIGAR string. Return -1 if no match
-	 */
-	private static int cigarLength(String cig){
-		StringTokenizer tok = new StringTokenizer(cig, "MIDNSHP", true);
-		int alignLen = 0;
-		while (tok.hasMoreTokens()){
-			int len = Integer.parseInt(tok.nextToken());
-			char op = tok.nextToken().charAt(0);
-			if (op == 'M'){
-				alignLen += len;
-			}
-		}
-		return alignLen;
-	}
-
-	/**
-	 * Returns true of the 4th bit is set in the flag given in the SAM file
-	 */
-	private static boolean isReverse(String flag){
-		int iflag = Integer.parseInt(flag);
-		if (getBit(4,iflag) == 1) return true;
-			else return false;
-	}
-	
-	/**
-	 * get the bit from the flag given in a SAM file
-	 */
-	private static int getBit (int bit, int flag) { 
-	   int mod = 0;
-	   int dig = 0;
-	   while( flag != 0 && dig <= bit) {  
-		   mod = flag % 2;
-		   flag = flag / 2;
-		   dig++;
-	   }
-	   return mod;  
-	}
-	/**
-	 * Strip the pair number off a fastq header
-	 */
-	private static String trimPairNumber(String s){
-		if (s.contains("/")){
-			return s.substring(0,s.lastIndexOf("/"));
-		} else
-			return s;
-	}
-	
-	public static String basename(String path, String suffix){
-		int pos = path.indexOf(suffix);
-		if (pos < 0)
-			return path.substring(path.lastIndexOf('/')+1);
-		else 
-			return path.substring(path.lastIndexOf('/')+1,pos);
-	}
-	
-	public static String dirname(String path){
-		int pos = path.indexOf("/");
-		if (pos < 0)
-			return ".";
-		else 
-			return path.substring(0,path.lastIndexOf('/'));
-	}
-	
-	private static boolean isEmpty (File file){
-		if (!file.exists())
-			return true;
-		try {
-			BufferedReader br = new BufferedReader(new FileReader(file));
-			if (br.ready())
-				return false;
-			else
-				return true;
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			System.exit(-1);
-		} catch (IOException e) {
-			e.printStackTrace();
-			System.exit(-1);
-		}
-		return false;
-		
-	}
-	
-	public static void logInputs (String mainClass, String[] args) {
-		System.out.print("[a5_qc] "+mainClass);
-		if (args.length > 0){
-			System.out.println(" "+args[0]);
-			String space = "";
-			for (int i = 0; i < mainClass.length(); i++)
-				space += " ";
-			for (int i = 1; i < args.length; i++){
-				System.out.println("        "+space+" "+args[i]);
-			}
-		} else {
-			System.out.println();
-		}
-	}
-	private static Map<String,ReadPair> sampleBamFile(SAMFileReader sam, Map<String,Contig> contigs, long seed){	
+	/*
+	public static Map<String,ReadPair> sampleBAMFile(SAMFileReader sam, Map<String,Contig> contigs, long seed){	
 		Map<String,ReadPair> pairs = new HashMap<String,ReadPair>();
 		Random rand = new Random(seed);
-		/* First we need to count the number of reads in the BAM file
-		 * so we know the frequency at which to sample pairs
-		 */
-		double count = 0;
+		// First we need to count the number of reads in the BAM file
+		// so we know the frequency at which to sample pairs
+		int count = 0;
+		long before = System.currentTimeMillis();
 		AbstractBAMFileIndex index = (AbstractBAMFileIndex) sam.getIndex();
 		int nRefs = index.getNumberOfReferences();
 		for (int i = 0; i < nRefs; i++)
 			count += index.getMetaData(i).getAlignedRecordCount();
+		long after = System.currentTimeMillis();
+		System.out.println("[a5_qc] Found "+ count +" total reads. Took "+ HelperFunctions.millisToTimeString(after-before)+ ".");
 		
-		count = count/2; // divide by two to get the number of pairs
-		double freq = 100000/count;
+		//count = count/2; // divide by two to get the number of pairs
+		double freq = 2 * 100000/((double) count);
+		System.out.println("[a5_qc] Sampling with frequencey "+new BigDecimal(freq).round(new MathContext(3)).doubleValue());
 		SAMRecordIterator it = sam.iterator();
 		SAMRecord tmpRecord = null;
 		ReadPair tmpPair = null;
 		while (it.hasNext()){
 			tmpRecord = it.next();
 			// if the two reads in this fragment don't map to the same contig
-			if (!tmpRecord.getReferenceName().equals(tmpRecord.getMateReferenceName()))
+			if (tmpRecord.getReferenceName() != tmpRecord.getMateReferenceName())
 				continue;
 			// we already came across this guys mate
 			if (tmpRecord.getAlignmentStart() > tmpRecord.getMateAlignmentStart()) { 
@@ -1368,4 +1327,268 @@ public class MisassemblyBreaker {
 		return pairs;
 	}
 	
+	public static Map<String,Contig> getContigs(SAMFileReader sam) {
+		SAMFileHeader hdr = sam.getFileHeader();
+		Iterator<SAMSequenceRecord> it = hdr.getSequenceDictionary().getSequences().iterator();
+		SAMSequenceRecord tmp = null;
+		Map<String,Contig> ret = new HashMap<String,Contig>();
+		while(it.hasNext()){
+			tmp = it.next();
+			ret.put(tmp.getSequenceName(),new Contig(tmp.getSequenceName(),tmp.getSequenceLength()));
+		}
+		return ret;
+	}
+	public static void loadBAMData(String bamPath, Map<String,Contig> ctgs, double[][] ranges) throws IOException{
+		for (int i = 0; i < ranges.length; i++)
+			System.out.println("[a5_qc] Filtering read pairs with inserts between "+ NF.format(ranges[i][0])+"-"+NF.format(ranges[i][1]));
+		Map<String,SpatialClusterer> clusterers = new HashMap<String,SpatialClusterer>();
+		// Keep track of all clusterers that each contig is associated with.
+		Map<String,Vector<String>> ctgClusterers = new HashMap<String,Vector<String>>();
+		Map<String,Integer> counts = new HashMap<String,Integer>();
+		Vector<String> tmpMBs = null;
+
+		File samFile = new File(bamPath);
+		FileInputStream fis = new FileInputStream(samFile);
+		long start = fis.getChannel().position();
+		long len = fis.getChannel().size() - start;
+		SAMFileReader samRdr = new SAMFileReader(fis);
+		
+		// begin: build a lookup table for each contig for tallying coverage in windows 
+		
+		// require the window length to be at least 1000 base pairs
+		int windowLen = 1000;
+		//Map<String,Integer> coordOffset = new HashMap<String,Integer>();
+		Map<String,int[][]> readCounts = new HashMap<String,int[][]>();
+		int[][] tmpWin = null;
+		Iterator<String> ctgIt = ctgs.keySet().iterator();
+		Contig tmpCtg = null;
+		while(ctgIt.hasNext()){
+			tmpCtg = ctgs.get(ctgIt.next());
+			// calculate the number of windows we need for this contig
+			int numWindow = tmpCtg.len/windowLen;
+			if (tmpCtg.len % windowLen != 0)
+				numWindow++;
+			// now create the lookup table: add the upper bounds of each window to the array
+			tmpWin = new int[4][numWindow];
+			tmpWin[0][numWindow-1] = tmpCtg.len;
+			tmpWin[1][numWindow-1] = (tmpCtg.len - (numWindow-1)*windowLen);
+			for (int j = 0; j < numWindow-1; j++){
+				tmpWin[0][j] = (j+1)*windowLen;
+				tmpWin[1][j] = windowLen;
+			}
+			// store our lookup table for this contig
+			readCounts.put(tmpCtg.name,tmpWin);
+		}
+		// end: build a lookup table for tallying coverage in windows 
+		
+		int left1 = 0;
+		int left2 = 0;
+		String ctgStr = null;
+		String tmp = null;
+		SpatialClusterer pc = null;
+		String ctg1 = null;
+		String ctg2 = null;
+		int ctgNameComp = -10;
+		System.out.print("[a5_qc] Reading SAM file...");
+		long currPos = start;
+		double perc = 0;
+		double ten = 1;
+		int numKeep = 0;
+		int total = 0;
+		long before = System.currentTimeMillis();
+		int rdLen = 0;
+		boolean rev1 = false;
+		boolean rev2 = false;
+		
+		Iterator<SAMRecord> samIt = samRdr.iterator();
+		SAMRecord sam = null;
+		
+		int ctgComp = -1;
+		while (samIt.hasNext()){
+			currPos = fis.getChannel().position()-start;
+			if (((double)currPos/len)*10 > ten){
+				System.out.print(".."+NF.format(10*ten)+"%");
+				ten++;
+			}
+			sam = samIt.next();
+			
+			if (sam.getMateUnmappedFlag() || sam.getReadUnmappedFlag())
+				continue;
+			int tmpLen = sam.getAlignmentEnd()-sam.getAlignmentStart();
+			if (tmpLen > rdLen)
+				rdLen = tmpLen;
+			left1 = sam.getAlignmentStart();
+			left2 = sam.getMateAlignmentStart();
+			ctg1 = sam.getReferenceName();
+			ctg2 = sam.getMateReferenceName();
+			
+			// I love referential equality
+			if (ctg1 == ctg2) {
+				// Assume we've already seen this fragment before because the file is sorted
+				if (left1 > left2)
+					continue;
+				else {
+					ctgComp = 0;
+					ctg2 = ctg1;
+					total++;
+				}
+			} else {
+				ctgComp = ctg1.compareTo(ctg2);
+				//
+				// Assuming contigs are sorted lexicographically, if ctg2 is greater than
+				// ctg1, we must have come across this fragment already
+				//
+				if (ctgComp > 0)
+					continue;
+			}
+			
+			
+			rev1 = sam.getReadNegativeStrandFlag();
+			rev2 = sam.getMateNegativeStrandFlag();
+			
+			// begin: tally these read positions 
+			// tally read 1
+			tmpWin = readCounts.get(ctg1);
+			if (rev1)
+				tmpWin[3][left1/windowLen]++;
+			else 
+				tmpWin[2][left1/windowLen]++;
+
+			// tally read 2
+			tmpWin = readCounts.get(ctg2);
+			if (rev2)
+				tmpWin[3][left2/windowLen]++;
+			else 
+				tmpWin[2][left2/windowLen]++;
+			// end: tally these read positions 
+			
+			//
+			// if this pair spans two different contigs, we need to sort the names
+			// for consistency before we add the match. because we are assuming the BAM
+			// is sorted by contig lexicographically, ctg1 should always come first
+			//
+			if (ctgNameComp != 0){
+				ctgStr = ctg1+"-"+ctg2;
+				if (clusterers.containsKey(ctgStr))
+					pc = clusterers.get(ctgStr);
+				else {
+					pc = new SpatialClusterer(ctgs.get(ctg1), ctgs.get(ctg2));
+					clusterers.put(ctgStr, pc);
+				}
+				pc.addMatch(left1, rev1, left2, rev2);
+				
+				if (counts.containsKey(ctg1))
+					counts.put(ctg1, counts.get(ctg1)+1);
+				else
+					counts.put(ctg1, 1);
+				if (counts.containsKey(ctg2))
+					counts.put(ctg2, counts.get(ctg2)+1);
+				else
+					counts.put(ctg2, 1);
+			} else { // same contig, so check to see it's within the given ranges
+				if (inRange(ranges,Math.abs(sam.getInferredInsertSize()))) 
+						continue;
+				ctgStr = ctg1;
+				if (clusterers.containsKey(ctgStr))
+					pc = clusterers.get(ctgStr);
+				else { 
+					pc = new SpatialClusterer(ctgs.get(ctg2), ctgs.get(ctg1));
+					clusterers.put(ctgStr, pc);
+				}
+				if (left2 < left1) // order for consistency
+					pc.addMatch(left2, rev2, left1, rev1);
+				else 
+					pc.addMatch(left1, rev1, left2, rev2);
+				if (counts.containsKey(ctg1)){
+					counts.put(ctg1, counts.get(ctg1)+2);
+				} else {
+					counts.put(ctg1, 2);
+				}
+				
+			}
+			// add point for contig1, and keep track of which MatchBuilders are associated with contig1
+			if (ctgClusterers.containsKey(ctg1)){
+				tmpMBs = ctgClusterers.get(ctg1);
+			} else {
+				tmpMBs = new Vector<String>();
+				ctgClusterers.put(ctg1, tmpMBs);
+			}
+			tmpMBs.add(ctgStr);
+			// add point for contig2, and keep track of which MatchBuilders are associated with contig2
+			if (ctgClusterers.containsKey(ctg2)){
+				tmpMBs = ctgClusterers.get(ctg2);
+			} else {
+				tmpMBs = new Vector<String>();
+				ctgClusterers.put(ctg2, tmpMBs);
+			}
+			tmpMBs.add(ctgStr);
+			numKeep++;
+		}
+		long after = System.currentTimeMillis();
+		System.out.println("..100%... done!... Took "+HelperFunctions.millisToTimeString(after-before));
+		perc = (double) numKeep / total * 100;
+		System.out.println("[a5_qc] Keeping "+NF.format(perc)+"% ("+numKeep+"/"+total+") of pairs.");
+		ReadCluster.RDLEN = rdLen;
+		//
+		// Set LAMDBA, our Poisson rate parameter. We will use this to 
+		// compute key runtime parameters
+		//
+		P = Double.POSITIVE_INFINITY;
+		int minWindow = -1;
+		File covFile = new File (samFile.getParentFile(),HelperFunctions.basename(samFile.getName(),".sam")+".cov");
+		covFile.createNewFile();
+		
+		PrintStream covOut = new PrintStream(covFile);
+		ctgIt = readCounts.keySet().iterator();
+		String tmpCtgName = null;
+		String minWinCtg = null;
+		double tmpFreq = 0.0;
+		while(ctgIt.hasNext()){
+			tmpCtgName = ctgIt.next();
+			covOut.println("#"+tmpCtgName);
+			tmpWin = readCounts.get(tmpCtgName);
+			for (int i = 0; i < tmpWin[2].length; i++){
+				if (tmpWin[2][i] != 0){
+					tmpFreq = tmpWin[2][i];
+					tmpFreq = tmpFreq/tmpWin[1][i];
+					if (P > tmpFreq){
+						P = tmpFreq;
+						minWindow = i;
+						minWinCtg = tmpCtgName;
+					}
+				}
+				covOut.println(tmpWin[0][i]+"\t"+tmpWin[1][i]+"\t"+tmpWin[2][i]+"\t"+tmpWin[3][i]);
+			}
+		}
+		covOut.close();
+		int minWinL;
+		int minWinR;
+		if (minWindow == 0) {
+			minWinL = 1;
+			minWinR = readCounts.get(minWinCtg)[0][minWindow];
+		} else {
+			minWinL = readCounts.get(minWinCtg)[0][minWindow-1];
+			minWinR = readCounts.get(minWinCtg)[0][minWindow];
+		}
+		System.out.println("[a5_load_data] Window with fewest mapped reads: "+minWinCtg+" "+minWinL+" - "+minWinR);
+		
+		//
+		// Remove contigs that don't have enough points on them. 
+		//
+		ctgIt = ctgClusterers.keySet().iterator();
+		Set<String> ctgToRm = new HashSet<String>();
+		Set<String> psPairsToRm = new HashSet<String>();
+		while(ctgIt.hasNext()){
+			tmp = ctgIt.next();
+			if (counts.get(tmp) < MIN_PTS) {
+				ctgToRm.add(tmp);
+				psPairsToRm.addAll(ctgClusterers.get(tmp));
+			} 
+		}
+		removeKeys(ctgs, ctgToRm);
+		removeKeys(clusterers, psPairsToRm);
+	
+		matches = clusterers.values();
+	}
+	*/
 }
