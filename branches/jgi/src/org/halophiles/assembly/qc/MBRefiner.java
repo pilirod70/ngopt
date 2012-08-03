@@ -6,21 +6,21 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Vector;
 
-import org.halophiles.assembly.qc.PileupScorer;
+import org.halophiles.tools.HelperFunctions;
 
 public class MBRefiner {
 
 	private static final String SAMTOOLS = "/jgi/tools/bin/samtools";
 
 	public static void main(String[] args) {
-		MisassemblyBreaker.logInputs("MBRefiner", args);
+		HelperFunctions.logInputs("MBRefiner", args);
 		if (args.length == 4) {
 			try {
 				String bamPath = args[0];
@@ -28,7 +28,9 @@ public class MBRefiner {
 				String ctgPath = args[2];
 				String brokenPath = args[3];
 
-				Map<String, int[]> junctions = refine(bamPath, bedPath, ctgPath);
+				Map<String, MisassemblyRange> ranges = scoreAtBaseLevel(bamPath, bedPath, ctgPath);
+				
+				Map<String, int[]> junctions = refine(ranges);
 				breakContigs(junctions, ctgPath, brokenPath);
 
 			} catch (IOException e) {
@@ -55,64 +57,45 @@ public class MBRefiner {
 		}
 	}
 	
-	public static Map<String, int[]> refine(String bedPath, String plpPath) throws IOException{
-		Map<String, double[][]> regions = getRegions(bedPath);
+	public static Map<String,MisassemblyRange> scoreAtBaseLevel(String bedPath, String plpPath) throws IOException {
+		Map<String, MisassemblyRange> regions = getRegions(bedPath);
 		PileupEvaluator plpEval = new PileupEvaluator(regions, new PileupScorer());
 		BufferedReader br = new BufferedReader(new FileReader(new File(plpPath)));
 		while(br.ready()){
 			plpEval.handleLine(br.readLine());
 		}
-		Map<String, int[]> ret = new HashMap<String, int[]>();
-		Iterator<String> ctgIt = regions.keySet().iterator();
-		String tmpCtg;
-		double[][] reg;
-		int[] junctions; // misassembly junctions
-		while (ctgIt.hasNext()) {
-			tmpCtg = ctgIt.next();
-			reg = regions.get(tmpCtg);
-			junctions = new int[reg[3].length];
-			for (int i = 0; i < junctions.length; i++)
-				junctions[i] = (int) reg[3][i];
-			ret.put(tmpCtg, junctions);
-		}
-		return ret;
+		return regions;
 	}
-
-	/**
-	 * Returns a Map (indexed by contig name) of arrays containing the
-	 * misassembly junctions in a contig
-	 */
-	public static Map<String, int[]> refine(String bamPath, String bedPath, String ctgPath) throws IOException {
-		Map<String, double[][]> regions = getRegions(bedPath);
+	
+	public static Map<String, MisassemblyRange> scoreAtBaseLevel(String bamPath, String bedPath, String ctgPath) throws IOException {
+		Map<String, MisassemblyRange> regions = getRegions(bedPath);
 		try {
 			runMPileup(bamPath, bedPath, ctgPath, regions);
 			// runAndReadMpileup(bamPath, bedPath, ctgPath, regions);
 			// runMPileupWApache(bamPath, bedPath, ctgPath, regions);
 		} catch (InterruptedException e) {
-			System.err
-					.println("Unable to run samtools mpileup. This is what I know:");
+			System.err.println("Unable to run samtools mpileup. This is what I know:");
 			e.printStackTrace();
 			System.exit(-1);
 		}
+		return regions;
+	}
+	
+	public static Map<String, int[]> refine(Map<String, MisassemblyRange> regions) throws IOException{
 		Map<String, int[]> ret = new HashMap<String, int[]>();
 		Iterator<String> ctgIt = regions.keySet().iterator();
 		String tmpCtg;
-		double[][] reg;
-		int[] junctions; // misassembly junctions
+		MisassemblyRange reg;
 		while (ctgIt.hasNext()) {
 			tmpCtg = ctgIt.next();
 			reg = regions.get(tmpCtg);
-			junctions = new int[reg[3].length];
-			for (int i = 0; i < junctions.length; i++)
-				junctions[i] = (int) reg[3][i];
-			ret.put(tmpCtg, junctions);
+			ret.put(tmpCtg, reg.getJunctions(0.90));
+			//reg.printState(System.out);
 		}
 		return ret;
 	}
 
-	public static void breakContigs(Map<String, int[]> breaks, String ctgPath,
-			String destPath) throws IOException {
-
+	public static void breakContigs(Map<String, int[]> breaks, String ctgPath, String destPath) throws IOException {
 		File brokenFile = new File(destPath);
 		brokenFile.createNewFile();
 		ScaffoldExporter out = new ScaffoldExporter(brokenFile);
@@ -172,7 +155,7 @@ public class MBRefiner {
 	 * The weakest position is the position with the lowest pileup score. For
 	 * the definition of this score, see org.gel.halophiles.qc.PileupScorer.
 	 */
-	public static Map<String, double[][]> getRegions(String bedPath)
+	public static Map<String, MisassemblyRange> getRegions(String bedPath)
 			throws IOException {
 		BufferedReader in = new BufferedReader(
 				new FileReader(new File(bedPath)));
@@ -212,36 +195,23 @@ public class MBRefiner {
 			vL.add(l);
 			vR.add(r);
 		}
-		System.out.println("[a5_qc] Expecting to evaluate " + expectedLines
-				+ " lines of pileup");
+		System.out.println("[a5_qc] Expecting to evaluate " + expectedLines + " lines of pileup");
 		/*
 		 * END: build boundaries
 		 * 
 		 * START: convert these Vectors into arrays, so they can be queried
 		 * using binary search
 		 */
-		Map<String, double[][]> lookups = new HashMap<String, double[][]>();
+		Map<String, MisassemblyRange> lookups = new HashMap<String, MisassemblyRange>();
 		Iterator<String> it = left.keySet().iterator();
 		String key = null; // temp variable
-		double[] arL = null; // temp variable
-		double[] arR = null; // temp variable
-		double[][] tempLookup = null; // temp variable
+		int[] arL = null; // temp variable
+		int[] arR = null; // temp variable
 		while (it.hasNext()) {
 			key = it.next();
-			vL = left.get(key);
-			vR = right.get(key);
-			arL = toArray(vL);
-			arR = toArray(vR);
-			tempLookup = new double[4][];
-			tempLookup[0] = arL; // left coordinates of ranges
-			tempLookup[1] = arR; // right coordinates of ranges
-			tempLookup[2] = new double[arL.length]; // 'weakest' position in
-													// each range
-			for (int i = 0; i < tempLookup[2].length; i++)
-				tempLookup[2][i] = Double.POSITIVE_INFINITY;
-			tempLookup[3] = new double[arL.length]; // score of 'weakest'
-													// position
-			lookups.put(key, tempLookup);
+			arL = toArray(left.get(key));
+			arR = toArray(right.get(key));
+			lookups.put(key, new MisassemblyRange(key, arL, arR));
 		}
 		/*
 		 * END: convert Vectors to arrays
@@ -250,14 +220,14 @@ public class MBRefiner {
 
 	}
 
-	private static double[] toArray(Vector<Integer> v) {
-		double[] ret = new double[v.size()];
+	private static int[] toArray(Vector<Integer> v) {
+		int[] ret = new int[v.size()];
 		for (int i = 0; i < ret.length; i++)
 			ret[i] = v.get(i);
 		return ret;
 	}
 
-	private static void runMPileup(String bamPath, String bedPath, String ctgPath, Map<String, double[][]> regions) throws IOException, InterruptedException {
+	private static void runMPileup(String bamPath, String bedPath, String ctgPath, Map<String, MisassemblyRange> regions) throws IOException, InterruptedException {
 		// System.err.println("Executing command: " + cmd);
 		String cmd = SAMTOOLS + " mpileup -d 350 -f " + ctgPath + " -l "+ bedPath + " " + bamPath;
 		System.out.println("[a5_qc] Executing: " + cmd);
@@ -315,11 +285,11 @@ public class MBRefiner {
 	}
 
 	static class PileupEvaluator implements LineHandler {
-		Map<String, double[][]> regions;
+		Map<String, MisassemblyRange> regions;
 		PileupScorer scorer;
 		int numLines;
 
-		PileupEvaluator(Map<String, double[][]> regions, PileupScorer scorer) {
+		PileupEvaluator(Map<String, MisassemblyRange> regions, PileupScorer scorer) {
 			this.regions = regions;
 			this.scorer = scorer;
 			this.numLines = 0;
@@ -327,17 +297,10 @@ public class MBRefiner {
 
 		public void handleLine(String line) {
 			String[] plp = line.split("\t");
-			// System.out.println("Lookup at regions for contig "+plp[0]);
-			double[][] tmpReg = regions.get(plp[0]);
+			MisassemblyRange tmpReg = regions.get(plp[0]);
 			int pos = Integer.parseInt(plp[1]);
-			int idx = Arrays.binarySearch(tmpReg[1], pos);
-			if (idx < 0)
-				idx = -1 * (idx + 1);
-			double score = scorer.scorePileup(plp[4]);
-			if (score < tmpReg[2][idx]) {
-				tmpReg[2][idx] = score;
-				tmpReg[3][idx] = pos;
-			}
+			double score = scorer.scorePileup(plp[4])/Double.parseDouble(plp[3]);
+			tmpReg.addPos(pos, score);
 			numLines++;
 		}
 	}
@@ -345,4 +308,116 @@ public class MBRefiner {
 	static interface LineHandler {
 		public void handleLine(String line);
 	}
+	
+	static class MisassemblyRange {
+		private String contig;
+		private RunningStat[] stats;
+		private int[] left, right;
+		private int[] minPos;
+		MisassemblyRange (String contig, int[] left, int[] right) {
+			if (left.length != right.length) throw new IllegalArgumentException("left and right must be the same length");
+			this.contig = contig;
+			this.left = left;
+			this.right = right;
+			this.minPos = new int[left.length];
+			this.stats = new RunningStat[left.length];
+			/*
+			 *  [0] 'weakest' position in each range
+			 *  [1] score of 'weakest' position
+			 *  [2] mean for this range
+			 *  [3] stdev for this range
+			 *  [4] number of elements for this range
+			 */
+			for (int i = 0; i < stats.length; i++)
+				stats[i] = new RunningStat();
+		}
+		
+		boolean addPos(int pos, double score){
+			int idx = Arrays.binarySearch(right, pos);
+			if (idx < 0)
+				idx = -1 * (idx + 1);
+			if (pos < left[idx])
+				return false;
+			double min = stats[idx].min();
+			if (score < min)
+				minPos[idx] = pos;
+			stats[idx].addVal(score);
+			return true;
+		}
+		
+		boolean contains(int pos){
+			int idx = Arrays.binarySearch(right, pos);
+			if (idx < 0)
+				idx = -1 * (idx + 1);
+			if (pos < left[idx])
+				return false;
+			else
+				return true;
+		}
+		
+		void printState(PrintStream out) {
+			for (int i = 0; i < left.length; i++){
+				out.println(left[i]+"\t"+right[i]+"\t"+stats[i].toString());
+			}
+		}
+		
+		int[] getJunctions(double maxScore){
+			Vector<Integer> scores = new Vector<Integer>();
+			for (int i = 0; i < minPos.length; i++){
+				if (stats[i].min() < maxScore)
+					scores.add(minPos[i]);
+			}
+			return toArray(scores);
+		}
+	}
+	
+	static class RunningStat {
+		private int n;
+		private double oldM, newM, oldS, newS, min, max;
+		public RunningStat() {
+			n = 0;
+			min = Double.POSITIVE_INFINITY;
+			max = Double.NEGATIVE_INFINITY;
+		}
+		void addVal(double x){
+			n++;
+			if (n == 1){
+				oldM = x;
+				newM = x;
+				oldS = 0;
+				newS = 0;
+			} else {
+				newM = oldM + (x-oldM)/n;
+				newS = oldS + (x-oldM)*(x-newM);
+				oldM = newM;
+				oldS = newS;
+			}
+			min = x < min ? x : min;
+			max = x > max ? x : max;
+		}
+		int numPts(){
+			return n;
+		}
+		double mean() {
+			return (n > 0) ? newM : 0.0;
+		}
+		double variance() {
+			return (n > 1) ? newS/(n-1) : 0.0;
+		}
+		double sd() {
+			return Math.sqrt(variance());
+		}
+		double min(){
+			return min;
+		}
+		double max(){
+			return max;
+		}
+		
+		public String toString() {
+			return mean()+"\t"+sd()+"\t"+min+"\t"+max+"\t"+n;
+		}
+		
+	}
+	
 }

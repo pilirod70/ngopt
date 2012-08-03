@@ -93,6 +93,8 @@ public class SpatialClusterer {
 	 */
 	private Set<ReadCluster> readPairClusters;
 	
+	private boolean neighborsBuilt;
+	
 	/**
 	 * A Comparator for ordering MatchPoints according to a given
 	 * Contig's coordinates.
@@ -123,6 +125,7 @@ public class SpatialClusterer {
 		currPoints = new TreeSet<MatchPoint>(xSort);
 		readPairClusters = new TreeSet<ReadCluster>(CLUST_COMP);
 		numPoints = 0;
+		neighborsBuilt = false;
 	}
 	
 	/**
@@ -133,15 +136,16 @@ public class SpatialClusterer {
 	 * @param file the File to write the current state to.
 	 * @throws IOException if an I/O occurred when trying to write to <code>file</code>
 	 */
-	void exportCurrState(File file) throws IOException{
+	public void exportCurrState(String path) throws IOException{
+		File file = new File(path);
 		file.createNewFile();
 		PrintStream out = new PrintStream(file);
 		Iterator<MatchPoint> it = currPoints.iterator();
 		while(it.hasNext()){
 			MatchPoint tmp = it.next();
-			out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t0");
+			out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t"+tmp.ori());
 		}
-		
+		/*
 		Iterator<ReadCluster> kcIt = readPairClusters.iterator();
 		while(kcIt.hasNext()){
 			ReadCluster tmpKc = kcIt.next();
@@ -151,6 +155,7 @@ public class SpatialClusterer {
 				out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t"+tmpKc.id);
 			}
 		}
+		*/
 		out.close();
 	}
 	
@@ -179,6 +184,8 @@ public class SpatialClusterer {
 	 * using the value of <code>EPS</code>, and then run the DBSCAN algorithm. 
 	 */
 	public void buildReadPairClusters(){
+		if (neighborsBuilt)
+			clearNeighbors();
 		locateNeighbors();
 		runDBSCAN();
 		if (readPairClusters.isEmpty())
@@ -254,6 +261,7 @@ public class SpatialClusterer {
 						matchpoints[x_order[j_x]].ori() == matchpoints[i].ori())
 					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 		}
+		neighborsBuilt = true;
 	}
 	
 	/**
@@ -304,6 +312,12 @@ public class SpatialClusterer {
 			}
 			i++;
 		}
+	}
+	
+	private void clearNeighbors(){
+		Iterator<MatchPoint> it = currPoints.iterator();
+		while(it.hasNext())
+			it.next().clearNeighbors();
 	}
 	
 }

@@ -167,4 +167,9 @@ public class MatchPoint {
 	public boolean isVisited(){
 		return visited;
 	}
+	
+	public void clearNeighbors() {
+		neighbors = null;
+		neighbors = new TreeSet<MatchPoint>(SpatialClusterer.xSort);
+	}
 }
