@@ -52,6 +52,8 @@ public class ReadCluster {
 	 */
 	final int id;
 	
+	private int clustOri;
+	
 	/**
 	 * Create a <code>ReadCluster</code> from the set of given points.
 	 * 
@@ -75,7 +77,7 @@ public class ReadCluster {
 			yMax = tmp.y()+RDLEN;
 		if (tmp.y() < yMin)
 			yMin = tmp.y();
-		int clustOri = tmp.ori();
+		clustOri = tmp.ori();
 		switch (clustOri){
 			case MatchPoint.FF: xOri = true; yOri = true; break;
 			case MatchPoint.RR: xOri = false; yOri = false; break;
