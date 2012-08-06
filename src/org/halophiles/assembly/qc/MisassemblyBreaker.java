@@ -13,8 +13,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.RandomAccessFile;
-import java.math.BigDecimal;
-import java.math.MathContext;
 import java.text.NumberFormat;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,8 +22,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Random;
-import java.util.Scanner;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.Vector;
@@ -240,12 +236,10 @@ public class MisassemblyBreaker {
 		//loadBAMData(samPath, contigs, ranges);
 		loadData(samPath, contigs, ranges);
 		
-		Scanner stdin = new Scanner (System.in);
 		PrintStream bedOut = null;
 		String base = HelperFunctions.dirname(samPath)+"/"+HelperFunctions.basename(samPath, ".bam");
-		String response = "";
 		setParameters(clusterStats);
-		do {
+		
 		
 		printParams();
 		
@@ -265,8 +259,8 @@ public class MisassemblyBreaker {
 			pc.buildReadPairClusters();
 			addBlocks(pc, xBlocks, yBlocks);
 			//pc.exportCurrState(new File(matchDir,"match."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
-			removeTerminalBlocks(pc.getContig1(), xBlocks);
-			removeTerminalBlocks(pc.getContig2(), yBlocks);
+	//		removeTerminalBlocks(pc.getContig1(), xBlocks);
+	//		removeTerminalBlocks(pc.getContig2(), yBlocks);
 			if (blocks.containsKey(pc.getContig1().name))
 				blocks.get(pc.getContig1().name).addAll(xBlocks);
 			else
@@ -350,21 +344,6 @@ public class MisassemblyBreaker {
 				}
 			}
 		}
-		if (bedOut != null) {
-			bedOut.close();
-		} 
-		
-		
-		while(true){
-			System.out.println("Enter new value:");
-			response = stdin.nextLine();
-			if (response.startsWith("cont") || response.startsWith("done"))
-				break;
-			if (resetParam(response))
-				setParameters(clusterStats);
-		}
-		
-		} while (!response.equals("done"));	
 		
 		if (bedOut != null) {
 			bedOut.close();
@@ -552,7 +531,6 @@ public class MisassemblyBreaker {
 		int windowLen = 1000;
 		String[] hdr = null;
 		String contigName = null;
-		//Map<String,Integer> coordOffset = new HashMap<String,Integer>();
 		Map<String,int[][]> readCounts = new HashMap<String,int[][]>();
 		int[][] tmpWin = null;
 		while(HelperFunctions.nextCharIs(br, '@')){
