@@ -27,7 +27,7 @@ public class ReadCluster {
 	/**
 	 * The orientation of reads on the x Contig (aka Contig 1)
 	 */
-	boolean xOri;
+	boolean xRev;
 	
 	/**
 	 * The max MatchPoint location on the y Contig (aka Contig 2)
@@ -40,7 +40,7 @@ public class ReadCluster {
 	/**
 	 * The orientation of reads on the y Contig (aka Contig 2)
 	 */
-	boolean yOri;
+	boolean yRev;
 	
 	/**
 	 * The set of MatchPoints comprising this ReadCluster
@@ -79,10 +79,10 @@ public class ReadCluster {
 			yMin = tmp.y();
 		clustOri = tmp.ori();
 		switch (clustOri){
-			case MatchPoint.FF: xOri = true; yOri = true; break;
-			case MatchPoint.RR: xOri = false; yOri = false; break;
-			case MatchPoint.FR: xOri = true; yOri = false; break;
-			case MatchPoint.RF: xOri = false; yOri = true; break;
+			case MatchPoint.FF: xRev = false; yRev = false; break;
+			case MatchPoint.RR: xRev = true; yRev = true; break;
+			case MatchPoint.FR: xRev = false; yRev = true; break;
+			case MatchPoint.RF: xRev = true; yRev = false; break;
 			default: throw new IllegalArgumentException("MatchPoint orientation not a recognizable value");
 		}
 		while(it.hasNext()){
@@ -132,7 +132,7 @@ public class ReadCluster {
 	 * <code>xMin-xMax <-> yMin-yMax</code>
 	 */
 	public String toString(){
-		return xMin+"-"+xMax +(xOri?" >":" <")+"-"+(yOri?"> ":"< ")+yMin+"-"+yMax + " ("+points.size()+")";
+		return xMin+"-"+xMax +(xRev?" <":" >")+"-"+(yRev?"< ":"> ")+yMin+"-"+yMax + " ("+points.size()+")";
 	}
 	
 	/**

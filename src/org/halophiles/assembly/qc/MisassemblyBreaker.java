@@ -43,9 +43,9 @@ public class MisassemblyBreaker {
 	/**
 	 * A Comparator for sorting blocks by right-most position
 	 */
-	private static Comparator<int[]> BLOCK_COMP = new Comparator<int[]>(){
-		public int compare(int[] arg0, int[] arg1) {
-			return arg0[1] - arg1[1];
+	private static Comparator<MisassemblyBlock> BLOCK_COMP = new Comparator<MisassemblyBlock>(){
+		public int compare(MisassemblyBlock arg0, MisassemblyBlock arg1) {
+			return arg0.getRight() - arg1.getRight();
 		}
 	};
 	
@@ -161,19 +161,18 @@ public class MisassemblyBreaker {
 			String samPath = args[0];
 			String ctgPath = args[1];
 			String brokenCtgPath = args[2];
-			int numLibs = 1;
-			if (args.length == 4){
-				numLibs = Integer.parseInt(args[3]);
-			}
+			
 			String base = HelperFunctions.dirname(samPath)+"/"+HelperFunctions.basename(samPath,".sam");
+			File samFile = new File(samPath);
 			File bedFile = new File(base+".regions.bed");
-			boolean foundMisassemblies = true;
+			File connectionsFile = new File(base+".connections");
+			Map<String,Vector<MisassemblyRange>> ranges = null;
 			if (!bedFile.exists() || (bedFile.exists() && HelperFunctions.isEmpty(bedFile))) {
-				foundMisassemblies = findMisasmRegions(samPath,bedFile.getAbsolutePath());
+				ranges = findMisasmRegions(samFile, bedFile, connectionsFile);
 			} else {
 				System.out.println("[a5_qc] Found a bed file. Assuming I generated this in a past run and proceeding");
 			}
-			if (foundMisassemblies) { // if we created a bedFile, we have regions containing misassemblies
+			if (ranges != null) { // if we created a bedFile, we have regions containing misassemblies
 				MBRefiner.breakContigs(MBRefiner.refine(MBRefiner.scoreAtBaseLevel(base+".bam", bedFile.getAbsolutePath(), ctgPath)), ctgPath, brokenCtgPath);
 			}
 			
@@ -192,10 +191,9 @@ public class MisassemblyBreaker {
 	 * 
 	 * @returns true if any regions containing misassemblies are found, false otherwise
 	 */
-	private static boolean findMisasmRegions(String samPath, String bedPath) throws IOException{
+	private static Map<String,Vector<MisassemblyRange>> findMisasmRegions(File samFile, File bedFile, File connectionsFile) throws IOException{
 
-		System.out.println("[a5_qc] Reading "+samPath);
-		File samFile = new File(samPath);
+		System.out.println("[a5_qc] Reading "+samFile.getPath());
 		RandomAccessFile raf = new RandomAccessFile(samFile, "r");
 		Map<String,Contig> contigs = readContigs(raf);
 		
@@ -231,13 +229,12 @@ public class MisassemblyBreaker {
 		
 			
 		double[][] clusterStats = getLibraryStats(reads, 1);
-		double[][] ranges = getFilterRanges(clusterStats);
+		double[][] insRanges = getFilterRanges(clusterStats);
 		//setMAXBLOCKLEN(clusterStats);
 		//loadBAMData(samPath, contigs, ranges);
-		loadData(samPath, contigs, ranges);
+		loadData(samFile, contigs, insRanges);
 		
-		PrintStream bedOut = null;
-		String base = HelperFunctions.dirname(samPath)+"/"+HelperFunctions.basename(samPath, ".bam");
+		String base = HelperFunctions.dirname(samFile.getAbsolutePath())+"/"+HelperFunctions.basename(samFile.getAbsolutePath(), ".bam");
 		setParameters(clusterStats);
 		
 		
@@ -245,17 +242,17 @@ public class MisassemblyBreaker {
 		
 		// collect all of our blocks for each contig
 		Iterator<SpatialClusterer> mbIt = matches.iterator();
-		Map<String,Vector<int[]>> blocks = new HashMap<String,Vector<int[]>>();
-		Vector<int[]> xBlocks = null;
-		Vector<int[]> yBlocks = null;
+		Map<String,Vector<MisassemblyBlock>> blocks = new HashMap<String,Vector<MisassemblyBlock>>();
+		Vector<MisassemblyBlock> xBlocks = null;
+		Vector<MisassemblyBlock> yBlocks = null;
 		while(mbIt.hasNext()){
 			SpatialClusterer pc = mbIt.next();
 			String statePath = base+".matches."+HelperFunctions.basename(pc.getContig1().name)+".v."+HelperFunctions.basename(pc.getContig2().name)+".txt";
 			pc.exportCurrState(statePath);
 			// get Vector for holding contig X blocks
-			xBlocks = new Vector<int[]>();
+			xBlocks = new Vector<MisassemblyBlock>();
 			// get Vector for holding contig Y blocks
-			yBlocks = new Vector<int[]>();
+			yBlocks = new Vector<MisassemblyBlock>();
 			pc.buildReadPairClusters();
 			addBlocks(pc, xBlocks, yBlocks);
 			//pc.exportCurrState(new File(matchDir,"match."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
@@ -282,75 +279,100 @@ public class MisassemblyBreaker {
 		Vector<String> toRm = new Vector<String>();
 		while(it.hasNext()){
 			String tmpCtg = it.next();
-			Vector<int[]> tmpBlocks = blocks.get(tmpCtg);
+			Vector<MisassemblyBlock> tmpBlocks = blocks.get(tmpCtg);
 			System.out.println("[a5_qc] Found "+tmpBlocks.size()+" blocks on contig " + contigs.get(tmpCtg).getId());
 			if (tmpBlocks.isEmpty())
 				toRm.add(tmpCtg);
 			else 
 				Collections.sort(tmpBlocks, BLOCK_COMP);
-			Iterator<int[]> blockIt = tmpBlocks.iterator();
+			Iterator<MisassemblyBlock> blockIt = tmpBlocks.iterator();
 			while(blockIt.hasNext()){
-				int[] tmp = blockIt.next();
-				System.out.println("        "+tmp[0]+(tmp[2]==1?" -> ":" <- ")+tmp[1]);
+				MisassemblyBlock tmp = blockIt.next();
+				System.out.println("        "+tmp.toString());
 				
 			}
 		}
-		removeKeys(blocks, toRm);
+		// clear out contigs from the blocks Map if they don't have any blocks.
+		if (toRm.size() > 0)
+			removeKeys(blocks, toRm);
 		
 		/*if (blocks.isEmpty()){
 			return false;
 		}*/
+		PrintStream bedOut = null;
+		PrintStream connectionsOut = null;
+		Map<String,Vector<MisassemblyRange>> ret = null;
+		MisassemblyRange tmpRange;
 		if (!blocks.isEmpty()) {
-			File bedFile = new File(bedPath);
-			
 			Iterator<String> ctgIt = blocks.keySet().iterator();
 			String tmpCtg;
-			int[][] tmpAr = null;
 			int left = -1;
 			int right = -1;
 			while(ctgIt.hasNext()){
 				tmpCtg = ctgIt.next();
-				Vector<int[]> tmpBlks = blocks.get(tmpCtg);
+				Vector<MisassemblyBlock> tmpBlks = blocks.get(tmpCtg);
 	
 				if (tmpBlks.size() < 2)
 					continue;
 			
-				tmpAr = new int[tmpBlks.size()][];
-				tmpBlks.toArray(tmpAr);
-				Arrays.sort(tmpAr,BLOCK_COMP);
-				for (int i = 1; i < tmpAr.length; i++){
+				// Collections.sort(tmpBlks,BLOCK_COMP); // This was already sorted abov 
+				Vector<MisassemblyRange> ranges = null;
+				for (int i = 1; i < tmpBlks.size(); i++){
 					// if they don't face each other, there isn't a misassembly in between this pair of blocks
-					if (tmpAr[i-1][2] != 1 || tmpAr[i][2] != -1) 
+					if (tmpBlks.get(i-1).getRev() || !tmpBlks.get(i).getRev()) 
 						continue;
 					left = -1;
 					right = -1;
-					if (tmpAr[i-1][1] > tmpAr[i][0]) {
-						left = tmpAr[i][0];
-						right = tmpAr[i-1][1];
-					} else if (tmpAr[i][0]-tmpAr[i-1][1] < MAX_INTERBLOCK_DIST) {
-						left = tmpAr[i-1][1];
-						right = tmpAr[i][0];
+					if (tmpBlks.get(i-1).getRight() > tmpBlks.get(i).getLeft()) {
+						left = tmpBlks.get(i).getLeft();
+						right = tmpBlks.get(i-1).getRight();
+					} else if (tmpBlks.get(i).getLeft()-tmpBlks.get(i-1).getRight() < MAX_INTERBLOCK_DIST) {
+						left = tmpBlks.get(i-1).getRight();
+						right = tmpBlks.get(i).getLeft();
 					}
 					
 					if (left != -1 && right != -1){
 						// if they overlap, split at the midpoint of overlap
 						if (bedOut == null) { // don't create the file if we don't need to
 							bedFile.createNewFile();
+							connectionsFile.createNewFile();
 							bedOut = new PrintStream(bedFile);
+							connectionsOut = new PrintStream(connectionsFile);
 							System.out.println("[a5_qc] Writing regions containing misassemblies to " + bedFile.getAbsolutePath());
+							ret = new HashMap<String, Vector<MisassemblyRange>>();
 						}
-						bedOut.println(tmpCtg+"\t"+left+"\t"+right);
+						if (ranges == null)
+							ranges = new Vector<MisassemblyRange>();
+						tmpRange = new MisassemblyRange(contigs.get(tmpCtg), tmpBlks.get(i-1), tmpBlks.get(i));
+						bedOut.println(tmpRange.toString());
+						logConnection(connectionsOut, tmpRange.getId(), tmpBlks.get(i-1), tmpBlks.get(i));
+						ranges.add(tmpRange);
 					}
+				}
+				if (ranges != null) {
+					if (ret == null)
+						ret = new HashMap<String, Vector<MisassemblyRange>>();
+					ret.put(tmpCtg, ranges);
 				}
 			}
 		}
 		
 		if (bedOut != null) {
 			bedOut.close();
-			return true;
-		} else {
-			return false;
+			connectionsOut.close();
 		}
+		return ret;
+	}
+	
+	private static void logConnection(PrintStream out, String range, MisassemblyBlock left, MisassemblyBlock right){
+		StringBuilder sb = new StringBuilder();
+		sb.append(range+"\t");
+		sb.append(left.toString()+",");
+		sb.append(left.getConnection().toString());
+		sb.append("\t");
+		sb.append(right.toString()+",");
+		sb.append(right.getConnection().toString());
+		out.println(sb.toString());
 	}
 	
 	private static boolean resetParam(String in){
@@ -401,23 +423,19 @@ public class MisassemblyBreaker {
 	 * @param xBlocks the Collection of blocks for Contig 1 (aka the x Contig)
 	 * @param yBlocks the Collection of blocks for Contig 2 (aka the y Contig)
 	 */
-	private static void addBlocks(SpatialClusterer sc, Vector<int[]> xBlocks, Vector<int[]> yBlocks){
+	private static void addBlocks(SpatialClusterer sc, Vector<MisassemblyBlock> xBlocks, Vector<MisassemblyBlock> yBlocks){
 		ReadCluster[] rdClust = sc.getReadClusters();
 		System.out.println("[a5_qc] Found "+rdClust.length+" initial blocks between contigs "+sc.getContig1().getId()+" and "+sc.getContig2().getId());
 		for (ReadCluster r: rdClust)
 			System.out.println("        "+r.toString());
 		int xlen = 0;
 		int ylen = 0;
-		int[] x = null;
-		int[] y = null;
+		MisassemblyBlock x = null;
+		MisassemblyBlock y = null;
 		for (int i = 0; i < rdClust.length; i++){
 			xlen = rdClust[i].xMax-rdClust[i].xMin;
 			ylen = rdClust[i].yMax-rdClust[i].yMin;
-			
-			x = new int[3];
-			x[0] = rdClust[i].xMin;
-			x[1] = rdClust[i].xMax;
-			x[2] = rdClust[i].xOri ? 1 : -1; 
+			/*
 			y = new int[3];
 			if (rdClust[i].yMin < 0){
 				y[0] = Math.abs(rdClust[i].yMax);
@@ -428,7 +446,12 @@ public class MisassemblyBreaker {
 				y[1] = rdClust[i].yMax;
 			}
 			y[2] = rdClust[i].yOri ? 1 : -1; 
+			 */
 			if (xlen >= MIN_BLOCK_LEN && xlen <= MAX_BLOCK_LEN && ylen >= MIN_BLOCK_LEN && ylen <= MAX_BLOCK_LEN) {
+				x = new MisassemblyBlock(sc.getContig1(),rdClust[i].xMin, rdClust[i].xMax, rdClust[i].xRev);
+				y = new MisassemblyBlock(sc.getContig2(),rdClust[i].yMin, rdClust[i].yMax, rdClust[i].yRev);
+				x.addConnection(y);
+				y.addConnection(x);
 				xBlocks.add(x);
 				yBlocks.add(y);
 			} 
@@ -454,18 +477,18 @@ public class MisassemblyBreaker {
 	 * Remove segments that overlap by more than 50%
 	 * @param blocks
 	 */
-	private static void removeRepeats(Vector<int[]> blocks){
+	private static void removeRepeats(Vector<MisassemblyBlock> blocks){
 		Collections.sort(blocks, BLOCK_COMP);
-		int[] block1 = null;
-		int[] block2 = null;
+		MisassemblyBlock block1 = null;
+		MisassemblyBlock block2 = null;
 		int i = 0;
 		while (i < blocks.size()-1 && blocks.size() > 1){
 			block1 = blocks.get(i);
 			block2 = blocks.get(i+1);
 			// if they overlap, check to see if they overlap enough to constitute a repeat 
-			if (block1[0] < block2[1] && block2[0] < block1[1]){
-				double intersection = block1[1] - block2[0];
-				double union = block2[1] - block1[0];
+			if (block1.getLeft() < block2.getRight() && block2.getLeft() < block1.getRight()){
+				double intersection = block1.getRight() - block2.getLeft();
+				double union = block2.getRight() - block1.getLeft();
 				if (intersection/union > 0.5){
 					blocks.remove(i);
 					blocks.remove(i);
@@ -508,7 +531,7 @@ public class MisassemblyBreaker {
 	 * @param ranges an array of arrays of max and min insert sizes
 	 * @throws IOException
 	 */
-	public static void loadData(String samPath, Map<String,Contig> ctgs, double[][] ranges) throws IOException{
+	public static void loadData(File samFile, Map<String,Contig> ctgs, double[][] ranges) throws IOException{
 		for (int i = 0; i < ranges.length; i++)
 			System.out.println("[a5_qc] Filtering read pairs with inserts between "+
 					NF.format(ranges[i][0])+"-"+NF.format(ranges[i][1]));
@@ -518,7 +541,6 @@ public class MisassemblyBreaker {
 		Map<String,Integer> counts = new HashMap<String,Integer>();
 		Vector<String> tmpMBs = null;
 
-		File samFile = new File(samPath);
 		FileInputStream fis = new FileInputStream(samFile);
 		long start = fis.getChannel().position();
 		long len = fis.getChannel().size() - start;

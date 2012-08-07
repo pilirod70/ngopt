@@ -11,8 +11,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.Vector;
 
+import org.halophiles.assembly.Contig;
 import org.halophiles.tools.HelperFunctions;
 
 public class MBRefiner {
@@ -56,21 +59,28 @@ public class MBRefiner {
 			System.exit(-1);
 		}
 	}
-	
-	public static Map<String,MisassemblyRange> scoreAtBaseLevel(String bedPath, String plpPath) throws IOException {
-		Map<String, MisassemblyRange> regions = getRegions(bedPath);
+	/**
+	 * This function is used if we already have pileup file.
+	 * 
+	 * @param bedPath 
+	 * @param plpPath
+	 * @return
+	 * @throws IOException
+	 */
+	public static Map<String,Vector<MisassemblyRange>> scoreAtBaseLevel(File bedFile, File plpFile, File connectionsFile, Map<String,Contig> contigs) throws IOException {
+		Map<String, Vector<MisassemblyRange>> regions = getRegions(bedFile, connectionsFile, contigs);
 		PileupEvaluator plpEval = new PileupEvaluator(regions, new PileupScorer());
-		BufferedReader br = new BufferedReader(new FileReader(new File(plpPath)));
+		BufferedReader br = new BufferedReader(new FileReader(plpFile));
 		while(br.ready()){
 			plpEval.handleLine(br.readLine());
 		}
 		return regions;
 	}
 	
-	public static Map<String, MisassemblyRange> scoreAtBaseLevel(String bamPath, String bedPath, String ctgPath) throws IOException {
-		Map<String, MisassemblyRange> regions = getRegions(bedPath);
+	public static Map<String, Vector<MisassemblyRange>> scoreAtBaseLevel(File bamFile, File bedFile, File ctgFile, File connectionsFile, Map<String,Contig> contigs) throws IOException {
+		Map<String, Vector<MisassemblyRange>> regions = getRegions(bedFile, connectionsFile, contigs);
 		try {
-			runMPileup(bamPath, bedPath, ctgPath, regions);
+			runMPileup(bamFile.getAbsolutePath(), bedFile.getAbsolutePath(), ctgFile.getAbsolutePath(), regions);
 		} catch (InterruptedException e) {
 			System.err.println("Unable to run samtools mpileup. This is what I know:");
 			e.printStackTrace();
@@ -79,11 +89,22 @@ public class MBRefiner {
 		return regions;
 	}
 	
-	public static Map<String, int[]> refine(Map<String, MisassemblyRange> regions) throws IOException{
+	public static void scoreAtBaseLevel(String bamPath, String bedPath, String ctgPath, Map<String, Vector<MisassemblyRange>> regions) throws IOException {
+		try {
+			runMPileup(bamPath, bedPath, ctgPath, regions);
+		} catch (InterruptedException e) {
+			System.err.println("Unable to run samtools mpileup. This is what I know:");
+			e.printStackTrace();
+			System.exit(-1);
+		}
+	}
+	
+	
+	public static Map<String, int[]> refine(Map<String, Vector<MisassemblyRange>> regions) throws IOException{
 		Map<String, int[]> ret = new HashMap<String, int[]>();
 		Iterator<String> ctgIt = regions.keySet().iterator();
 		String tmpCtg;
-		MisassemblyRange reg;
+		Vector<MisassemblyRange> reg;
 		while (ctgIt.hasNext()) {
 			tmpCtg = ctgIt.next();
 			reg = regions.get(tmpCtg);
@@ -141,84 +162,106 @@ public class MBRefiner {
 	}
 
 	/**
-	 * Returns a Map of sets of regions. Each set corresponds to a single
-	 * contig, indexed by the contig name (a String). <br>
-	 * <br>
-	 * Each set is stored in a matrix with 4 rows. The first row is the
-	 * left-most coordinate of each region, the second row stores the right-most
-	 * coordinate of each region, the third stores the current 'weakest'
-	 * position, and the fourth stores the score of the current 'weakest'
-	 * position. <br>
-	 * <br>
-	 * The weakest position is the position with the lowest pileup score. For
-	 * the definition of this score, see org.gel.halophiles.qc.PileupScorer.
+	 * Parses MisassemblyRanges stored in a bed file and a connections file
+	 * 
+	 * @param bedFile
+	 * @param connectionsFile
+	 * @param contigs
+	 * @return
+	 * @throws IOException
 	 */
-	public static Map<String, MisassemblyRange> getRegions(String bedPath)
-			throws IOException {
-		BufferedReader in = new BufferedReader(
-				new FileReader(new File(bedPath)));
-		String[] dat = null;
+	public static Map<String, Vector<MisassemblyRange>> getRegions(File bedFile, File connectionsFile, Map<String,Contig> contigs) throws IOException {
+		
+		// contig+","+(rev?"-":"+")+","+Integer.toString(left)+","+Integer.toString(right);
 
-		/*
-		 * BEGIN: build data structure storing the boundaries of the ranges
-		 * we're investigating
-		 */
-		// Some Map objects to store our ranges indexed, by contig. Vectors will
-		// be turned into
-		// arrays that can be binary searched easily
-		Map<String, Vector<Integer>> left = new HashMap<String, Vector<Integer>>();
-		Map<String, Vector<Integer>> right = new HashMap<String, Vector<Integer>>();
-		Vector<Integer> vL = null; // temp variable
-		Vector<Integer> vR = null; // temp variable
-		int l = 0;
-		int r = 0;
-		int expectedLines = 0;
-		while (in.ready()) {
-			dat = in.readLine().split("\t");
+		Map<String, Vector<MisassemblyRange>> ret = new HashMap<String, Vector<MisassemblyRange>>();
+		
+		BufferedReader in = new BufferedReader(new FileReader(connectionsFile));
+		
+		// Stores the misassembly blocks we've seen so far.
+		Map<Integer, MisassemblyBlock> blockSet = new HashMap<Integer,MisassemblyBlock>();
+		Map<String,MisassemblyBlock[]> blocksByRegion = new HashMap<String, MisassemblyBlock[]>();
+		MisassemblyBlock[] tmpBlks = null;
+
+		String[] line = null;
+		String reg = null;
+		while(in.ready()){
+			line = in.readLine().split("\t");
+			reg = line[0];
+			tmpBlks = new MisassemblyBlock[2];
+			// parse the block on the left side of this region
+			tmpBlks[0] = addFlankingBlocks(line[1], blockSet, contigs);
+
+			// parse the block on the right side of this region
+			tmpBlks[1] = addFlankingBlocks(line[2], blockSet, contigs);
+			
+			blocksByRegion.put(reg, tmpBlks);
+		}
+		
+		in = new BufferedReader(new FileReader(bedFile));
+
+
+		Vector<MisassemblyRange> ranges = null;
+		
+		while (in.ready()){
+			line = in.readLine().split("\t");
 			// skip any header in the file
-			if (dat[0].startsWith("#"))
+			if (line[0].startsWith("#"))
 				continue;
-			if (left.containsKey(dat[0])) {
-				vL = left.get(dat[0]);
-				vR = right.get(dat[0]);
-			} else {
-				vL = new Vector<Integer>();
-				vR = new Vector<Integer>();
-				left.put(dat[0], vL);
-				right.put(dat[0], vR);
-			}
-			l = Integer.parseInt(dat[1]);
-			r = Integer.parseInt(dat[2]);
-			expectedLines += r - l;
-			vL.add(l);
-			vR.add(r);
+			if (ret.containsKey(line[0]))
+				ranges = ret.get(line[0]);
+			else
+				ranges = new Vector<MisassemblyRange>();
+			tmpBlks = blocksByRegion.get(line[3]);
+			ranges.add(new MisassemblyRange(contigs.get(line[0]), tmpBlks[0], tmpBlks[1]));
 		}
-		System.out.println("[a5_qc] Expecting to evaluate " + expectedLines + " lines of pileup");
-		/*
-		 * END: build boundaries
-		 * 
-		 * START: convert these Vectors into arrays, so they can be queried
-		 * using binary search
-		 */
-		Map<String, MisassemblyRange> lookups = new HashMap<String, MisassemblyRange>();
-		Iterator<String> it = left.keySet().iterator();
-		String key = null; // temp variable
-		int[] arL = null; // temp variable
-		int[] arR = null; // temp variable
-		while (it.hasNext()) {
-			key = it.next();
-			arL = HelperFunctions.toArray(left.get(key));
-			arR = HelperFunctions.toArray(right.get(key));
-			lookups.put(key, new MisassemblyRange(key, arL, arR));
-		}
-		/*
-		 * END: convert Vectors to arrays
-		 */
-		return lookups;
+		return ret;
+	}
+	/**
+	 * Parses a MisassemblyBlock string, and returns the MisasssemblyBlock object represented by it.
+	 * @param blockString a String read in from the a connections file
+	 * @param blockSet a map to store the MisassemblyBlocks in
+	 * @param contigs the contigs on which these MisassemblyBlocks exist
+	 * @return the object represented by <code>blockString</code>
+	 */
+	private static MisassemblyBlock addFlankingBlocks(String blockString, Map<Integer,MisassemblyBlock> blockSet, Map<String,Contig> contigs){
+		String[] dat = blockString.split(",");
+		int id = -1;
+		String ctg = null;
+		boolean rev = false;
+		int left = -1;
+		int right = -2;
 
+		MisassemblyBlock tmpFlank = null;
+		MisassemblyBlock tmpConnect = null;
+		id = Integer.parseInt(dat[0]);
+		if (blockSet.containsKey(id)) {
+			tmpFlank = blockSet.get(id);
+		} else {
+			ctg = dat[1];
+			rev = dat[2].equals("-");
+			left = Integer.parseInt(dat[3]);
+			right = Integer.parseInt(dat[4]);
+			tmpFlank = new MisassemblyBlock(contigs.get(ctg), left, right, rev, id);
+			blockSet.put(id, tmpFlank);
+			
+			// now parse the block it is connected to
+			id = Integer.parseInt(dat[5]);
+			ctg = dat[6];
+			rev = dat[7].equals("-");
+			left = Integer.parseInt(dat[8]);
+			right = Integer.parseInt(dat[9]);
+			tmpConnect = new MisassemblyBlock(contigs.get(ctg), left, right, rev, id);
+			blockSet.put(id, tmpConnect);
+			
+			// now set the connections
+			tmpFlank.addConnection(tmpConnect);
+			tmpConnect.addConnection(tmpFlank);
+		}
+		return tmpFlank;
 	}
 
-	private static void runMPileup(String bamPath, String bedPath, String ctgPath, Map<String, MisassemblyRange> regions) throws IOException, InterruptedException {
+	private static void runMPileup(String bamPath, String bedPath, String ctgPath, Map<String, Vector<MisassemblyRange>> regions) throws IOException, InterruptedException {
 		// System.err.println("Executing command: " + cmd);
 		String cmd = SAMTOOLS + " mpileup -d 350 -f " + ctgPath + " -l "+ bedPath + " " + bamPath;
 		System.out.println("[a5_qc] Executing: " + cmd);
@@ -276,11 +319,11 @@ public class MBRefiner {
 	}
 
 	static class PileupEvaluator implements LineHandler {
-		Map<String, MisassemblyRange> regions;
+		Map<String, Vector<MisassemblyRange>> regions;
 		PileupScorer scorer;
 		int numLines;
 
-		PileupEvaluator(Map<String, MisassemblyRange> regions, PileupScorer scorer) {
+		PileupEvaluator(Map<String, Vector<MisassemblyRange>> regions, PileupScorer scorer) {
 			this.regions = regions;
 			this.scorer = scorer;
 			this.numLines = 0;
@@ -288,10 +331,12 @@ public class MBRefiner {
 
 		public void handleLine(String line) {
 			String[] plp = line.split("\t");
-			MisassemblyRange tmpReg = regions.get(plp[0]);
+			Vector<MisassemblyRange> tmpRegs = regions.get(plp[0]);
 			int pos = Integer.parseInt(plp[1]);
 			double score = scorer.scorePileup(plp[4])/Double.parseDouble(plp[3]);
-			tmpReg.addPos(pos, score);
+			int regIdx = MisassemblyRange.binarySearch(tmpRegs, pos);
+			if (regIdx >= 0)
+				tmpRegs.get(regIdx).addPos(pos, score);
 			numLines++;
 		}
 	}

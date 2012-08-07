@@ -1,117 +1,153 @@
 package org.halophiles.assembly.qc;
 
 import java.io.PrintStream;
-import java.util.Arrays;
 import java.util.Vector;
 
-import org.halophiles.tools.HelperFunctions;
+import org.halophiles.assembly.Contig;
 
 public class MisassemblyRange {
-	private String contig;
-	private RunningStat[] stats;
-	private int[] left, right, junction;
-	private int[] minPos;
-	MisassemblyRange (String contig, int[] left, int[] right) {
-		if (left.length != right.length) throw new IllegalArgumentException("left and right must be the same length");
+	
+	private static int COUNT = 0;
+	
+	private Contig contig;
+	private String id;
+	private MisassemblyBlock leftBlock, rightBlock;
+	private int left, right, minPos;
+
+	
+	private int n;
+	private double oldM, newM, oldS, newS, min, max;
+	
+	public MisassemblyRange (Contig contig, MisassemblyBlock leftBlock, MisassemblyBlock rightBlock) {
 		this.contig = contig;
-		this.left = left;
-		this.right = right;
-		this.minPos = new int[left.length];
-		this.stats = new RunningStat[left.length];
-		/*
-		 *  [0] 'weakest' position in each range
-		 *  [1] score of 'weakest' position
-		 *  [2] mean for this range
-		 *  [3] stdev for this range
-		 *  [4] number of elements for this range
-		 */
-		for (int i = 0; i < stats.length; i++)
-			stats[i] = new RunningStat();
+		this.leftBlock = leftBlock;
+		this.rightBlock = rightBlock;
+		this.minPos = -1;
+		if (leftBlock.getRight() == rightBlock.getLeft()){
+			left = leftBlock.getRight();
+			right = left;
+		} else if (leftBlock.getRight() > rightBlock.getLeft()) {
+			left = rightBlock.getLeft();
+			right = leftBlock.getRight();
+		} else {
+			left = leftBlock.getRight();
+			right = rightBlock.getLeft();
+		}
+		// expand out because our pairs aren't completely perfect.
+		left -= 25;
+		right += 25;
+		
+		// attach a unique id to this range
+		id = "r"+Integer.toString(COUNT++);
+		
+		// stats information
+		n = 0;
+		min = Double.POSITIVE_INFINITY;
+		max = Double.NEGATIVE_INFINITY;
+		
 	}
 	
-	boolean addPos(int pos, double score){
-		int idx = Arrays.binarySearch(right, pos);
-		if (idx < 0)
-			idx = -1 * (idx + 1);
-		if (pos < left[idx])
+	public boolean addPos(int pos, double score){
+		if (!contains(pos))
 			return false;
-		double min = stats[idx].min();
-		if (score < min)
-			minPos[idx] = pos;
-		stats[idx].addVal(score);
+		if (addVal(score)){
+			minPos = pos;
+		}
 		return true;
 	}
 	
-	boolean contains(int pos){
-		int idx = Arrays.binarySearch(right, pos);
-		if (idx < 0)
-			idx = -1 * (idx + 1);
-		if (pos < left[idx])
-			return false;
-		else
+	public boolean contains(int pos){
+		return pos >= leftBlock.getRight() && pos <= rightBlock.getLeft();
+	}
+	
+	public void printState(PrintStream out) {
+		out.println(mean()+"\t"+sd()+"\t"+min+"\t"+max+"\t"+n);
+	}
+	
+	public int getMinPos(){
+		return minPos;
+	}
+	
+	public double getMinScore(){
+		return min;
+	}
+	
+	public String toString(){
+		return contig+"\t"+left+"\t"+right+"\t"+id;
+	}
+	
+	public String getId(){
+		return id;
+	}
+	
+	/**
+	 * Add a new value to the running stats, and return whether or not
+	 * we've encountered a new minimum value
+	 * 
+	 * @param x the value to add toe the running stats
+	 * @return true if x is the new minimum value, false otherwise
+	 */
+	private boolean addVal(double x){
+		n++;
+		if (n == 1){
+			oldM = x;
+			newM = x;
+			oldS = 0;
+			newS = 0;
+		} else {
+			newM = oldM + (x-oldM)/n;
+			newS = oldS + (x-oldM)*(x-newM);
+			oldM = newM;
+			oldS = newS;
+		}
+		max = x > max ? x : max;
+		if (x < min ){
+			min = x;
 			return true;
+		} else
+			return false;
+	}
+	private int numPts(){
+		return n;
+	}
+	private double mean() {
+		return (n > 0) ? newM : 0.0;
+	}
+	private double variance() {
+		return (n > 1) ? newS/(n-1) : 0.0;
+	}
+	private double sd() {
+		return Math.sqrt(variance());
+	}
+	private double min(){
+		return min;
+	}
+	private double max(){
+		return max;
 	}
 	
-	void printState(PrintStream out) {
-		for (int i = 0; i < left.length; i++){
-			out.println(left[i]+"\t"+right[i]+"\t"+stats[i].toString());
+	/**
+	 * 
+	 * @param ranges a SORTED Vector of MisassemblyRanges
+	 * @param pos the position we are looking for
+	 * @return
+	 */
+	public static int binarySearch(Vector<MisassemblyRange> ranges, int pos){
+		int max = ranges.size() - 1;
+		int min = 0;
+		int mid = (max+min)/2;
+		while (max > min){
+			if (pos < ranges.get(mid).right)
+				max = mid;
+			else if (pos > ranges.get(mid).right)
+				min = mid+1;
+			else
+				return mid;
+			mid = (max+mid)/2;
 		}
+		if (pos >= ranges.get(mid).left)
+			return mid;
+		else
+			return -1;
 	}
-	
-	int[] getJunctions(double maxScore){
-		Vector<Integer> scores = new Vector<Integer>();
-		for (int i = 0; i < minPos.length; i++){
-			if (stats[i].min() < maxScore)
-				scores.add(minPos[i]);
-		}
-		return HelperFunctions.toArray(scores);
-	}
-	
-	private class RunningStat {
-		private int n;
-		private double oldM, newM, oldS, newS, min, max;
-		public RunningStat() {
-			n = 0;
-			min = Double.POSITIVE_INFINITY;
-			max = Double.NEGATIVE_INFINITY;
-		}
-		void addVal(double x){
-			n++;
-			if (n == 1){
-				oldM = x;
-				newM = x;
-				oldS = 0;
-				newS = 0;
-			} else {
-				newM = oldM + (x-oldM)/n;
-				newS = oldS + (x-oldM)*(x-newM);
-				oldM = newM;
-				oldS = newS;
-			}
-			min = x < min ? x : min;
-			max = x > max ? x : max;
-		}
-		int numPts(){
-			return n;
-		}
-		double mean() {
-			return (n > 0) ? newM : 0.0;
-		}
-		double variance() {
-			return (n > 1) ? newS/(n-1) : 0.0;
-		}
-		double sd() {
-			return Math.sqrt(variance());
-		}
-		double min(){
-			return min;
-		}
-		double max(){
-			return max;
-		}
-		
-		public String toString() {
-			return mean()+"\t"+sd()+"\t"+min+"\t"+max+"\t"+n;
-		}
-	}	
 }
