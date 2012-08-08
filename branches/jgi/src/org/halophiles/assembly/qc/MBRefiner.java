@@ -15,6 +15,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
 
+import net.sf.samtools.SAMFileReader;
+
 import org.halophiles.assembly.Contig;
 import org.halophiles.tools.HelperFunctions;
 
@@ -26,15 +28,16 @@ public class MBRefiner {
 		HelperFunctions.logInputs("MBRefiner", args);
 		if (args.length == 4) {
 			try {
-				String bamPath = args[0];
-				String bedPath = args[1];
-				String ctgPath = args[2];
-				String brokenPath = args[3];
-
-				Map<String, MisassemblyRange> ranges = scoreAtBaseLevel(bamPath, bedPath, ctgPath);
-				
+				File bamFile = new File(args[0]);
+				File bedFile = new File(args[1]);
+				File connectionsFile = new File(args[2]);
+				File ctgFile = new File(args[2]);
+				File brokenFile = new File(args[3]);
+				Map<String, Contig> contigs = MisassemblyBreaker.getContigs(new SAMFileReader(bamFile));
+				Map<String, Vector<MisassemblyRange>> ranges = getRegions(bedFile, connectionsFile, contigs);
+				scoreAtBaseLevel(bamFile, bedFile, ctgFile, ranges, contigs);
 				Map<String, int[]> junctions = refine(ranges);
-				breakContigs(junctions, ctgPath, brokenPath);
+				breakContigs(junctions, ctgFile.getAbsolutePath(), brokenFile.getAbsolutePath());
 
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -67,8 +70,7 @@ public class MBRefiner {
 	 * @return
 	 * @throws IOException
 	 */
-	public static Map<String,Vector<MisassemblyRange>> scoreAtBaseLevel(File bedFile, File plpFile, File connectionsFile, Map<String,Contig> contigs) throws IOException {
-		Map<String, Vector<MisassemblyRange>> regions = getRegions(bedFile, connectionsFile, contigs);
+	public static Map<String,Vector<MisassemblyRange>> scoreAtBaseLevel(File plpFile, Map<String, Vector<MisassemblyRange>> regions, Map<String,Contig> contigs) throws IOException {
 		PileupEvaluator plpEval = new PileupEvaluator(regions, new PileupScorer());
 		BufferedReader br = new BufferedReader(new FileReader(plpFile));
 		while(br.ready()){
@@ -77,8 +79,7 @@ public class MBRefiner {
 		return regions;
 	}
 	
-	public static Map<String, Vector<MisassemblyRange>> scoreAtBaseLevel(File bamFile, File bedFile, File ctgFile, File connectionsFile, Map<String,Contig> contigs) throws IOException {
-		Map<String, Vector<MisassemblyRange>> regions = getRegions(bedFile, connectionsFile, contigs);
+	public static void scoreAtBaseLevel(File bamFile, File bedFile, File ctgFile, Map<String, Vector<MisassemblyRange>> regions,Map<String,Contig> contigs) throws IOException {
 		try {
 			runMPileup(bamFile.getAbsolutePath(), bedFile.getAbsolutePath(), ctgFile.getAbsolutePath(), regions);
 		} catch (InterruptedException e) {
@@ -86,7 +87,6 @@ public class MBRefiner {
 			e.printStackTrace();
 			System.exit(-1);
 		}
-		return regions;
 	}
 	
 	public static void scoreAtBaseLevel(String bamPath, String bedPath, String ctgPath, Map<String, Vector<MisassemblyRange>> regions) throws IOException {
@@ -104,12 +104,17 @@ public class MBRefiner {
 		Map<String, int[]> ret = new HashMap<String, int[]>();
 		Iterator<String> ctgIt = regions.keySet().iterator();
 		String tmpCtg;
-		Vector<MisassemblyRange> reg;
+		MisassemblyRange range= null;
 		while (ctgIt.hasNext()) {
 			tmpCtg = ctgIt.next();
-			reg = regions.get(tmpCtg);
-			ret.put(tmpCtg, reg.getJunctions(0.90));
-			//reg.printState(System.out);
+			Vector<Integer> breaks = new Vector<Integer>();
+			Iterator<MisassemblyRange> rangeIt = regions.get(tmpCtg).iterator();
+			while (rangeIt.hasNext()){
+				range = rangeIt.next();
+				if (range.getMinScore() < 0.90)
+					breaks.add(range.getMinPos());
+			}
+			ret.put(tmpCtg, HelperFunctions.toArray(breaks));
 		}
 		return ret;
 	}
@@ -183,17 +188,19 @@ public class MBRefiner {
 		Map<String,MisassemblyBlock[]> blocksByRegion = new HashMap<String, MisassemblyBlock[]>();
 		MisassemblyBlock[] tmpBlks = null;
 
-		String[] line = null;
+		String[] entry = null;
 		String reg = null;
+		String line = null;
 		while(in.ready()){
-			line = in.readLine().split("\t");
-			reg = line[0];
+			line = in.readLine();
+			entry = line.split("\t");
+			reg = entry[0];
 			tmpBlks = new MisassemblyBlock[2];
 			// parse the block on the left side of this region
-			tmpBlks[0] = addFlankingBlocks(line[1], blockSet, contigs);
+			tmpBlks[0] = addFlankingBlocks(entry[1], blockSet, contigs);
 
 			// parse the block on the right side of this region
-			tmpBlks[1] = addFlankingBlocks(line[2], blockSet, contigs);
+			tmpBlks[1] = addFlankingBlocks(entry[2], blockSet, contigs);
 			
 			blocksByRegion.put(reg, tmpBlks);
 		}
@@ -204,16 +211,16 @@ public class MBRefiner {
 		Vector<MisassemblyRange> ranges = null;
 		
 		while (in.ready()){
-			line = in.readLine().split("\t");
+			entry = in.readLine().split("\t");
 			// skip any header in the file
-			if (line[0].startsWith("#"))
+			if (entry[0].startsWith("#"))
 				continue;
-			if (ret.containsKey(line[0]))
-				ranges = ret.get(line[0]);
+			if (ret.containsKey(entry[0]))
+				ranges = ret.get(entry[0]);
 			else
 				ranges = new Vector<MisassemblyRange>();
-			tmpBlks = blocksByRegion.get(line[3]);
-			ranges.add(new MisassemblyRange(contigs.get(line[0]), tmpBlks[0], tmpBlks[1]));
+			tmpBlks = blocksByRegion.get(entry[3]);
+			ranges.add(new MisassemblyRange(contigs.get(entry[0]), tmpBlks[0], tmpBlks[1]));
 		}
 		return ret;
 	}
