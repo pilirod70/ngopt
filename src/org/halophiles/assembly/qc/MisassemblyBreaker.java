@@ -33,6 +33,10 @@ import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
 import net.sf.samtools.SAMSequenceRecord;
 */
+import net.sf.samtools.SAMFileHeader;
+import net.sf.samtools.SAMFileReader;
+import net.sf.samtools.SAMSequenceRecord;
+
 import org.halophiles.assembly.Contig;
 import org.halophiles.assembly.ReadPair;
 import org.halophiles.assembly.ReadSet;
@@ -162,18 +166,28 @@ public class MisassemblyBreaker {
 			String ctgPath = args[1];
 			String brokenCtgPath = args[2];
 			
+			File ctgFile = new File(ctgPath);
+			
 			String base = HelperFunctions.dirname(samPath)+"/"+HelperFunctions.basename(samPath,".sam");
 			File samFile = new File(samPath);
+			File bamFile = new File(base+".bam");
 			File bedFile = new File(base+".regions.bed");
 			File connectionsFile = new File(base+".connections");
-			Map<String,Vector<MisassemblyRange>> ranges = null;
+			Map<String,Vector<MisassemblyRange>> regions = null;
+			
+			RandomAccessFile raf = new RandomAccessFile(samFile, "r");
+			Map<String,Contig> contigs = readContigs(raf);
+			
+			
 			if (!bedFile.exists() || (bedFile.exists() && HelperFunctions.isEmpty(bedFile))) {
-				ranges = findMisasmRegions(samFile, bedFile, connectionsFile);
+				regions = findMisasmRegions(samFile, bedFile, connectionsFile, contigs, getInsertStats(raf, contigs));
 			} else {
+				regions = MBRefiner.getRegions(bedFile, connectionsFile, contigs);
 				System.out.println("[a5_qc] Found a bed file. Assuming I generated this in a past run and proceeding");
 			}
-			if (ranges != null) { // if we created a bedFile, we have regions containing misassemblies
-				MBRefiner.breakContigs(MBRefiner.refine(MBRefiner.scoreAtBaseLevel(base+".bam", bedFile.getAbsolutePath(), ctgPath)), ctgPath, brokenCtgPath);
+			if (regions != null) { // if we created a bedFile, we have regions containing misassemblies
+				MBRefiner.scoreAtBaseLevel(bamFile, bedFile, ctgFile, regions, contigs);
+				MBRefiner.breakContigs(MBRefiner.refine(regions), ctgPath, brokenCtgPath);
 			}
 			
 		} catch(IOException e){
@@ -184,21 +198,15 @@ public class MisassemblyBreaker {
 			System.exit(-1);
 		}
 	}
+	
 	/**
-	 * Identifies regions containing misassemblies using the provided SAM file, and writes
-	 * these regions to a BED file under the given path. If no regions are found, nothing 
-	 * is written to <code>bedPath</code>.
-	 * 
-	 * @returns true if any regions containing misassemblies are found, false otherwise
+	 * Randomly samples reads from the given RandomAccessFile, and computes insert size stats
+	 * @param raf the file to sample reads from for computing insert size stats
+	 * @param contigs the contigs that the reads stored in <code>raf</code> are mapped to 
+	 * @return array of arrays
+	 * @throws IOException
 	 */
-	private static Map<String,Vector<MisassemblyRange>> findMisasmRegions(File samFile, File bedFile, File connectionsFile) throws IOException{
-
-		System.out.println("[a5_qc] Reading "+samFile.getPath());
-		RandomAccessFile raf = new RandomAccessFile(samFile, "r");
-		Map<String,Contig> contigs = readContigs(raf);
-		
-	//	SAMFileReader samRdr = new SAMFileReader(samFile);
-	//	Map<String,Contig> contigs = getContigs(samRdr); 
+	private static double[][] getInsertStats(RandomAccessFile raf, Map<String, Contig> contigs) throws IOException{
 		
 		if (contigs.size() == 0){
 			System.out.println("[a5_qc] Could not find any contigs in SAM file. File is either not in SAM format, or is missing header.");
@@ -210,8 +218,6 @@ public class MisassemblyBreaker {
 		long before = System.currentTimeMillis();
 		Map<String,ReadPair> reads = readSubsetByChunk(raf, contigs);
 		raf.close();
-		
-	//	Map<String, ReadPair> reads = sampleBAMFile(samRdr,contigs,samPath.hashCode());
 		
 		long after = System.currentTimeMillis();
 		System.out.println("[a5_qc] Took "+HelperFunctions.millisToTimeString(after-before)+" to read in "+reads.size()+" read pairs.");
@@ -226,16 +232,28 @@ public class MisassemblyBreaker {
 			System.out.println("[a5_qc] Found a substantial amount of outties, but found no innies.");
 		else 
 			System.out.println("[a5_qc] Found both innies and outties.");
+
+		return getLibraryStats(reads, 1);
+	}
+	
+	/**
+	 * Identifies regions containing misassemblies using the provided SAM file, and writes
+	 * these regions to a BED file under the given path. If no regions are found, nothing 
+	 * is written to <code>bedPath</code>.
+	 * 
+	 * @returns true if any regions containing misassemblies are found, false otherwise
+	 */
+	private static Map<String,Vector<MisassemblyRange>> findMisasmRegions(File samFile, File bedFile, File connectionsFile, Map<String,Contig> contigs, double[][] insertStats) throws IOException{
+
+		System.out.println("[a5_qc] Reading "+samFile.getPath());
 		
-			
-		double[][] clusterStats = getLibraryStats(reads, 1);
-		double[][] insRanges = getFilterRanges(clusterStats);
+		double[][] insRanges = getFilterRanges(insertStats);
 		//setMAXBLOCKLEN(clusterStats);
 		//loadBAMData(samPath, contigs, ranges);
 		loadData(samFile, contigs, insRanges);
 		
 		String base = HelperFunctions.dirname(samFile.getAbsolutePath())+"/"+HelperFunctions.basename(samFile.getAbsolutePath(), ".bam");
-		setParameters(clusterStats);
+		setParameters(insertStats);
 		
 		
 		printParams();
@@ -1326,7 +1344,7 @@ public class MisassemblyBreaker {
 		}
 		return pairs;
 	}
-	
+	*/
 	public static Map<String,Contig> getContigs(SAMFileReader sam) {
 		SAMFileHeader hdr = sam.getFileHeader();
 		Iterator<SAMSequenceRecord> it = hdr.getSequenceDictionary().getSequences().iterator();
@@ -1338,6 +1356,7 @@ public class MisassemblyBreaker {
 		}
 		return ret;
 	}
+	/*
 	public static void loadBAMData(String bamPath, Map<String,Contig> ctgs, double[][] ranges) throws IOException{
 		for (int i = 0; i < ranges.length; i++)
 			System.out.println("[a5_qc] Filtering read pairs with inserts between "+ NF.format(ranges[i][0])+"-"+NF.format(ranges[i][1]));
