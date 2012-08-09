@@ -551,7 +551,7 @@ public class MisassemblyBreaker {
 	 */
 	public static void loadData(File samFile, Map<String,Contig> ctgs, double[][] ranges) throws IOException{
 		for (int i = 0; i < ranges.length; i++)
-			System.out.println("[a5_qc] Filtering read pairs with inserts between "+
+			System.out.println("[a5_qc_load_data] Filtering read pairs with inserts between "+
 					NF.format(ranges[i][0])+"-"+NF.format(ranges[i][1]));
 		Map<String,SpatialClusterer> clusterers = new HashMap<String,SpatialClusterer>();
 		/* Keep track of all clusterers that each contig is associated with.*/
@@ -612,7 +612,7 @@ public class MisassemblyBreaker {
 		Contig ctg1 = null;
 		Contig ctg2 = null;
 		int ctgNameComp = -10;
-		System.out.print("[a5_qc] Reading SAM file...");
+		System.out.print("[a5_qc_load_data] Reading SAM file...");
 		long currPos = start;
 		double perc = 0;
 		double ten = 1;
@@ -767,7 +767,7 @@ public class MisassemblyBreaker {
 		long after = System.currentTimeMillis();
 		System.out.println("..100%... done!... Took "+HelperFunctions.millisToTimeString(after-before));
 		perc = (double) numKeep / total * 100;
-		System.out.println("[a5_qc] Keeping "+NF.format(perc)+"% ("+numKeep+"/"+total+") of reads.");
+		System.out.println("[a5_qc_load_data] Keeping "+NF.format(perc)+"% ("+numKeep+"/"+total+") of reads.");
 		ReadCluster.RDLEN = rdLen;
 		/*
 		 * Set LAMDBA, our Poisson rate parameter. We will use this to 

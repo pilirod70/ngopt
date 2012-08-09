@@ -47,6 +47,14 @@ public class MisassemblyRange {
 		
 	}
 	
+	public MisassemblyBlock getLeftBlock(){
+		return leftBlock;
+	}
+	
+	public MisassemblyBlock getRightBlock(){
+		return rightBlock;
+	}
+	
 	public boolean addPos(int pos, double score){
 		if (!contains(pos))
 			return false;
@@ -57,7 +65,7 @@ public class MisassemblyRange {
 	}
 	
 	public boolean contains(int pos){
-		return pos >= leftBlock.getRight() && pos <= rightBlock.getLeft();
+		return pos >= left && pos <= right;
 	}
 	
 	public void printState(PrintStream out) {
@@ -143,7 +151,7 @@ public class MisassemblyRange {
 				min = mid+1;
 			else
 				return mid;
-			mid = (max+mid)/2;
+			mid = (max+min)/2;
 		}
 		if (pos >= ranges.get(mid).left)
 			return mid;

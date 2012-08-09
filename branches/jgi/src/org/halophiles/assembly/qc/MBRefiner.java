@@ -89,17 +89,6 @@ public class MBRefiner {
 		}
 	}
 	
-	public static void scoreAtBaseLevel(String bamPath, String bedPath, String ctgPath, Map<String, Vector<MisassemblyRange>> regions) throws IOException {
-		try {
-			runMPileup(bamPath, bedPath, ctgPath, regions);
-		} catch (InterruptedException e) {
-			System.err.println("Unable to run samtools mpileup. This is what I know:");
-			e.printStackTrace();
-			System.exit(-1);
-		}
-	}
-	
-	
 	public static Map<String, int[]> refine(Map<String, Vector<MisassemblyRange>> regions) throws IOException{
 		Map<String, int[]> ret = new HashMap<String, int[]>();
 		Iterator<String> ctgIt = regions.keySet().iterator();
@@ -131,8 +120,7 @@ public class MBRefiner {
 		int[] junctions;
 		while (br.ready()) {
 			tmpCtg = br.readLine();
-			// Take only the first part of the contig header to be consistent
-			// with bwa
+			// Take only the first part of the contig header to be consistent with bwa
 			if (tmpCtg.contains(" "))
 				tmpCtg = tmpCtg.substring(0, tmpCtg.indexOf(" "));
 			sb = new StringBuilder();
@@ -209,18 +197,21 @@ public class MBRefiner {
 
 
 		Vector<MisassemblyRange> ranges = null;
-		
+		MisassemblyRange tmpReg = null;
 		while (in.ready()){
 			entry = in.readLine().split("\t");
 			// skip any header in the file
 			if (entry[0].startsWith("#"))
 				continue;
-			if (ret.containsKey(entry[0]))
-				ranges = ret.get(entry[0]);
-			else
-				ranges = new Vector<MisassemblyRange>();
 			tmpBlks = blocksByRegion.get(entry[3]);
-			ranges.add(new MisassemblyRange(contigs.get(entry[0]), tmpBlks[0], tmpBlks[1]));
+			tmpReg = new MisassemblyRange(contigs.get(entry[0]), tmpBlks[0], tmpBlks[1]);
+			if (ret.containsKey(entry[0])) 
+				ret.get(entry[0]).add(tmpReg);
+			else {
+				ranges = new Vector<MisassemblyRange>();
+				ranges.add(tmpReg);
+				ret.put(entry[0], ranges);
+			}
 		}
 		return ret;
 	}
@@ -272,13 +263,13 @@ public class MBRefiner {
 		// System.err.println("Executing command: " + cmd);
 		String cmd = SAMTOOLS + " mpileup -d 350 -f " + ctgPath + " -l "+ bedPath + " " + bamPath;
 		System.out.println("[a5_qc] Executing: " + cmd);
-		Process p = Runtime.getRuntime().exec(cmd);
 		LineHandler errLH = new LineHandler() {
 			public void handleLine(String line) {
 				System.out.println(line);
 			}
 		};
 		PileupEvaluator plpEval = new PileupEvaluator(regions,new PileupScorer());
+		Process p = Runtime.getRuntime().exec(cmd);
 		StreamReader errRdr = new StreamReader(p.getErrorStream(), errLH);
 		StreamReader outRdr = new StreamReader(p.getInputStream(), plpEval);
 		errRdr.start();
@@ -299,29 +290,19 @@ public class MBRefiner {
 		}
 
 		public void run() {
-			synchronized(this){
-				finished=false;
-			}
 			try {
 				InputStreamReader isr = new InputStreamReader(in);
 				BufferedReader br = new BufferedReader(isr);
 				String line = null;
+				if (lineHandler instanceof PileupEvaluator)
+					System.out.print("");
 				while ((line = br.readLine()) != null) {
 					lineHandler.handleLine(line);
 					//System.err.println("read line");
 				}
 			} catch (IOException ioe) {
 				ioe.printStackTrace();
-			} finally {
-				synchronized (this) {
-					finished=true;
-					notifyAll();
-				}
 			}
-		}
-		
-		public synchronized boolean isFinished(){
-			return finished;
 		}
 	}
 
@@ -339,11 +320,18 @@ public class MBRefiner {
 		public void handleLine(String line) {
 			String[] plp = line.split("\t");
 			Vector<MisassemblyRange> tmpRegs = regions.get(plp[0]);
+			if (tmpRegs == null)
+				System.out.print("");
 			int pos = Integer.parseInt(plp[1]);
 			double score = scorer.scorePileup(plp[4])/Double.parseDouble(plp[3]);
 			int regIdx = MisassemblyRange.binarySearch(tmpRegs, pos);
-			if (regIdx >= 0)
-				tmpRegs.get(regIdx).addPos(pos, score);
+			if (pos > 1099967 && pos < 1100130)
+				System.out.print("");
+			MisassemblyRange reg = null;
+			if (regIdx >= 0){
+				reg = tmpRegs.get(regIdx);
+				reg.addPos(pos, score);
+			}
 			numLines++;
 		}
 	}
