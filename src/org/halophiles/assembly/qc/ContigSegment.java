@@ -6,7 +6,7 @@ import java.util.Vector;
 
 import org.halophiles.assembly.Contig;
 
-public class ContigSegment {
+public class ContigSegment implements Comparable<ContigSegment>{
 	
 	private static int COUNT = 0;
 	
@@ -109,5 +109,9 @@ public class ContigSegment {
 	
 	public boolean isRepeat(){
 		return left.size() > 1 || right.size() > 1;
+	}
+
+	public int compareTo(ContigSegment arg0) {
+		return this.id - arg0.id;
 	}
 }

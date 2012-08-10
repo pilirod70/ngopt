@@ -1,9 +1,13 @@
 package org.halophiles.assembly.qc;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.Vector;
 
 import org.halophiles.assembly.Contig;
@@ -44,16 +48,24 @@ public class ContigOrderer {
 		}
 	}
 	
-	public static void buildGraph(Map<String,Vector<MisassemblyRange>> regions, Map<String,Contig> contigs){
+	/**
+	 * Builds a graph of ContigSegments from the given MisassemblyRanges. This does so by using the underlying
+	 * MisassemblyBlocks that were used to call the MisassemblyRanges
+	 * 
+	 * @param regions the MisassemblyRanges for each contig
+	 * @param contigs the Contigs that this MisassemblyRanges exits
+	 * @return a Set of connected components, where components are ContigSegments
+	 */
+	public static Set<SortedSet<ContigSegment>> buildGraph(Map<String,Vector<MisassemblyRegion>> regions, Map<String,Contig> contigs){
 		Iterator<String> ctgIt = regions.keySet().iterator();
-		Vector<MisassemblyRange> reg = null;
+		Vector<MisassemblyRegion> reg = null;
 		String ctgKey = null;
 		Contig tmpCtg;
 		Map<MisassemblyBlock, ContigSegment> blockMap = new HashMap<MisassemblyBlock, ContigSegment>();
 		Map<ContigSegment, Vector<MisassemblyBlock>> segMap = new HashMap<ContigSegment, Vector<MisassemblyBlock>>();
 		
 		ContigSegment tmpSeg = null;
-		MisassemblyRange tmpReg = null;
+		MisassemblyRegion tmpReg = null;
 		int left = 1;
 		int right = -1;
 		while (ctgIt.hasNext()) {
@@ -84,35 +96,88 @@ public class ContigOrderer {
 		MisassemblyBlock tmpBlock = null;
 		ContigSegment tmpCnct = null;
 		int tmpOri = -1;
+		/*
+		 * for each ContigSegment, get its associated blocks, and add
+		 * the ContigSegments that are connected via these blocks 
+		 */
 		while (segIt.hasNext()){
 			tmpSeg = segIt.next();
 			blockIt = getLeftBlocks(tmpSeg, segMap.get(tmpSeg)).iterator();
 			while(blockIt.hasNext()){
 				tmpBlock = blockIt.next();
 				tmpCnct = blockMap.get(tmpBlock.getConnection());
-				
 				tmpSeg.addLeftConnection(tmpCnct, tmpOri);
+			}
+			blockIt = getRightBlocks(tmpSeg, segMap.get(tmpSeg)).iterator();
+			while(blockIt.hasNext()){
+				tmpBlock = blockIt.next();
+				tmpCnct = blockMap.get(tmpBlock.getConnection());
+				tmpSeg.addRightConnection(tmpCnct, tmpOri);
 			}
 		}
 		
+		/*
+		 * BEGIN: Build connected components
+		 */
+		segIt = segMap.keySet().iterator();
+		Set<SortedSet<ContigSegment>> connectedComponents = new HashSet<SortedSet<ContigSegment>>();
+		while (segIt.hasNext()) {
+			tmpSeg = segIt.next();
+			if (tmpSeg.getVisited())
+				continue;
+			SortedSet<ContigSegment> cc = new TreeSet<ContigSegment>();
+			buildConnectedComponent(tmpSeg, cc);
+			connectedComponents.add(cc);
+		}
+		
+		// clear our visit marks
+		segIt = segMap.keySet().iterator();
+		while(segIt.hasNext())
+			segIt.next().setVisited(false);
+		
+		return connectedComponents;
 	}
 	
-	public static Vector<MisassemblyBlock> getLeftBlocks(ContigSegment seg, Vector<MisassemblyBlock> blocks) {
+	/**
+	 * Recursive algorithm for 
+	 * @param seg
+	 * @param cc
+	 */
+	private static void buildConnectedComponent(ContigSegment seg, SortedSet<ContigSegment> cc){ 
+		if (seg.getVisited())
+			return;
+		seg.setVisited(true);
+		cc.add(seg);
+		if (seg.getLeftSegments().size() > 0){
+			Iterator<ContigSegment> it = seg.getLeftSegments().iterator();
+			while (it.hasNext())
+				buildConnectedComponent(it.next(),cc);
+		}
+		if (seg.getRightSegments().size() > 0){
+			Iterator<ContigSegment> it = seg.getRightSegments().iterator();
+			while (it.hasNext())
+				buildConnectedComponent(it.next(),cc);
+		}
+	}
+	
+	private static Vector<MisassemblyBlock> getLeftBlocks(ContigSegment seg, Vector<MisassemblyBlock> blocks) {
 		Vector<MisassemblyBlock> ret = new Vector<MisassemblyBlock>();
 		MisassemblyBlock tmp = null;
 		for (int i = 0; i < blocks.size(); i++){
 			tmp = blocks.get(i);
-			if (tmp.getLeft() - seg.getStart() > tmp.getRight() - seg.getEnd())
+			// if its closer to the left, call this a left block
+			if (tmp.getLeft() - seg.getStart() < tmp.getRight() - seg.getEnd())
 				ret.add(tmp);
 		}
 		return ret;
 	}
 	
-	public static Vector<MisassemblyBlock> getRightBlocks(ContigSegment seg, Vector<MisassemblyBlock> blocks) {
+	private static Vector<MisassemblyBlock> getRightBlocks(ContigSegment seg, Vector<MisassemblyBlock> blocks) {
 		Vector<MisassemblyBlock> ret = new Vector<MisassemblyBlock>();
 		MisassemblyBlock tmp = null;
 		for (int i = 0; i < blocks.size(); i++){
 			tmp = blocks.get(i);
+			// if its closer to the right, call this a right block
 			if (tmp.getLeft() - seg.getStart() > tmp.getRight() - seg.getEnd())
 				ret.add(tmp);
 		}

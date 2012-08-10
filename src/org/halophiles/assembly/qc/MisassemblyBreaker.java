@@ -173,7 +173,7 @@ public class MisassemblyBreaker {
 			File bamFile = new File(base+".bam");
 			File bedFile = new File(base+".regions.bed");
 			File connectionsFile = new File(base+".connections");
-			Map<String,Vector<MisassemblyRange>> regions = null;
+			Map<String,Vector<MisassemblyRegion>> regions = null;
 			
 			RandomAccessFile raf = new RandomAccessFile(samFile, "r");
 			Map<String,Contig> contigs = readContigs(raf);
@@ -243,7 +243,7 @@ public class MisassemblyBreaker {
 	 * 
 	 * @returns true if any regions containing misassemblies are found, false otherwise
 	 */
-	private static Map<String,Vector<MisassemblyRange>> findMisasmRegions(File samFile, File bedFile, File connectionsFile, Map<String,Contig> contigs, double[][] insertStats) throws IOException{
+	private static Map<String,Vector<MisassemblyRegion>> findMisasmRegions(File samFile, File bedFile, File connectionsFile, Map<String,Contig> contigs, double[][] insertStats) throws IOException{
 
 		System.out.println("[a5_qc] Reading "+samFile.getPath());
 		
@@ -319,8 +319,8 @@ public class MisassemblyBreaker {
 		}*/
 		PrintStream bedOut = null;
 		PrintStream connectionsOut = null;
-		Map<String,Vector<MisassemblyRange>> ret = null;
-		MisassemblyRange tmpRange;
+		Map<String,Vector<MisassemblyRegion>> ret = null;
+		MisassemblyRegion tmpRange;
 		if (!blocks.isEmpty()) {
 			Iterator<String> ctgIt = blocks.keySet().iterator();
 			String tmpCtg;
@@ -334,7 +334,7 @@ public class MisassemblyBreaker {
 					continue;
 			
 				// Collections.sort(tmpBlks,BLOCK_COMP); // This was already sorted abov 
-				Vector<MisassemblyRange> ranges = null;
+				Vector<MisassemblyRegion> ranges = null;
 				for (int i = 1; i < tmpBlks.size(); i++){
 					// if they don't face each other, there isn't a misassembly in between this pair of blocks
 					if (tmpBlks.get(i-1).getRev() || !tmpBlks.get(i).getRev()) 
@@ -357,11 +357,11 @@ public class MisassemblyBreaker {
 							bedOut = new PrintStream(bedFile);
 							connectionsOut = new PrintStream(connectionsFile);
 							System.out.println("[a5_qc] Writing regions containing misassemblies to " + bedFile.getAbsolutePath());
-							ret = new HashMap<String, Vector<MisassemblyRange>>();
+							ret = new HashMap<String, Vector<MisassemblyRegion>>();
 						}
 						if (ranges == null)
-							ranges = new Vector<MisassemblyRange>();
-						tmpRange = new MisassemblyRange(contigs.get(tmpCtg), tmpBlks.get(i-1), tmpBlks.get(i));
+							ranges = new Vector<MisassemblyRegion>();
+						tmpRange = new MisassemblyRegion(contigs.get(tmpCtg), tmpBlks.get(i-1), tmpBlks.get(i));
 						bedOut.println(tmpRange.toString());
 						logConnection(connectionsOut, tmpRange.getId(), tmpBlks.get(i-1), tmpBlks.get(i));
 						ranges.add(tmpRange);
@@ -369,7 +369,7 @@ public class MisassemblyBreaker {
 				}
 				if (ranges != null) {
 					if (ret == null)
-						ret = new HashMap<String, Vector<MisassemblyRange>>();
+						ret = new HashMap<String, Vector<MisassemblyRegion>>();
 					ret.put(tmpCtg, ranges);
 				}
 			}
