@@ -5,7 +5,7 @@ import java.util.Vector;
 
 import org.halophiles.assembly.Contig;
 
-public class MisassemblyRange {
+public class MisassemblyRegion {
 	
 	private static int COUNT = 0;
 	
@@ -18,7 +18,7 @@ public class MisassemblyRange {
 	private int n;
 	private double oldM, newM, oldS, newS, min, max;
 	
-	public MisassemblyRange (Contig contig, MisassemblyBlock leftBlock, MisassemblyBlock rightBlock) {
+	public MisassemblyRegion (Contig contig, MisassemblyBlock leftBlock, MisassemblyBlock rightBlock) {
 		this.contig = contig;
 		this.leftBlock = leftBlock;
 		this.rightBlock = rightBlock;
@@ -140,7 +140,7 @@ public class MisassemblyRange {
 	 * @param pos the position we are looking for
 	 * @return
 	 */
-	public static int binarySearch(Vector<MisassemblyRange> ranges, int pos){
+	public static int binarySearch(Vector<MisassemblyRegion> ranges, int pos){
 		int max = ranges.size() - 1;
 		int min = 0;
 		int mid = (max+min)/2;
