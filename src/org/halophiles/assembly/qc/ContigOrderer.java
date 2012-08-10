@@ -3,7 +3,6 @@ package org.halophiles.assembly.qc;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -16,43 +15,16 @@ public class ContigOrderer {
 
 	public static final double MIN_PLP_SCORE = 0.9;
 	
-	public static void printOrder(ContigSegment start){
-		
-		LinkedList<ContigSegment> order = new LinkedList<ContigSegment>();
-		ContigSegment curr = start;
-		ContigSegment next = null;
-		while(curr.getRightSegments() != null){
-			if (curr.inverted())
-				next = curr.getLeftSegments().get(0);
-			else
-				next = curr.getRightSegments().get(0);
-			
-			order.add(curr);
-			curr = next;
-		}
-		ContigSegment prev = null;
-		prev = curr;
-		String tag = "";
-		
-		curr = order.pollFirst();
-		while(!order.isEmpty()){
-			curr = order.pollFirst();
-			if (next == curr)
-				tag = "circular";
-			if (curr.inverted())
-				System.out.println("inv["+curr+tag+"]");
-			else 
-				System.out.println(curr+tag);
-			prev = curr;
-			tag = "";
-		}
+	public static void exportNewContigs(Map<String,Vector<MisassemblyRegion>> regions, Map<String,Contig> contigs){
+		Set<SortedSet<ContigSegment>> conComps = buildGraph(regions, contigs);
+		System.out.println("Found " + conComps.size()+" connected components");
 	}
 	
 	/**
-	 * Builds a graph of ContigSegments from the given MisassemblyRanges. This does so by using the underlying
-	 * MisassemblyBlocks that were used to call the MisassemblyRanges
+	 * Builds a graph of ContigSegments from the given MisassemblyRanges. This does so by  
+	 * using the underlying MisassemblyBlocks that were used to call the MisassemblyRegions.
 	 * 
-	 * @param regions the MisassemblyRanges for each contig
+	 * @param regions the MisassemblyRegions for each contig
 	 * @param contigs the Contigs that this MisassemblyRanges exits
 	 * @return a Set of connected components, where components are ContigSegments
 	 */
@@ -66,36 +38,51 @@ public class ContigOrderer {
 		
 		ContigSegment tmpSeg = null;
 		MisassemblyRegion tmpReg = null;
-		int left = 1;
-		int right = -1;
+		int start = 1;
+		int end = -1;
+		MisassemblyBlock blockL = null;
+		MisassemblyBlock blockR = null;
 		while (ctgIt.hasNext()) {
 			ctgKey = ctgIt.next();
 			reg = regions.get(ctgKey);
 			tmpCtg = contigs.get(ctgKey);
+			blockL = tmpCtg.getLeftBlock();
 			for (int i = 0; i < reg.size(); i++){
 				tmpReg = reg.get(i);
 				if (tmpReg.getMinScore() < MIN_PLP_SCORE){
-					right = tmpReg.getMinPos();
-					tmpSeg = new ContigSegment(tmpCtg, left, right);
+					// get the end of this ContigSegment, and the block at that end
+					end = tmpReg.getMinPos();
+					blockR = tmpReg.getLeftBlock();
+					// create our ContigSegment object and this segments list of blocks
+					tmpSeg = new ContigSegment(tmpCtg, start, end);
 					segMap.put(tmpSeg, new Vector<MisassemblyBlock>());
-					segMap.get(tmpSeg).add(tmpReg.getLeftBlock());
-					blockMap.put(tmpReg.getLeftBlock(), tmpSeg);
-					if (i > 0){
-						segMap.get(tmpSeg).add(reg.get(i-1).getRightBlock());
-						blockMap.put(reg.get(i-1).getRightBlock(),tmpSeg);
-					} else if (tmpCtg.hasEndBlock()) {
-						segMap.get(tmpSeg).add(tmpCtg.getEndBlock());
-						blockMap.put(tmpCtg.getEndBlock(), tmpSeg);
-					}
+					// add the mapping between this segment and its right block
+					segMap.get(tmpSeg).add(blockR);
+					blockMap.put(blockR, tmpSeg);
+					// add the mapping between this segment and its left block
+					segMap.get(tmpSeg).add(blockL);
+					blockMap.put(blockL, tmpSeg);
+					// update the left block on this segment
+					blockL = tmpReg.getRightBlock();
+					start = end+1;
 				}
 			}
+			tmpSeg = new ContigSegment(tmpCtg, start, end);
+			segMap.put(tmpSeg, new Vector<MisassemblyBlock>());
+			end = tmpCtg.len;
+			blockR = tmpCtg.getRightBlock();
+			// add the mapping between this segment and its right block
+			segMap.get(tmpSeg).add(blockR);
+			blockMap.put(blockR, tmpSeg);
+			// add the mapping between this segment and its left block
+			segMap.get(tmpSeg).add(blockL);
+			blockMap.put(blockL, tmpSeg);
 		}
 		
 		Iterator<ContigSegment> segIt = segMap.keySet().iterator();
 		Iterator<MisassemblyBlock> blockIt = null;
 		MisassemblyBlock tmpBlock = null;
 		ContigSegment tmpCnct = null;
-		int tmpOri = -1;
 		/*
 		 * for each ContigSegment, get its associated blocks, and add
 		 * the ContigSegments that are connected via these blocks 
@@ -106,13 +93,13 @@ public class ContigOrderer {
 			while(blockIt.hasNext()){
 				tmpBlock = blockIt.next();
 				tmpCnct = blockMap.get(tmpBlock.getConnection());
-				tmpSeg.addLeftConnection(tmpCnct, tmpOri);
+				tmpSeg.addLeftConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
 			}
 			blockIt = getRightBlocks(tmpSeg, segMap.get(tmpSeg)).iterator();
 			while(blockIt.hasNext()){
 				tmpBlock = blockIt.next();
 				tmpCnct = blockMap.get(tmpBlock.getConnection());
-				tmpSeg.addRightConnection(tmpCnct, tmpOri);
+				tmpSeg.addRightConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
 			}
 		}
 		
@@ -129,8 +116,11 @@ public class ContigOrderer {
 			buildConnectedComponent(tmpSeg, cc);
 			connectedComponents.add(cc);
 		}
+		/*
+		 * END: Build connected components
+		 */
 		
-		// clear our visit marks
+		// clear the visit marks
 		segIt = segMap.keySet().iterator();
 		while(segIt.hasNext())
 			segIt.next().setVisited(false);
@@ -138,12 +128,27 @@ public class ContigOrderer {
 		return connectedComponents;
 	}
 	
+	private static int getOri(boolean rev1, boolean rev2){
+		if (rev1)
+			if (rev2)
+				return MatchPoint.RR;
+			else
+				return MatchPoint.RF;
+		else
+			if (rev2)
+				return MatchPoint.FR;
+			else
+				return MatchPoint.FF;
+	}
+	
 	/**
-	 * Recursive algorithm for 
-	 * @param seg
-	 * @param cc
+	 * Recursive algorithm for building connected components 
+	 * @param seg the segment that needs to be added to this connected component
+	 * @param cc the set of components that are connected to build upon
 	 */
 	private static void buildConnectedComponent(ContigSegment seg, SortedSet<ContigSegment> cc){ 
+		if (seg == null)
+			System.out.print("");
 		if (seg.getVisited())
 			return;
 		seg.setVisited(true);

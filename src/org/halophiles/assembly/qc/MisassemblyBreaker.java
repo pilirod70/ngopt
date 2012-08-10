@@ -187,6 +187,7 @@ public class MisassemblyBreaker {
 			}
 			if (regions != null) { // if we created a bedFile, we have regions containing misassemblies
 				MBRefiner.scoreAtBaseLevel(bamFile, bedFile, ctgFile, regions, contigs);
+				ContigOrderer.exportNewContigs(regions, contigs);
 				MBRefiner.breakContigs(MBRefiner.refine(regions), ctgPath, brokenCtgPath);
 			}
 			

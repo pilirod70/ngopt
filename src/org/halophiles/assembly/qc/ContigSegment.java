@@ -47,14 +47,20 @@ public class ContigSegment implements Comparable<ContigSegment>{
 		this.visited = false;
 		this.id = COUNT++;
 		ori = new HashMap<ContigSegment, Integer>();
+		left = new Vector<ContigSegment>();
+		right = new Vector<ContigSegment>();
 	}
 	
 	public void addLeftConnection(ContigSegment seg, int ori){
+		if (seg == null)
+			System.out.print("");
 		left.add(seg);
 		this.ori.put(seg,ori);
 	}
 	
 	public void addRightConnection(ContigSegment seg, int ori){
+		if (seg == null)
+			System.out.print("");
 		right.add(seg);
 		this.ori.put(seg,ori);
 	}
