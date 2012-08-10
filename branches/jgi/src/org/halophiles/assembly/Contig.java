@@ -30,7 +30,9 @@ public class Contig implements Comparable<Contig> {
 	private int out;
 	private int in;
 	
-	private MisassemblyBlock endBlock = null;
+	private MisassemblyBlock leftBlock = null;
+	private MisassemblyBlock rightBlock = null;
+
 	
 	public Contig(String name, int len){
 		this(name);
@@ -152,15 +154,27 @@ public class Contig implements Comparable<Contig> {
 		return end;
 	}
 	
-	public MisassemblyBlock getEndBlock(){
-		return endBlock;
+	public MisassemblyBlock getLeftBlock(){
+		return leftBlock;
 	}
 	
-	public void addEndBlock(MisassemblyBlock block){
-		endBlock = block;
+	public void addLeftBlock(MisassemblyBlock block){
+		leftBlock = block;
 	}
 	
-	public boolean hasEndBlock(){
-		return endBlock != null;
+	public boolean hasLeftBlock(){
+		return leftBlock != null;
+	}
+	
+	public MisassemblyBlock getRightBlock(){
+		return rightBlock;
+	}
+	
+	public void addRightBlock(MisassemblyBlock block){
+		rightBlock = block;
+	}
+	
+	public boolean hasRightBlock(){
+		return rightBlock != null;
 	}
 }
