@@ -23,34 +23,34 @@ struct read {
 
 
 struct printer {
-	ofstream* p1; 
-	ofstream* p2; 
+	ofstream* p1out; 
+	ofstream* p2out; 
 	bool print_fasta;
 	bool revcomp;
 		
 	printer(string prefix, string base, string suffix, bool print_fasta, bool revcomp, bool shuf){
 		if (shuf) {
-			p1 = new ofstream((prefix+base+"_shuf"+suffix).c_str());
-			p2 = p1; 
+			p1out = new ofstream((prefix+base+"_shuf"+suffix).c_str());
+			p2out = p1out; 
 		} else {
-			p1 = new ofstream((prefix+base+"_p1"+suffix).c_str());
-			p2 = new ofstream((prefix+base+"_p2"+suffix).c_str());
+			p1out = new ofstream((prefix+base+"_p1"+suffix).c_str());
+			p2out = new ofstream((prefix+base+"_p2"+suffix).c_str());
 		}
 	}
 	
-	void print(read& r1, read& r2){
+	void print(struct read * r1, struct read * r2){
 		if (fastq && !print_fasta) {
-			p1out << "@" << r1->hdr << "\n" << r1->seq << "\n+" << r1->hdr << "\n" << r1->qual << endl;
-			p2out << "@" << r2->hdr << "\n" << r2->seq << "\n+" << r2->hdr << "\n" << r2->qual << endl;
+			*p1out << "@" << r1->hdr << "\n" << r1->seq << "\n+" << r1->hdr << "\n" << r1->qual << endl;
+			*p2out << "@" << r2->hdr << "\n" << r2->seq << "\n+" << r2->hdr << "\n" << r2->qual << endl;
 		} else {
-			p1out << ">" << r1->hdr << "\n" << r1->seq << endl;
-			p2out << ">" << r2->hdr << "\n" << r2->seq << endl;
+			*p1out << ">" << r1->hdr << "\n" << r1->seq << endl;
+			*p2out << ">" << r2->hdr << "\n" << r2->seq << endl;
 
 		}
 	
 	}
 
-}
+};
 
 
 char comp(char b) {
