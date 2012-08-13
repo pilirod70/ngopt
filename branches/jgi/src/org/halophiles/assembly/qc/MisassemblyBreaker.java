@@ -177,17 +177,17 @@ public class MisassemblyBreaker {
 			
 			RandomAccessFile raf = new RandomAccessFile(samFile, "r");
 			Map<String,Contig> contigs = readContigs(raf);
-			
-			
 			if (!bedFile.exists() || (bedFile.exists() && HelperFunctions.isEmpty(bedFile))) {
-				regions = findMisasmRegions(samFile, bedFile, connectionsFile, contigs, getInsertStats(raf, contigs));
+				double[][] insertStats = getInsertStats(raf, contigs);
+				processInput(samFile, contigs, insertStats);
+				regions = findMisasmRegions(base, bedFile, connectionsFile, contigs);
 			} else {
 				regions = MBRefiner.getRegions(bedFile, connectionsFile, contigs);
 				System.out.println("[a5_qc] Found a bed file. Assuming I generated this in a past run and proceeding");
 			}
 			if (regions != null) { // if we created a bedFile, we have regions containing misassemblies
 				MBRefiner.scoreAtBaseLevel(bamFile, bedFile, ctgFile, regions, contigs);
-				ContigOrderer.exportNewContigs(regions, contigs);
+			//	ContigOrderer.exportNewContigs(regions, contigs);
 				MBRefiner.breakContigs(MBRefiner.refine(regions), ctgPath, brokenCtgPath);
 			}
 			
@@ -237,6 +237,18 @@ public class MisassemblyBreaker {
 		return getLibraryStats(reads, 1);
 	}
 	
+	
+	private static void processInput(File samFile, Map<String,Contig> contigs, double[][] insertStats) throws IOException{
+		System.out.println("[a5_qc] Reading "+samFile.getPath());
+		double[][] insRanges = getFilterRanges(insertStats);
+		//setMAXBLOCKLEN(clusterStats);
+		//loadBAMData(samPath, contigs, ranges);
+		loadData(samFile, contigs, insRanges);
+		
+		setParameters(insertStats);
+		printParams();
+	}
+	
 	/**
 	 * Identifies regions containing misassemblies using the provided SAM file, and writes
 	 * these regions to a BED file under the given path. If no regions are found, nothing 
@@ -244,21 +256,7 @@ public class MisassemblyBreaker {
 	 * 
 	 * @returns true if any regions containing misassemblies are found, false otherwise
 	 */
-	private static Map<String,Vector<MisassemblyRegion>> findMisasmRegions(File samFile, File bedFile, File connectionsFile, Map<String,Contig> contigs, double[][] insertStats) throws IOException{
-
-		System.out.println("[a5_qc] Reading "+samFile.getPath());
-		
-		double[][] insRanges = getFilterRanges(insertStats);
-		//setMAXBLOCKLEN(clusterStats);
-		//loadBAMData(samPath, contigs, ranges);
-		loadData(samFile, contigs, insRanges);
-		
-		String base = HelperFunctions.dirname(samFile.getAbsolutePath())+"/"+HelperFunctions.basename(samFile.getAbsolutePath(), ".bam");
-		setParameters(insertStats);
-		
-		
-		printParams();
-		
+	private static Map<String,Vector<MisassemblyRegion>> findMisasmRegions(String logBase, File bedFile, File connectionsFile, Map<String,Contig> contigs) throws IOException{
 		// collect all of our blocks for each contig
 		Iterator<SpatialClusterer> mbIt = matches.iterator();
 		Map<String,Vector<MisassemblyBlock>> blocks = new HashMap<String,Vector<MisassemblyBlock>>();
@@ -266,7 +264,7 @@ public class MisassemblyBreaker {
 		Vector<MisassemblyBlock> yBlocks = null;
 		while(mbIt.hasNext()){
 			SpatialClusterer pc = mbIt.next();
-			String statePath = base+".matches."+HelperFunctions.basename(pc.getContig1().name)+".v."+HelperFunctions.basename(pc.getContig2().name)+".txt";
+			String statePath = logBase+".matches."+HelperFunctions.basename(pc.getContig1().name)+".v."+HelperFunctions.basename(pc.getContig2().name)+".txt";
 			pc.exportCurrState(statePath);
 			// get Vector for holding contig X blocks
 			xBlocks = new Vector<MisassemblyBlock>();
@@ -327,16 +325,27 @@ public class MisassemblyBreaker {
 			String tmpCtg;
 			int left = -1;
 			int right = -1;
+			int startList = -1;
+			int endList = -1;
 			while(ctgIt.hasNext()){
 				tmpCtg = ctgIt.next();
 				Vector<MisassemblyBlock> tmpBlks = blocks.get(tmpCtg);
-	
+				startList = 1;
+				endList = tmpBlks.size()-1;
+				
 				if (tmpBlks.size() < 2)
 					continue;
 			
-				// Collections.sort(tmpBlks,BLOCK_COMP); // This was already sorted abov 
+				if (tmpBlks.get(0).getConnection() == tmpBlks.get(tmpBlks.size()-1)) {
+					connectionsFile.createNewFile();
+					connectionsOut = new PrintStream(connectionsFile);
+					logConnection(connectionsOut, "circ"+contigs.get(tmpCtg).getId(), tmpBlks.get(0), tmpBlks.get(tmpBlks.size()-1));
+					contigs.get(tmpCtg).addLeftBlock(tmpBlks.get(0));
+					contigs.get(tmpCtg).addRightBlock(tmpBlks.get(tmpBlks.size()-1));
+				}
+				
 				Vector<MisassemblyRegion> ranges = null;
-				for (int i = 1; i < tmpBlks.size(); i++){
+				for (int i = startList; i <= endList; i++){
 					// if they don't face each other, there isn't a misassembly in between this pair of blocks
 					if (tmpBlks.get(i-1).getRev() || !tmpBlks.get(i).getRev()) 
 						continue;
@@ -354,9 +363,11 @@ public class MisassemblyBreaker {
 						// if they overlap, split at the midpoint of overlap
 						if (bedOut == null) { // don't create the file if we don't need to
 							bedFile.createNewFile();
-							connectionsFile.createNewFile();
 							bedOut = new PrintStream(bedFile);
-							connectionsOut = new PrintStream(connectionsFile);
+							if (connectionsOut == null){
+								connectionsFile.createNewFile();
+								connectionsOut = new PrintStream(connectionsFile);
+							}
 							System.out.println("[a5_qc] Writing regions containing misassemblies to " + bedFile.getAbsolutePath());
 							ret = new HashMap<String, Vector<MisassemblyRegion>>();
 						}
@@ -381,6 +392,26 @@ public class MisassemblyBreaker {
 			connectionsOut.close();
 		}
 		return ret;
+	}
+	
+	private static boolean isCircularBlock(Contig contig, MisassemblyBlock block){
+		MisassemblyBlock blockL = null;
+		MisassemblyBlock blockR = null;
+		if (block.getRight() < block.getConnection().getLeft()){ 
+			blockL = block;
+			blockR = block.getConnection();
+		} else {
+			blockL = block.getConnection();
+			blockR = block;
+		}
+		
+		double perc = ((double) blockL.getRight() - blockL.getLeft())/blockL.getRight();
+		if (perc < 0.9)
+			return false;
+		perc = ((double) blockR.getRight() - blockR.getLeft())/(contig.len - blockR.getLeft());
+		if (perc < 0.9)
+			return false;
+		return true;
 	}
 	
 	private static void logConnection(PrintStream out, String range, MisassemblyBlock left, MisassemblyBlock right){
