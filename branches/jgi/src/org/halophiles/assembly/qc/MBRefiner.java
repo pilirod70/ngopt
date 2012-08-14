@@ -6,16 +6,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.Vector;
 
-import net.sf.samtools.SAMFileReader;
 
 import org.halophiles.assembly.Contig;
 import org.halophiles.tools.HelperFunctions;
@@ -24,44 +19,6 @@ public class MBRefiner {
 
 	private static final String SAMTOOLS = "/jgi/tools/bin/samtools";
 
-	public static void main(String[] args) {
-		HelperFunctions.logInputs("MBRefiner", args);
-		if (args.length == 4) {
-			try {
-				File bamFile = new File(args[0]);
-				File bedFile = new File(args[1]);
-				File connectionsFile = new File(args[2]);
-				File ctgFile = new File(args[2]);
-				File brokenFile = new File(args[3]);
-				Map<String, Contig> contigs = MisassemblyBreaker.getContigs(new SAMFileReader(bamFile));
-				Map<String, Vector<MisassemblyRegion>> ranges = getRegions(bedFile, connectionsFile, contigs);
-				scoreAtBaseLevel(bamFile, bedFile, ctgFile, ranges, contigs);
-				Map<String, int[]> junctions = refine(ranges);
-				breakContigs(junctions, ctgFile.getAbsolutePath(), brokenFile.getAbsolutePath());
-
-			} catch (IOException e) {
-				e.printStackTrace();
-				System.exit(-1);
-			}	
-		} else  
-		/*if (args.length == 4) {
-			try {
-				String bedPath = args[0];
-				String plpPath = args[1];
-				String ctgPath = args[2];
-				String brokenPath = args[3];
-	
-				Map<String, int[]> junctions = refine(bedPath, plpPath);
-				breakContigs(junctions, ctgPath, brokenPath);
-			} catch (IOException e) {
-				e.printStackTrace();
-				System.exit(-1);
-			}	
-		} else*/ {
-			System.out.println("Usage: MBRefiner <bam_file> <bed_file> <contig_file> <broken_ctgs_file>");
-			System.exit(-1);
-		}
-	}
 	/**
 	 * This function is used if we already have pileup file.
 	 * 
