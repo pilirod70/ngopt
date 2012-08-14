@@ -2,10 +2,14 @@ package org.halophiles.assembly.qc;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Vector;
 
+import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
+import net.sf.samtools.SAMSequenceRecord;
 
 import org.halophiles.assembly.Contig;
 import org.halophiles.tools.HelperFunctions;
@@ -20,7 +24,7 @@ public class TestMBRefiner {
 				File connectionsFile = new File(args[2]);
 				File ctgFile = new File(args[2]);
 				File brokenFile = new File(args[3]);
-				Map<String, Contig> contigs = MisassemblyBreaker.getContigs(new SAMFileReader(bamFile));
+				Map<String, Contig> contigs = getContigs(new SAMFileReader(bamFile));
 				Map<String, Vector<MisassemblyRegion>> ranges = MBRefiner.getRegions(bedFile, connectionsFile, contigs);
 				MBRefiner.scoreAtBaseLevel(bamFile, bedFile, ctgFile, ranges, contigs);
 				Map<String, int[]> junctions = MBRefiner.refine(ranges);
@@ -49,4 +53,17 @@ public class TestMBRefiner {
 			System.exit(-1);
 		}
 	}
+	public static Map<String,Contig> getContigs(SAMFileReader sam) {
+		SAMFileHeader hdr = sam.getFileHeader();
+		Iterator<SAMSequenceRecord> it = hdr.getSequenceDictionary().getSequences().iterator();
+		SAMSequenceRecord tmp = null;
+		Map<String,Contig> ret = new HashMap<String,Contig>();
+		while(it.hasNext()){
+			tmp = it.next();
+			ret.put(tmp.getSequenceName(),new Contig(tmp.getSequenceName(),tmp.getSequenceLength()));
+		}
+		return ret;
+	}
+	
+	
 }
