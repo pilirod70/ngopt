@@ -75,7 +75,7 @@ double calcGC(istream& in) {
 int main (int argc, char** argv) {
 	
 	if (argc == 2 && strcmp(argv[1],"-h") == 0) {
-		cerr << "Usage: genome_gc <in.fasta> > <out.gc>" << '\n';
+		cerr << "Usage: " << argv[0] << " <in.fasta> > <out.gc>" << '\n';
 		return 0;
 	}	
 	double gc = 0.0;

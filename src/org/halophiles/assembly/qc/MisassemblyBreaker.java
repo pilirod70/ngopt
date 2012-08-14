@@ -32,10 +32,10 @@ import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
 import net.sf.samtools.SAMSequenceRecord;
-*/
 import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMSequenceRecord;
+ */
 
 import org.halophiles.assembly.Contig;
 import org.halophiles.assembly.ReadPair;
@@ -1377,6 +1377,7 @@ public class MisassemblyBreaker {
 		return pairs;
 	}
 	*/
+	/*
 	public static Map<String,Contig> getContigs(SAMFileReader sam) {
 		SAMFileHeader hdr = sam.getFileHeader();
 		Iterator<SAMSequenceRecord> it = hdr.getSequenceDictionary().getSequences().iterator();
@@ -1388,6 +1389,7 @@ public class MisassemblyBreaker {
 		}
 		return ret;
 	}
+	*/
 	/*
 	public static void loadBAMData(String bamPath, Map<String,Contig> ctgs, double[][] ranges) throws IOException{
 		for (int i = 0; i < ranges.length; i++)

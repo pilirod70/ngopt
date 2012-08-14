@@ -1,8 +1,24 @@
 #!/usr/bin/perl -w
 use strict;
 use warnings;
+use Getopt::Long;
 
 my $winlen = 20;
+my $uniq = 0;
+my $help = 0;
+if (!GetOptions( 
+	"win=i"		=> \$winlen,
+	"uniq"		=> \$uniq,
+	"h"			=> \$help
+    )
+   ){
+	printHelp()
+}
+printHelp() if ($help);
+if (@ARGV == 1 && ! -f $ARGV[0]){
+	print $ARGV[0]." not a valid file\n";
+	printHelp();
+}
 
 my ($line1,$line2,$pos1,$pos2,$str1,$str2);
 
@@ -20,8 +36,10 @@ for (my $i = 0; $i < $num_win; $i++) {
 while($line1 = <>){
 	next if ($line1 =~ /^@/);
 	$line2 = <>;
-	next unless $line1 =~ /XT:A:U/;
-	next unless $line2 =~ /XT:A:U/;
+	if ($uniq) {
+		next unless $line1 =~ /XT:A:U/;
+		next unless $line2 =~ /XT:A:U/;
+	}
 	$pos1 = (split(/\t/,$line1))[3];
 	$pos2 = (split(/\t/,$line2))[3];
 	tally($pos1,$pos2) if ($pos1 != 0 && $pos2 != 0);
@@ -41,7 +59,7 @@ for my $ar (@bins) {
 	$SoM += $mean**2;
 }
 $MoM = $MoM/scalar(@bins);
-$SoM = $SoM/scalar(@bins) - $MoM**2;
+$SoM = ($SoM/scalar(@bins) - $MoM**2)**(1/2);
 printf STDERR "%.3f,%.3f\n", $MoM, $SoM; 
 
 sub tally {
@@ -74,4 +92,16 @@ sub getIndex {
 		$mid = int(($max+$min)/2);
 	}
 	return $mid;
+}
+
+sub printHelp {
+	print "Usage: getDistHist.pl [options] <sam|stdin>\n".
+	      " where options are:\n\n".
+	      "    -win       the window length to use [20]\n".
+	      "    -uniq      keep only uniquely mapping reads\n".
+	      "    -h         print this message and exit\n".
+	      "\n".
+	      "Compute the average distance to mates of reads mapping\n".
+	      "in windows across a genome\n";
+	exit;
 }

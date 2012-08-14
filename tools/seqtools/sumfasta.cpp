@@ -68,7 +68,7 @@ void printStats(char* file) {
 		}
 	}
 	// Fasta_File	Num_Ctgs	N50	AvgCtgLen	MaxCtgLen	MinCtgLen	Total_Bases	Num_Nucs	Num_Unks	NumGaps
-	cout << file << "\t" << data.size() << "\t" << n50 << "\t" << (tot/data.size()) << "\t" << data.back() << "\t" << *data.begin() << "\t" << tot << "\t" << numNuc << "\t" << numN << numGaps << endl;
+	cout << file << "\t" << data.size() << "\t" << n50 << "\t" << (tot/data.size()) << "\t" << data.back() << "\t" << *data.begin() << "\t" << tot << "\t" << numNuc << "\t" << numN << "\t" << numGaps << endl;
 }
 
 void usage() {
