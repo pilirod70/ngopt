@@ -1,1 +1,0 @@
-SOAPdenovo all -s SOAP.conf -o tn_soapK27d2 -K 27 -p 6 -a 6 -d 2 > tn_soapK27d2.out 2> tn_soapK27d2.err
