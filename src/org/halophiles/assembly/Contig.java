@@ -8,6 +8,8 @@ package org.halophiles.assembly;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.halophiles.assembly.qc.MisassemblyBlock;
+
 public class Contig implements Comparable<Contig> {
 	private static int CTG_COUNT=0;
 	private static int CONCAT_START = 1;
@@ -27,6 +29,11 @@ public class Contig implements Comparable<Contig> {
 	
 	private int out;
 	private int in;
+	
+	private MisassemblyBlock leftBlock = null;
+	private MisassemblyBlock rightBlock = null;
+
+	
 	public Contig(String name, int len){
 		this(name);
 		this.len = len;
@@ -145,5 +152,29 @@ public class Contig implements Comparable<Contig> {
 	
 	public ContigTerminal getEndTerminus(){
 		return end;
+	}
+	
+	public MisassemblyBlock getLeftBlock(){
+		return leftBlock;
+	}
+	
+	public void addLeftBlock(MisassemblyBlock block){
+		leftBlock = block;
+	}
+	
+	public boolean hasLeftBlock(){
+		return leftBlock != null;
+	}
+	
+	public MisassemblyBlock getRightBlock(){
+		return rightBlock;
+	}
+	
+	public void addRightBlock(MisassemblyBlock block){
+		rightBlock = block;
+	}
+	
+	public boolean hasRightBlock(){
+		return rightBlock != null;
 	}
 }

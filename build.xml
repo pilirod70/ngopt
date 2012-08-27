@@ -10,7 +10,7 @@
 	
 	<!--includes="${src}/org/halophiles/assembly/qc/FISHInputExporter.java,${src}/org/halophiles/assembly/Contig.java,${src}/org/halophiles/assembly/ReadPair.java,${src}/org/halophiles/assembly/SAMFileParser.java,${src}/org/halophiles/tools/SummaryStats.java" listfiles="true" includeantruntime="false"-->
 	<target name="compile" description="compile java code">
-		<javac srcdir="${src}" destdir="${bin}" target="1.5" source="1.5" classpath="${ext}/jgrapht-jdk1.6.jar" debug="true" includeantruntime="false"/>
+		<javac srcdir="${src}" destdir="${bin}" target="1.6" source="1.6" classpath="${ext}/jgrapht-jdk1.6.jar:${ext}/sam-1.73.jar:${ext}/commons-cli-1.2.jar" debug="true" includeantruntime="false"/>
     </target>
 
     <target name="jar">
@@ -37,6 +37,10 @@
             </manifest>
             <fileset dir="${bin}">
 				<include name="**/org/halophiles/assembly/qc/MisassemblyBreaker*.class"/>
+            	<include name="**/org/halophiles/assembly/qc/MisassemblyRegion*.class"/>
+            	<include name="**/org/halophiles/assembly/qc/PileupScorer*.class"/>
+				<include name="**/org/halophiles/assembly/qc/MBRefiner*.class"/>
+				<include name="**/org/halophiles/tools/HelperFunctions*.class"/>
 				<include name="**/org/halophiles/assembly/qc/EMClusterer*.class"/>
 				<include name="**/org/halophiles/assembly/qc/ReadCluster.class"/>
 				<include name="**/org/halophiles/assembly/qc/MatchBuilder*.class"/>
@@ -50,6 +54,30 @@
 				<include name="**/org/halophiles/tools/SummaryStats.class"/>
 			</fileset>
         </jar>
+    	<delete file="bin/RunPileup.jar"/>
+    	 <jar destfile="bin/RunPileup.jar">
+    	            <manifest>
+    	                <attribute name="Main-Class" value="org.halophiles.assembly.qc.MBRefiner"/>
+    	            </manifest>
+    	            <fileset dir="${bin}">
+    					<include name="**/org/halophiles/assembly/qc/MisassemblyBreaker*.class"/>
+    	            	<include name="**/org/halophiles/assembly/qc/MisassemblyRegion*.class"/>
+    	            	<include name="**/org/halophiles/assembly/qc/PileupScorer*.class"/>
+    	            	<include name="**/org/halophiles/assembly/qc/MBRefiner*.class"/>
+    					<include name="**/org/halophiles/tools/HelperFunctions*.class"/>
+    					<include name="**/org/halophiles/assembly/qc/EMClusterer*.class"/>
+    					<include name="**/org/halophiles/assembly/qc/ReadCluster.class"/>
+    					<include name="**/org/halophiles/assembly/qc/MatchBuilder*.class"/>
+    					<include name="**/org/halophiles/assembly/qc/SpatialClusterer*.class"/>
+    					<include name="**/org/halophiles/assembly/qc/MatchPoint.class"/>
+    					<include name="**/org/halophiles/assembly/qc/ScaffoldExporter.class"/>
+    					<include name="**/org/halophiles/assembly/Contig.class"/>
+    					<include name="**/org/halophiles/assembly/ContigTerminal.class"/>
+    					<include name="**/org/halophiles/assembly/ReadSet.class"/>
+    					<include name="**/org/halophiles/assembly/ReadPair.class"/>
+    					<include name="**/org/halophiles/tools/SummaryStats.class"/>
+    				</fileset>
+    	        </jar>
     </target>
 
 </project>

@@ -33,7 +33,7 @@ public class ScaffoldExporter {
 			subSeq = counts.get(hdr)+1;
 		else 
 			subSeq = 1;
-		out.println(">"+hdr+"-");
+		out.println(">"+hdr+"-"+subSeq);
 		out.println(sequence.substring(left-1, right));
 		counts.put(hdr, subSeq);
 	}

@@ -19,7 +19,7 @@ import java.util.Vector;
 import org.halophiles.assembly.Contig;
 /**
  * A data structure for storing match points (i.e. paired-read mapping locations)
- * between two contigs, and additional methods for running the DBSCAN spatial clusterin
+ * between two contigs, and additional methods for running the DBSCAN spatial clustering
  * algorithm.
  * 
  * @author Andrew Tritt
@@ -93,6 +93,8 @@ public class SpatialClusterer {
 	 */
 	private Set<ReadCluster> readPairClusters;
 	
+	private boolean neighborsBuilt;
+	
 	/**
 	 * A Comparator for ordering MatchPoints according to a given
 	 * Contig's coordinates.
@@ -123,6 +125,7 @@ public class SpatialClusterer {
 		currPoints = new TreeSet<MatchPoint>(xSort);
 		readPairClusters = new TreeSet<ReadCluster>(CLUST_COMP);
 		numPoints = 0;
+		neighborsBuilt = false;
 	}
 	
 	/**
@@ -133,15 +136,16 @@ public class SpatialClusterer {
 	 * @param file the File to write the current state to.
 	 * @throws IOException if an I/O occurred when trying to write to <code>file</code>
 	 */
-	void exportCurrState(File file) throws IOException{
+	public void exportCurrState(String path) throws IOException{
+		File file = new File(path);
 		file.createNewFile();
 		PrintStream out = new PrintStream(file);
 		Iterator<MatchPoint> it = currPoints.iterator();
 		while(it.hasNext()){
 			MatchPoint tmp = it.next();
-			out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t0");
+			out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t"+tmp.ori());
 		}
-		
+		/*
 		Iterator<ReadCluster> kcIt = readPairClusters.iterator();
 		while(kcIt.hasNext()){
 			ReadCluster tmpKc = kcIt.next();
@@ -151,6 +155,7 @@ public class SpatialClusterer {
 				out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t"+tmpKc.id);
 			}
 		}
+		*/
 		out.close();
 	}
 	
@@ -169,9 +174,9 @@ public class SpatialClusterer {
 	 * @param y the location of the match on Contig 2
 	 * @return true if the point was not already contained in the underlying set of match points, false otherwise
 	 */
-	public boolean addMatch(int x, int y){
+	public boolean addMatch(int x, boolean xRev, int y, boolean yRev){
 		numPoints++;
-		return currPoints.add(new MatchPoint(x, y));
+		return currPoints.add(new MatchPoint(x, xRev, y, yRev));
 	}
 	
 	/**
@@ -179,14 +184,12 @@ public class SpatialClusterer {
 	 * using the value of <code>EPS</code>, and then run the DBSCAN algorithm. 
 	 */
 	public void buildReadPairClusters(){
+		if (neighborsBuilt)
+			clearNeighbors();
 		locateNeighbors();
 		runDBSCAN();
 		if (readPairClusters.isEmpty())
 			return;
-		System.out.println("[a5_qc] Found "+readPairClusters.size()+" initial blocks between contigs "+ctg1.getId()+" and "+ctg2.getId());
-		Iterator<ReadCluster> kcIt = readPairClusters.iterator();
-		while(kcIt.hasNext())
-			System.out.println("        "+kcIt.next().toString());
 	}
 
 	/**
@@ -248,16 +251,17 @@ public class SpatialClusterer {
 			// where is this point in x?
 			int i_in_x = xref.get(matchpoints[i]);
 			for(int j_x=i_in_x+1; j_x < x_order.length && 
-				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= EPS; 
-																	j_x++)
-				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS)
+				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= EPS; j_x++)
+				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS &&
+						matchpoints[x_order[j_x]].ori() == matchpoints[i].ori())
 					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 			for(int j_x=i_in_x-1; j_x >= 0 && 
-				matchpoints[i].x() - matchpoints[x_order[j_x]].x() <= EPS; 
-																	j_x--)
-				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS)
+				matchpoints[i].x() - matchpoints[x_order[j_x]].x() <= EPS; j_x--)
+				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS && 
+						matchpoints[x_order[j_x]].ori() == matchpoints[i].ori())
 					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 		}
+		neighborsBuilt = true;
 	}
 	
 	/**
@@ -308,6 +312,12 @@ public class SpatialClusterer {
 			}
 			i++;
 		}
+	}
+	
+	private void clearNeighbors(){
+		Iterator<MatchPoint> it = currPoints.iterator();
+		while(it.hasNext())
+			it.next().clearNeighbors();
 	}
 	
 }

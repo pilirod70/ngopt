@@ -5,6 +5,7 @@
 #include <list>
 #include <deque>
 #include <map>
+#include <cstring>
 using namespace std;
 
 int main (int argc, char** argv) {

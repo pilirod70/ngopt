@@ -15,6 +15,7 @@ public class ReadCluster {
 	private static int COUNT = 0;
 	
 	static int RDLEN = 50;
+	
 	/**
 	 * The max MatchPoint location on the x Contig (aka Contig 1)
 	 */
@@ -24,6 +25,11 @@ public class ReadCluster {
 	 */
 	int xMin;
 	/**
+	 * The orientation of reads on the x Contig (aka Contig 1)
+	 */
+	boolean xRev;
+	
+	/**
 	 * The max MatchPoint location on the y Contig (aka Contig 2)
 	 */
 	int yMax;
@@ -31,6 +37,10 @@ public class ReadCluster {
 	 * The min MatchPoint location on the y Contig (aka Contig 2)
 	 */
 	int yMin;
+	/**
+	 * The orientation of reads on the y Contig (aka Contig 2)
+	 */
+	boolean yRev;
 	
 	/**
 	 * The set of MatchPoints comprising this ReadCluster
@@ -42,11 +52,12 @@ public class ReadCluster {
 	 */
 	final int id;
 	
+	private int clustOri;
+	
 	/**
-	 * Create a KClump from the set of given points.
+	 * Create a <code>ReadCluster</code> from the set of given points.
 	 * 
-	 * @param points the points in this KClump
-	 * @param maxResid the maximum residual for calling a point a member of this KClump
+	 * @param points the points in this ReadCluster
 	 */
 	public ReadCluster(Set<MatchPoint> points){
 		id = ++COUNT;
@@ -55,9 +66,27 @@ public class ReadCluster {
 		yMax = Integer.MIN_VALUE;
 		yMin = Integer.MAX_VALUE;
 		Iterator<MatchPoint> it = points.iterator();
-		int i = 0;
+		
+		// Check the first point so we can get orientation information
+		MatchPoint tmp = it.next();
+		if (tmp.x()+RDLEN > xMax)
+			xMax = tmp.x()+RDLEN;
+		if (tmp.x() < xMin)
+			xMin = tmp.x();
+		if (tmp.y()+RDLEN > yMax)
+			yMax = tmp.y()+RDLEN;
+		if (tmp.y() < yMin)
+			yMin = tmp.y();
+		clustOri = tmp.ori();
+		switch (clustOri){
+			case MatchPoint.FF: xRev = false; yRev = false; break;
+			case MatchPoint.RR: xRev = true; yRev = true; break;
+			case MatchPoint.FR: xRev = false; yRev = true; break;
+			case MatchPoint.RF: xRev = true; yRev = false; break;
+			default: throw new IllegalArgumentException("MatchPoint orientation not a recognizable value");
+		}
 		while(it.hasNext()){
-			MatchPoint tmp = it.next();
+			tmp = it.next();
 			if (tmp.x()+RDLEN > xMax)
 				xMax = tmp.x()+RDLEN;
 			if (tmp.x() < xMin)
@@ -66,24 +95,25 @@ public class ReadCluster {
 				yMax = tmp.y()+RDLEN;
 			if (tmp.y() < yMin)
 				yMin = tmp.y();			
-			
-			i++;
+		
+			if (clustOri != tmp.ori())
+				throw new IllegalArgumentException("Inconsistent MatchPoint orienations");
 		}	
 		this.points = points;
 	}
 	
 	
 	/**
-	 * Returns the number of points in this KClump
-	 * @return the number of points in this KClump
+	 * Returns the number of points in this ReadCluster
+	 * @return the number of points in this ReadCluster
 	 */
 	public int size(){
 		return points.size();
 	}
 	
 	/**
-	 * Return the points in this KClump
-	 * @return the points in this KClump
+	 * Return the points in this ReadCluster
+	 * @return the points in this ReadCluster
 	 */
 	public Set<MatchPoint> getMatchPoints(){
 		return points;
@@ -102,7 +132,7 @@ public class ReadCluster {
 	 * <code>xMin-xMax <-> yMin-yMax</code>
 	 */
 	public String toString(){
-		return xMin+"-"+xMax +" <-> "+yMin+"-"+yMax;
+		return xMin+"-"+xMax +(xRev?" <":" >")+"-"+(yRev?"< ":"> ")+yMin+"-"+yMax + " ("+points.size()+")";
 	}
 	
 	/**
