@@ -1,0 +1,166 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with jLaTeX2HTML 2002 (1.62) JA patch-1.4
+patched version by:  Kenshi Muto, Debian Project.
+LaTeX2HTML 2002 (1.62),
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Processing blocks</TITLE>
+<META NAME="description" CONTENT="Processing blocks">
+<META NAME="keywords" CONTENT="fishmanual">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="jLaTeX2HTML v2002 JA patch-1.4">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="fishmanual.css">
+
+<LINK REL="previous" HREF="node33.html">
+<LINK REL="up" HREF="node31.html">
+<LINK REL="next" HREF="node35.html">
+</HEAD>
+
+<BODY >
+<!--Navigation Panel-->
+<A NAME="tex2html541"
+  HREF="node35.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="file:/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html537"
+  HREF="node31.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="file:/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html533"
+  HREF="node33.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="file:/usr/share/latex2html/icons/prev.png"></A> 
+<A NAME="tex2html539"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents"
+ SRC="file:/usr/share/latex2html/icons/contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html542"
+  HREF="node35.html">Contig file</A>
+<B> Up:</B> <A NAME="tex2html538"
+  HREF="node31.html">Screen output</A>
+<B> Previous:</B> <A NAME="tex2html534"
+  HREF="node33.html">Processing matches</A>
+ &nbsp <B>  <A NAME="tex2html540"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H3><A NAME="SECTION00521300000000000000">
+Processing blocks</A>
+</H3>
+FISH first displays the key adjustable parameter of the block finding
+stage, <IMG
+ WIDTH="18" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
+ SRC="img7.png"
+ ALT="$ T$">.  Following this is a series of numbers which depend on both the
+dataset and the adjustable parameters:
+
+<UL>
+<LI><IMG
+ WIDTH="22" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
+ SRC="img21.png"
+ ALT="$ N$">, the total number of points in the grid
+</LI>
+<LI><IMG
+ WIDTH="20" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
+ SRC="img22.png"
+ ALT="$ F$">, the total number of features in the dataset
+</LI>
+<LI>the total number of cells in the grid, calculated as <IMG
+ WIDTH="100" HEIGHT="37" ALIGN="MIDDLE" BORDER="0"
+ SRC="img23.png"
+ ALT="$ F(F-1)/2$">
+</LI>
+<LI><IMG
+ WIDTH="16" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
+ SRC="img19.png"
+ ALT="$ h$">, the proportion of cells in the grid that contain a point
+</LI>
+<LI><IMG
+ WIDTH="25" HEIGHT="34" ALIGN="MIDDLE" BORDER="0"
+ SRC="img18.png"
+ ALT="$ d_T$">, the neighborhood size within which there is only a <IMG
+ WIDTH="18" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
+ SRC="img7.png"
+ ALT="$ T$"> probability of
+encountering another point if points in the grid are distributed uniformly at
+random (see Equation <A HREF="node18.html#dT">2.1</A>)
+</LI>
+<LI>MIN_BLOCK_SIZE, the number of points in the smallest block to be reported.
+</LI>
+</UL>
+Once the blocks have been identified, FISH will also display the total
+number of blocks.
+
+<P>
+The length distribution of the blocks is displayed as a vertical histogram.  To
+the right of each bar is listed the number of blocks of length <IMG
+ WIDTH="17" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.png"
+ ALT="$ L$">, as measured
+by the number of points.  If the number of blocks is greater than 50, the true amount is not
+represented by '*' characters and the block frequency is preceded by '...'.
+To the left of the histogram is shown the corresponding <IMG
+ WIDTH="14" HEIGHT="34" ALIGN="MIDDLE" BORDER="0"
+ SRC="img25.png"
+ ALT="$ p$">-value for observing
+a block of length <IMG
+ WIDTH="17" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.png"
+ ALT="$ L$"> (see Section <A HREF="node37.html#blockfile">4.2.4</A>), and the expected number, under the null model.
+If the proportion of expected to observed blocks of length <IMG
+ WIDTH="17" HEIGHT="17" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.png"
+ ALT="$ L$"> is greater than
+BLOCK_PROB, then the frequency of observed blocks is followed by an exclamation
+mark.  This indicates that blocks of this length have not been observed sufficiently
+more frequently than expected, and so the individual blocks may not be biologically
+meaningful.
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html541"
+  HREF="node35.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="file:/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html537"
+  HREF="node31.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="file:/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html533"
+  HREF="node33.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="file:/usr/share/latex2html/icons/prev.png"></A> 
+<A NAME="tex2html539"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents"
+ SRC="file:/usr/share/latex2html/icons/contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html542"
+  HREF="node35.html">Contig file</A>
+<B> Up:</B> <A NAME="tex2html538"
+  HREF="node31.html">Screen output</A>
+<B> Previous:</B> <A NAME="tex2html534"
+  HREF="node33.html">Processing matches</A>
+ &nbsp <B>  <A NAME="tex2html540"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+<ADDRESS>
+root
+2003-06-27
+</ADDRESS>
+</BODY>
+</HTML>

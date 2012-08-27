@@ -1,0 +1,69 @@
+This README tells you how to install the FISH-1.0 on your
+own system.
+
+
+Source Distribution
+--------------------------------
+  INSTALLATION:
+     1. "tar -xzvf FISH-1.0.tar.z"
+     2. "cd FISH-1.0"
+     3. "make all"
+     4. "cp bin/fish /usr/local/bin/" 
+
+   REQUIREMENTS:
+   1. g++ compiler.  Fish is known to successfully compile with g++ 3.1 and 3.2.  To see what version of g++ you have type "g++ -v".
+
+   2. 32 MB of RAM.
+
+   3. Operating system:  Known to compile and run on Solaris, RedHat 8.0,
+Windows and Mac OS 10.2.  It should be compilable and runnable on all systems
+with g++ installed.  For windows environments, MinGW(http://www.mingw.org),
+provides a g++ compiler that works well.
+
+
+
+Windows Operating Systems
+-------------------------
+   INSTALLATION:
+     1. Unzip FISH-1.0-win.zip into "C:\<DESIRED DIRECTORY>".
+     2. The executable will be located in "C:<DESIRED DIRECTORY>\FISH-1.0\fish.exe".   
+   For Example:
+     Unzip to "C:\Program Files"
+     From a command line type: "C:\Program Files\FISH-1.0\fish.exe" -h , 
+           Don't forget the quotations marks!
+     This executes fish and shows the command line options.  Please 
+           see the manual for further instructions executing fish.
+
+   REQUIREMENTS:
+     1. 32 MB of RAM.
+     2. Operating system:  Known to run on Windows XP,ME, and NT.
+
+
+Running with the Sample Data
+----------------------------
+From a command line, go to the directory where the sample control file("control.txt") is located:
+Windows: "C:\<DESIRED DIRECTORY>\FISH-1.0\"
+
+And run "fish".
+
+
+Mac OS X
+-------------------------
+   INSTALLATION:
+     1. Unzip FISH-1.0-osx.zip.
+     2. The executable will be located in "FISH-1.0/fish".   
+
+   REQUIREMENTS:
+     1. 32 MB of RAM.
+     2. Operating system:  Known to run on 10.2.x
+
+
+
+Running with the Sample Data
+----------------------------
+From a command line, go to the directory where the sample control file("control.txt") is located:
+Windows: "C:\FISH-1.0\"
+Others:  "<root_of_FISH>/FISH-1.0/sample_input/"
+
+And run "fish".
+
