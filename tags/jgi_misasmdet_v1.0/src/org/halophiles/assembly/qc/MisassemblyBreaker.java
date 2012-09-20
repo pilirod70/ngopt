@@ -701,23 +701,9 @@ public class MisassemblyBreaker {
 			
 			/* begin: tally these read positions */
 			// tally read 1
-			tmpWin = readCounts.get(ctg1.name);
-			index = Arrays.binarySearch(tmpWin[0], left1);
-			if (index < 0)
-				index = -1*(index+1);
-			if (rev1)
-				tmpWin[3][index]++;
-			else 
-				tmpWin[2][index]++;
+			readCounts.get(ctg1.name)[rev1?3:2][left1/windowLen]++;
 			// tally read 2
-			tmpWin = readCounts.get(ctg2.name);
-			index = Arrays.binarySearch(tmpWin[0], left1);
-			if (index < 0)
-				index = -1*(index+1);
-			if (rev1)
-				tmpWin[3][index]++;
-			else 
-				tmpWin[2][index]++;
+			readCounts.get(ctg2.name)[rev2?3:2][left2/windowLen]++;
 			/* end: tally these read positions */
 			
 			
