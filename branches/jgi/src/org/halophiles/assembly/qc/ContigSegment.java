@@ -120,4 +120,8 @@ public class ContigSegment implements Comparable<ContigSegment>{
 	public int compareTo(ContigSegment arg0) {
 		return this.id - arg0.id;
 	}
+	
+	public Contig getContig(){
+		return contig;
+	}
 }

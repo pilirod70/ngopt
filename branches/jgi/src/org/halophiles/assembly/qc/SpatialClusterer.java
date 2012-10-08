@@ -48,10 +48,10 @@ public class SpatialClusterer {
 	public static Comparator<MatchPoint> xSort = new Comparator<MatchPoint>(){
 		@Override
 		public int compare(MatchPoint arg0, MatchPoint arg1) {
-			if (arg0.x() == arg1.x())
-				return arg0.y() - arg1.y();
+			if (arg0.xLeft() == arg1.xLeft())
+				return arg0.yLeft() - arg1.yLeft();
 			else 
-				return arg0.x() - arg1.x();
+				return arg0.xLeft() - arg1.xLeft();
 		}
 	};
 
@@ -106,9 +106,9 @@ public class SpatialClusterer {
 		}
 		public int compare(Integer a, Integer b){
 			if (contig==0)
-				return matches[a.intValue()].x()-matches[b.intValue()].x();
+				return matches[a.intValue()].xLeft()-matches[b.intValue()].xLeft();
 			else 
-				return matches[a.intValue()].y()-matches[b.intValue()].y();
+				return matches[a.intValue()].yLeft()-matches[b.intValue()].yLeft();
 		}
 		int contig;
 		MatchPoint[] matches;
@@ -143,7 +143,7 @@ public class SpatialClusterer {
 		Iterator<MatchPoint> it = currPoints.iterator();
 		while(it.hasNext()){
 			MatchPoint tmp = it.next();
-			out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t"+tmp.ori());
+			out.println(tmp.xLeft()+"\t"+Math.abs(tmp.yLeft())+"\t"+tmp.ori());
 		}
 		/*
 		Iterator<ReadCluster> kcIt = readPairClusters.iterator();
@@ -167,6 +167,7 @@ public class SpatialClusterer {
 		return numPoints;
 	}
 	
+	// TODO: Change this to take xMin,xMax and yMin,yMax as parameters.
 	/**
 	 * Add a match to this SpatialClusterer
 	 * 
@@ -174,9 +175,9 @@ public class SpatialClusterer {
 	 * @param y the location of the match on Contig 2
 	 * @return true if the point was not already contained in the underlying set of match points, false otherwise
 	 */
-	public boolean addMatch(int x, boolean xRev, int y, boolean yRev){
+	public boolean addMatch(int xLeft, int xRight, boolean xRev, int yLeft, int yRight, boolean yRev){
 		numPoints++;
-		return currPoints.add(new MatchPoint(x, xRev, y, yRev));
+		return currPoints.add(new MatchPoint(xLeft, xRight, xRev, yLeft, yRight, yRev));
 	}
 	
 	/**
@@ -251,13 +252,13 @@ public class SpatialClusterer {
 			// where is this point in x?
 			int i_in_x = xref.get(matchpoints[i]);
 			for(int j_x=i_in_x+1; j_x < x_order.length && 
-				matchpoints[x_order[j_x]].x() - matchpoints[i].x() <= EPS; j_x++)
-				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS &&
+				matchpoints[x_order[j_x]].xLeft() - matchpoints[i].xLeft() <= EPS; j_x++)
+				if (Math.abs(matchpoints[x_order[j_x]].yLeft() - matchpoints[i].yLeft()) <= EPS &&
 						matchpoints[x_order[j_x]].ori() == matchpoints[i].ori())
 					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 			for(int j_x=i_in_x-1; j_x >= 0 && 
-				matchpoints[i].x() - matchpoints[x_order[j_x]].x() <= EPS; j_x--)
-				if (Math.abs(matchpoints[x_order[j_x]].y() - matchpoints[i].y()) <= EPS && 
+				matchpoints[i].xLeft() - matchpoints[x_order[j_x]].xLeft() <= EPS; j_x--)
+				if (Math.abs(matchpoints[x_order[j_x]].yLeft() - matchpoints[i].yLeft()) <= EPS && 
 						matchpoints[x_order[j_x]].ori() == matchpoints[i].ori())
 					matchpoints[i].addNeighbor(matchpoints[x_order[j_x]]);
 		}

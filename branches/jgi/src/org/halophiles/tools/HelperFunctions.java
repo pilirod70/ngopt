@@ -59,9 +59,9 @@ public class HelperFunctions {
 	}
 
 	/**
-	 * Return mapping length for CIGAR String if there is a match (i.e. string contains 'M') else return -1
+	 * Return mapping length for CIGAR String if there is a match (i.e. string contains 'M')
 	 * @param cig the CIGAR string to parse
-	 * @return the length of the match indicated by the CIGAR string. Return -1 if no match
+	 * @return the length of the match indicated by the CIGAR string. Return 0 if no match
 	 */
 	public static int cigarLength(String cig){
 		StringTokenizer tok = new StringTokenizer(cig, "MIDNSHP", true);
@@ -69,13 +69,35 @@ public class HelperFunctions {
 		while (tok.hasMoreTokens()){
 			int len = Integer.parseInt(tok.nextToken());
 			char op = tok.nextToken().charAt(0);
-			if (op == 'M'){
-				alignLen += len;
+			switch (op) {
+				case 'M': alignLen += len; break;
+				case 'D': alignLen += len; break;
+				default: continue;
 			}
 		}
 		return alignLen;
 	}
 
+	/**
+	 * Return the reference length for CIGAR String if there is a match (i.e. string contains 'M')
+	 * @param cig the CIGAR string to parse
+	 * @return the length of the match on the reference indicated by the CIGAR string. Return 0 if no match
+	 */
+	public static int cigarRefLength(String cig){
+		StringTokenizer tok = new StringTokenizer(cig, "MIDNSHP", true);
+		int alignLen = 0;
+		while (tok.hasMoreTokens()){
+			int len = Integer.parseInt(tok.nextToken());
+			char op = tok.nextToken().charAt(0);
+			switch (op) {
+				case 'M': alignLen += len; break;
+				case 'D': alignLen += len; break;
+				default: continue;
+			}
+		}
+		return alignLen;
+	}
+	
 	/**
 	 * Returns true of the 4th bit is set in the flag given in the SAM file
 	 */
