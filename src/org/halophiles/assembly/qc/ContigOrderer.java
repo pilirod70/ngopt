@@ -1,5 +1,11 @@
 package org.halophiles.assembly.qc;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -15,29 +21,96 @@ public class ContigOrderer {
 
 	public static final double MIN_PLP_SCORE = 0.9;
 	
-	public static void exportNewContigs(Map<String,Vector<MisassemblyRegion>> regions, Map<String,Contig> contigs){
-		Set<SortedSet<ContigSegment>> conComps = buildGraph(regions, contigs);
-		System.out.println("Found " + conComps.size()+" connected components");
+	private static String GAP_SEQUENCE = "N"; 
+	
+	public static void exportNewContigs(Set<SortedSet<ContigSegment>> conComps, String contigFastaPath, String outputPath) throws IOException{
+		Iterator<SortedSet<ContigSegment>> it = conComps.iterator();
+		SortedSet<ContigSegment> cc = null;
+		ContigSegment seg = null;
+		Map<String,StringBuilder> sequence = getFastaSequence(contigFastaPath);
+		File fixedContigsFile = new File(outputPath);
+		fixedContigsFile.createNewFile();
+		BufferedWriter bw = new BufferedWriter(new FileWriter(fixedContigsFile));
+		FastaWriter fastaWriter = new FastaWriter(bw);
+		while (it.hasNext()){
+			cc = it.next();
+			// Find the left-most segment in this connected component
+			seg = cc.first();
+			Set<ContigSegment> visited = new HashSet<ContigSegment>();
+			fastaWriter.addNewSequence("seq1");
+			while (!visited.contains(seg)) {
+				System.out.println(seg.toString());
+				if (visited.size() > 0 && GAP_SEQUENCE.length() > 0)
+					fastaWriter.writeSequence(GAP_SEQUENCE);
+				if (seg.inverted()){
+					fastaWriter.writeSequenceInverted(sequence.get(seg.getContig().name).subSequence(seg.getStart()-1, seg.getEnd()));
+					visited.add(seg);
+					if (seg.getLeftSegments().size() > 0) {
+						seg = seg.getLeftSegments().firstElement();
+					}
+				} else {
+					fastaWriter.writeSequence(sequence.get(seg.getContig().name).subSequence(seg.getStart()-1, seg.getEnd()));
+					visited.add(seg);
+					if (seg.getRightSegments().size() > 0) {
+						seg = seg.getRightSegments().firstElement();
+					}
+				}
+			}
+		}
+		bw.close();
+	}
+	
+	// TODO: make sure we print sequence that wasn't included during misassembly detection, e.g. contigs that had no misassemblies.
+	/**
+	 * 
+	 * @return
+	 * @throws IOException 
+	 */
+	private static Map<String,StringBuilder> getFastaSequence(String ctgPath) throws IOException {
+		BufferedReader br = new BufferedReader(
+				new FileReader(new File(ctgPath)));
+		StringBuilder sb = null;
+		br.read();
+		String tmpCtg;
+		Map<String,StringBuilder> sequences = new HashMap<String,StringBuilder>();
+		while (br.ready()) {
+			tmpCtg = br.readLine();
+			// Take only the first part of the contig header to be consistent with bwa
+			if (tmpCtg.contains(" "))
+				tmpCtg = tmpCtg.substring(0, tmpCtg.indexOf(" "));
+			sb = new StringBuilder();
+			sequences.put(tmpCtg, sb);
+			char c = (char) br.read();
+			// read in this sequence
+			while (c != '>') {
+				if (MisassemblyBreaker.isNuc(c))
+					sb.append(c);
+				if (!br.ready())
+					break;
+				c = (char) br.read();
+			}
+		}	
+		return sequences;
 	}
 	
 	/**
-	 * Builds a graph of ContigSegments from the given MisassemblyRanges. This does so by  
+	 * Builds a graph of ContigSegments from the given MisassemblyRegions. This does so by  
 	 * using the underlying MisassemblyBlocks that were used to call the MisassemblyRegions.
 	 * 
-	 * @param regions the MisassemblyRegions for each contig
+	 * @param regionMap the MisassemblyRegions for each contig
 	 * @param contigs the Contigs that this MisassemblyRanges exits
 	 * @return a Set of connected components, where components are ContigSegments
 	 */
-	public static Set<SortedSet<ContigSegment>> buildGraph(Map<String,Vector<MisassemblyRegion>> regions, Map<String,Contig> contigs){
-		Iterator<String> ctgIt = regions.keySet().iterator();
-		Vector<MisassemblyRegion> reg = null;
+	public static Set<SortedSet<ContigSegment>> buildGraph(Map<String,Vector<MisassemblyRegion>> regionMap, Map<String,Contig> contigs){
+		Iterator<String> ctgIt = regionMap.keySet().iterator();
+		Vector<MisassemblyRegion> regions = null;
 		String ctgKey = null;
 		Contig tmpCtg;
 		Map<MisassemblyBlock, ContigSegment> blockMap = new HashMap<MisassemblyBlock, ContigSegment>();
 		Map<ContigSegment, Vector<MisassemblyBlock>> segMap = new HashMap<ContigSegment, Vector<MisassemblyBlock>>();
 		
 		ContigSegment tmpSeg = null;
-		MisassemblyRegion tmpReg = null;
+		MisassemblyRegion tmpRegion = null;
 		int start = 1;
 		int end = -1;
 		MisassemblyBlock blockL = null;
@@ -45,15 +118,15 @@ public class ContigOrderer {
 		Vector<MisassemblyBlock> tmpBlocks = null;
 		while (ctgIt.hasNext()) {
 			ctgKey = ctgIt.next();
-			reg = regions.get(ctgKey);
+			regions = regionMap.get(ctgKey);
 			tmpCtg = contigs.get(ctgKey);
 			blockL = tmpCtg.getLeftBlock();
-			for (int i = 0; i < reg.size(); i++){
-				tmpReg = reg.get(i);
-				if (tmpReg.getMinScore() < MIN_PLP_SCORE){
+			for (int i = 0; i < regions.size(); i++){
+				tmpRegion = regions.get(i);
+				if (tmpRegion.getMinScore() < MIN_PLP_SCORE){
 					// get the end of this ContigSegment, and the block at that end
-					end = tmpReg.getMinPos();
-					blockR = tmpReg.getLeftBlock();
+					end = tmpRegion.getMinPos();
+					blockR = tmpRegion.getLeftBlock();
 					// create our ContigSegment object and this segments list of blocks
 					tmpSeg = new ContigSegment(tmpCtg, start, end);
 					tmpBlocks = new Vector<MisassemblyBlock>();
@@ -69,10 +142,11 @@ public class ContigOrderer {
 					tmpBlocks.add(blockL);
 					blockMap.put(blockL, tmpSeg);
 					// update the left block on this segment
-					blockL = tmpReg.getRightBlock();
+					blockL = tmpRegion.getRightBlock();
 					start = end+1;
 				}
 			}
+			end = contigs.get(ctgKey).len;
 			tmpSeg = new ContigSegment(tmpCtg, start, end);
 			tmpBlocks = new Vector<MisassemblyBlock>();
 			segMap.put(tmpSeg, tmpBlocks);
@@ -91,6 +165,12 @@ public class ContigOrderer {
 		}
 		
 		Iterator<ContigSegment> segIt = segMap.keySet().iterator();
+		while (segIt.hasNext())
+			System.out.println(segIt.next().toString());
+		
+		segIt = segMap.keySet().iterator();
+		
+		
 		Iterator<MisassemblyBlock> blockIt = null;
 		MisassemblyBlock tmpBlock = null;
 		ContigSegment tmpCnct = null;
@@ -181,10 +261,8 @@ public class ContigOrderer {
 		MisassemblyBlock tmp = null;
 		for (int i = 0; i < blocks.size(); i++){
 			tmp = blocks.get(i);
-			if (tmp == null)
-				System.out.print("");
 			// if its closer to the left, call this a left block
-			if (tmp.getLeft() - seg.getStart() < tmp.getRight() - seg.getEnd())
+			if (tmp.getLeft() - seg.getStart() < seg.getEnd() - tmp.getRight())
 				ret.add(tmp);
 		}
 		return ret;
@@ -196,7 +274,7 @@ public class ContigOrderer {
 		for (int i = 0; i < blocks.size(); i++){
 			tmp = blocks.get(i);
 			// if its closer to the right, call this a right block
-			if (tmp.getLeft() - seg.getStart() > tmp.getRight() - seg.getEnd())
+			if (tmp.getLeft() - seg.getStart() > seg.getEnd() - tmp.getRight())
 				ret.add(tmp);
 		}
 		return ret;

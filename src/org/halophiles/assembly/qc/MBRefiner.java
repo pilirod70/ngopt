@@ -50,15 +50,15 @@ public class MBRefiner {
 		Map<String, int[]> ret = new HashMap<String, int[]>();
 		Iterator<String> ctgIt = regions.keySet().iterator();
 		String tmpCtg;
-		MisassemblyRegion range= null;
+		MisassemblyRegion region= null;
 		while (ctgIt.hasNext()) {
 			tmpCtg = ctgIt.next();
 			Vector<Integer> breaks = new Vector<Integer>();
 			Iterator<MisassemblyRegion> rangeIt = regions.get(tmpCtg).iterator();
 			while (rangeIt.hasNext()){
-				range = rangeIt.next();
-				if (range.getMinScore() < 0.90)
-					breaks.add(range.getMinPos());
+				region = rangeIt.next();
+				if (region.getMinScore() < 0.90)
+					breaks.add(region.getMinPos());
 			}
 			ret.put(tmpCtg, HelperFunctions.toArray(breaks));
 		}
@@ -126,7 +126,7 @@ public class MBRefiner {
 
 		Map<String, Vector<MisassemblyRegion>> ret = new HashMap<String, Vector<MisassemblyRegion>>();
 		
-		BufferedReader in = new BufferedReader(new FileReader(connectionsFile));
+		BufferedReader connectionsIn = new BufferedReader(new FileReader(connectionsFile));
 		
 		// Stores the misassembly blocks we've seen so far.
 		Map<Integer, MisassemblyBlock> blockSet = new HashMap<Integer,MisassemblyBlock>();
@@ -136,27 +136,32 @@ public class MBRefiner {
 		String[] entry = null;
 		String reg = null;
 		String line = null;
-		while(in.ready()){
-			line = in.readLine();
+		while(connectionsIn.ready()){
+			line = connectionsIn.readLine();
 			entry = line.split("\t");
 			reg = entry[0];
+				
 			tmpBlks = new MisassemblyBlock[2];
 			// parse the block on the left side of this region
 			tmpBlks[0] = addFlankingBlocks(entry[1], blockSet, contigs);
-
 			// parse the block on the right side of this region
 			tmpBlks[1] = addFlankingBlocks(entry[2], blockSet, contigs);
+			
+			if (reg.startsWith("circ")){
+				tmpBlks[0].getContig().addLeftBlock(tmpBlks[0]);
+				tmpBlks[1].getContig().addRightBlock(tmpBlks[1]);
+			}
 			
 			blocksByRegion.put(reg, tmpBlks);
 		}
 		
-		in = new BufferedReader(new FileReader(bedFile));
+		BufferedReader bedIn = new BufferedReader(new FileReader(bedFile));
 
 
 		Vector<MisassemblyRegion> ranges = null;
 		MisassemblyRegion tmpReg = null;
-		while (in.ready()){
-			entry = in.readLine().split("\t");
+		while (bedIn.ready()){
+			entry = bedIn.readLine().split("\t");
 			// skip any header in the file
 			if (entry[0].startsWith("#"))
 				continue;

@@ -19,8 +19,10 @@ public class MatchPoint {
 	public static final int FF = 3;
 	public static final int RR = 4;
 	
-	private int x;
-	private int y;
+	private int xLeft;
+	private int xRight;
+	private int yLeft;
+	private int yRight;
 	private int ori;
 	MatchPoint pred = null;
 	MatchPoint incoming = null;
@@ -45,9 +47,11 @@ public class MatchPoint {
 	 * @param x the point in Contig 1 
 	 * @param y the point in Contig 2
 	 */
-	public MatchPoint(int x, boolean xRev, int y, boolean yRev){
-		this.x = x;
-		this.y = y;
+	public MatchPoint(int xLeft, int xRight, boolean xRev, int yLeft, int yRight, boolean yRev){
+		this.xLeft = xLeft;
+		this.yLeft = yLeft;
+		this.xRight = xRight;
+		this.yRight = yRight;
 		if (!xRev && yRev)
 			ori = FR;
 		else if (xRev && !yRev)
@@ -88,19 +92,35 @@ public class MatchPoint {
 	}
 	
 	/**
-	 * Return the x coordinate for this <code>MatchPoint</code>
-	 * @return the x coordinate of this <code>MatchPoint</code>
+	 * Return the left-most x coordinate for this <code>MatchPoint</code>
+	 * @return the left-most x coordinate of this <code>MatchPoint</code>
 	 */
-	public int x(){
-		return x;
+	public int xLeft(){
+		return xLeft;
 	}
 	
 	/**
-	 * Return the y coordinate for this <code>MatchPoint</code>
-	 * @return the y coordinat of this <code>MatchPoint</code>
+	 * Return the left-most y coordinate for this <code>MatchPoint</code>
+	 * @return the left-most y coordinat of this <code>MatchPoint</code>
 	 */
-	public int y(){
-		return y;
+	public int yLeft(){
+		return yLeft;
+	}
+	
+	/**
+	 * Return the right-most x coordinate for this <code>MatchPoint</code>
+	 * @return the x coordinate of this <code>MatchPoint</code>
+	 */
+	public int xRight(){
+		return xRight;
+	}
+	
+	/**
+	 * Return the right-most y coordinate for this <code>MatchPoint</code>
+	 * @return the right-most y coordinate of this <code>MatchPoint</code>
+	 */
+	public int yRight(){
+		return yRight;
 	}
 	
 	/**
@@ -120,7 +140,7 @@ public class MatchPoint {
 	 * Return a String representation of this <code>MatchPoint</code>
 	 */
 	public String toString(){
-		return "("+x+","+y+")";
+		return "("+xLeft+"-"+xRight+","+yLeft+"-"+xRight+")";
 	}
 	
 	/**

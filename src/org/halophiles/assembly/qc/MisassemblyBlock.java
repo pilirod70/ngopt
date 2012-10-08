@@ -2,6 +2,15 @@ package org.halophiles.assembly.qc;
 
 import org.halophiles.assembly.Contig;
 
+/**
+ * This class represents a collection of reads with the same orientation that have been 
+ * grouped by spatial clustering on read-pairs. 
+ * Within each instance of MisassemblyBlock is a member variable representing the block that this block
+ * is connected to. 
+ * 
+ * @author ajtritt
+ *
+ */
 public class MisassemblyBlock {
 	
 	private static int COUNT = 0;

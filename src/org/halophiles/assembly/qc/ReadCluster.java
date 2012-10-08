@@ -69,14 +69,14 @@ public class ReadCluster {
 		
 		// Check the first point so we can get orientation information
 		MatchPoint tmp = it.next();
-		if (tmp.x()+RDLEN > xMax)
-			xMax = tmp.x()+RDLEN;
-		if (tmp.x() < xMin)
-			xMin = tmp.x();
-		if (tmp.y()+RDLEN > yMax)
-			yMax = tmp.y()+RDLEN;
-		if (tmp.y() < yMin)
-			yMin = tmp.y();
+		if (tmp.xRight() > xMax)
+			xMax = tmp.xRight();
+		if (tmp.xLeft() < xMin)
+			xMin = tmp.xLeft();
+		if (tmp.yRight() > yMax)
+			yMax = tmp.yRight();
+		if (tmp.yLeft() < yMin)
+			yMin = tmp.yLeft();
 		clustOri = tmp.ori();
 		switch (clustOri){
 			case MatchPoint.FF: xRev = false; yRev = false; break;
@@ -87,14 +87,14 @@ public class ReadCluster {
 		}
 		while(it.hasNext()){
 			tmp = it.next();
-			if (tmp.x()+RDLEN > xMax)
-				xMax = tmp.x()+RDLEN;
-			if (tmp.x() < xMin)
-				xMin = tmp.x();
-			if (tmp.y()+RDLEN > yMax)
-				yMax = tmp.y()+RDLEN;
-			if (tmp.y() < yMin)
-				yMin = tmp.y();			
+			if (tmp.xRight() > xMax)
+				xMax = tmp.xRight();
+			if (tmp.xLeft() < xMin)
+				xMin = tmp.xLeft();
+			if (tmp.yRight() > yMax)
+				yMax = tmp.yRight();
+			if (tmp.yLeft() < yMin)
+				yMin = tmp.yLeft();			
 		
 			if (clustOri != tmp.ori())
 				throw new IllegalArgumentException("Inconsistent MatchPoint orienations");
@@ -147,7 +147,7 @@ public class ReadCluster {
 		Iterator<MatchPoint> it = points.iterator();
 		while(it.hasNext()){
 			MatchPoint tmp = it.next();
-			out.println(tmp.x()+"\t"+tmp.y());
+			out.println(tmp.xLeft()+"\t"+tmp.yLeft());
 		}
 		out.close();
 	}

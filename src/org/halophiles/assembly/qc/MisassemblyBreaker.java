@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.StringTokenizer;
 import java.util.Vector;
 /*
@@ -182,13 +183,15 @@ public class MisassemblyBreaker {
 				processInput(samFile, contigs, insertStats);
 				regions = findMisasmRegions(base, bedFile, connectionsFile, contigs);
 			} else {
-				regions = MBRefiner.getRegions(bedFile, connectionsFile, contigs);
 				System.out.println("[a5_qc] Found a bed file. Assuming I generated this in a past run and proceeding");
+				regions = MBRefiner.getRegions(bedFile, connectionsFile, contigs);
 			}
 			if (regions != null) { // if we created a bedFile, we have regions containing misassemblies
 				MBRefiner.scoreAtBaseLevel(bamFile, bedFile, ctgFile, regions, contigs);
-			//	ContigOrderer.exportNewContigs(regions, contigs);
-				MBRefiner.breakContigs(MBRefiner.refine(regions), ctgPath, brokenCtgPath);
+				Set<SortedSet<ContigSegment>> conComps = ContigOrderer.buildGraph(regions, contigs);
+				System.out.println("Found " + conComps.size()+" connected components");
+				ContigOrderer.exportNewContigs(conComps, ctgPath, brokenCtgPath);
+			//	MBRefiner.breakContigs(MBRefiner.refine(regions), ctgPath, brokenCtgPath);
 			}
 			
 		} catch(IOException e){
@@ -638,6 +641,8 @@ public class MisassemblyBreaker {
 		String[] line2 = null;
 		int left1 = 0;
 		int left2 = 0;
+		int right1 = 0;
+		int right2 = 0;
 		String ctgStr = null;
 		String tmp = null;
 		SpatialClusterer pc = null;
@@ -674,15 +679,20 @@ public class MisassemblyBreaker {
 			total++;
 			left1 = Integer.parseInt(line1[3]);
 			left2 = Integer.parseInt(line2[3]);
+			
 			// if pair didn't map, just jump to next
 			// line instead of jumping a full step
-			if (left1 == 0 || left2 == 0) continue;
+			if (left1 == 0 || left2 == 0) 
+				continue;
+			if (line1[5].equals("*") || line2[5].equals("*"))
+				continue;
+
+			right1 = left1 + HelperFunctions.cigarRefLength(line1[5]);
+			right2 = left2 + HelperFunctions.cigarRefLength(line2[5]);
 			
 			ctg1 = ctgs.get(line1[2]);
 			ctg2 = ctgs.get(line2[2]);
 
-			if (line1[5].equals("*") || line2[5].equals("*"))
-				continue;
 			
 			int tmpLen = HelperFunctions.cigarLength(line1[5]);
 			if (tmpLen > rdLen)
@@ -701,23 +711,9 @@ public class MisassemblyBreaker {
 			
 			/* begin: tally these read positions */
 			// tally read 1
-			tmpWin = readCounts.get(ctg1.name);
-			index = Arrays.binarySearch(tmpWin[0], left1);
-			if (index < 0)
-				index = -1*(index+1);
-			if (rev1)
-				tmpWin[3][index]++;
-			else 
-				tmpWin[2][index]++;
+			readCounts.get(ctg1.name)[rev1?3:2][left1/windowLen]++;
 			// tally read 2
-			tmpWin = readCounts.get(ctg2.name);
-			index = Arrays.binarySearch(tmpWin[0], left1);
-			if (index < 0)
-				index = -1*(index+1);
-			if (rev1)
-				tmpWin[3][index]++;
-			else 
-				tmpWin[2][index]++;
+			readCounts.get(ctg2.name)[rev2?3:2][left2/windowLen]++;
 			/* end: tally these read positions */
 			
 			
@@ -736,7 +732,7 @@ public class MisassemblyBreaker {
 						pc = new SpatialClusterer(ctg1, ctg2);
 						clusterers.put(ctgStr, pc);
 					}
-					pc.addMatch(left1, rev1, left2, rev2);
+					pc.addMatch(left1, right1, rev1, left2, right2, rev2);
 				} else {
 					ctgStr = line2[2]+"-"+line1[2];
 					if (clusterers.containsKey(ctgStr))
@@ -745,7 +741,7 @@ public class MisassemblyBreaker {
 						pc = new SpatialClusterer(ctg2, ctg1);
 						clusterers.put(ctgStr, pc);
 					}
-					pc.addMatch(left2, rev2, left1, rev1);
+					pc.addMatch(left2, right2, rev2, left1, right1, rev1);
 				}
 				if (counts.containsKey(ctg1.name))
 					counts.put(ctg1.name, counts.get(ctg1.name)+2);
@@ -768,9 +764,9 @@ public class MisassemblyBreaker {
 					clusterers.put(ctgStr, pc);
 				}
 				if (left2 < left1) // order for consistency
-					pc.addMatch(left2, rev2, left1, rev1);
+					pc.addMatch(left2, right2, rev2, left1, right1, rev1);
 				else 
-					pc.addMatch(left1, rev1, left2, rev2);
+					pc.addMatch(left1, right1, rev1, left2, right2, rev2);
 				if (counts.containsKey(ctg1.name)){
 					counts.put(ctg1.name, counts.get(ctg1.name)+2);
 				} else {
