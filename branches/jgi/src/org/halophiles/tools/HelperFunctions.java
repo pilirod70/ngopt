@@ -191,4 +191,15 @@ public class HelperFunctions {
 			ret[i] = v.get(i);
 		return ret;
 	}
+	
+	public static boolean hasNonZeroSize(String path){
+		File file = new File(path);
+		if (file.exists())
+			if (isEmpty(file))
+				return false;
+			else
+				return true;
+		else
+			return false;
+	}
 }

@@ -153,45 +153,51 @@ public class MisassemblyBreaker {
 	 */
 	private static Collection<SpatialClusterer> matches;
 	
+	
+	private static String samFilePath;
+	
+	private static String fastaFilePath;
+	
+	private static String outputFastaFilePath;
+
+	private static String bedFilePath;
+	
+	private static String connectionsFilePath;
+	
+	private static String bamFilePath;
+	
+	private static int numGapNs = 0;
+	
 	public static void main(String[] args){
-		if (args.length != 4 && args.length != 3){
-			System.err.println("Usage: java -jar A5qc.jar <sam_file> <contig_file> <output_file>");
-			System.exit(-1);
-		}
+		parseArgs(args);
 		try{
 			HelperFunctions.logInputs("A5qc", args);
 			NF = NumberFormat.getInstance();
 			NF.setMaximumFractionDigits(0);
 			NF.setGroupingUsed(false);
-			String samPath = args[0];
-			String ctgPath = args[1];
-			String brokenCtgPath = args[2];
 			
-			File ctgFile = new File(ctgPath);
+			ContigOrderer.setGapSequence(numGapNs);
 			
-			String base = HelperFunctions.dirname(samPath)+"/"+HelperFunctions.basename(samPath,".sam");
-			File samFile = new File(samPath);
-			File bamFile = new File(base+".bam");
-			File bedFile = new File(base+".regions.bed");
-			File connectionsFile = new File(base+".connections");
+			String base = HelperFunctions.dirname(samFilePath)+"/"+HelperFunctions.basename(samFilePath,".sam");
 			Map<String,Vector<MisassemblyRegion>> regions = null;
 			
-			RandomAccessFile raf = new RandomAccessFile(samFile, "r");
+			RandomAccessFile raf = new RandomAccessFile(new File(samFilePath), "r");
 			Map<String,Contig> contigs = readContigs(raf);
-			if (!bedFile.exists() || (bedFile.exists() && HelperFunctions.isEmpty(bedFile))) {
+			if (!HelperFunctions.hasNonZeroSize(bedFilePath) && !HelperFunctions.hasNonZeroSize(connectionsFilePath)) {
 				double[][] insertStats = getInsertStats(raf, contigs);
-				processInput(samFile, contigs, insertStats);
-				regions = findMisasmRegions(base, bedFile, connectionsFile, contigs);
+				raf.close();
+				processInput(samFilePath, contigs, insertStats);
+				regions = findMisasmRegions(base, bedFilePath, connectionsFilePath, contigs);
 			} else {
+				raf.close();
 				System.out.println("[a5_qc] Found a bed file. Assuming I generated this in a past run and proceeding");
-				regions = MBRefiner.getRegions(bedFile, connectionsFile, contigs);
+				regions = MBRefiner.getRegions(bedFilePath, connectionsFilePath, contigs);
 			}
 			if (regions != null) { // if we created a bedFile, we have regions containing misassemblies
-				MBRefiner.scoreAtBaseLevel(bamFile, bedFile, ctgFile, regions, contigs);
+				MBRefiner.scoreAtBaseLevel(bamFilePath, bedFilePath, fastaFilePath, regions, contigs);
 				Set<SortedSet<ContigSegment>> conComps = ContigOrderer.buildGraph(regions, contigs);
 				System.out.println("Found " + conComps.size()+" connected components");
-				ContigOrderer.exportNewContigs(conComps, ctgPath, brokenCtgPath);
-			//	MBRefiner.breakContigs(MBRefiner.refine(regions), ctgPath, brokenCtgPath);
+				ContigOrderer.exportNewContigs(conComps, fastaFilePath, outputFastaFilePath);
 			}
 			
 		} catch(IOException e){
@@ -241,12 +247,12 @@ public class MisassemblyBreaker {
 	}
 	
 	
-	private static void processInput(File samFile, Map<String,Contig> contigs, double[][] insertStats) throws IOException{
-		System.out.println("[a5_qc] Reading "+samFile.getPath());
+	private static void processInput(String samFilePath, Map<String,Contig> contigs, double[][] insertStats) throws IOException{
+		System.out.println("[a5_qc] Reading "+samFilePath);
 		double[][] insRanges = getFilterRanges(insertStats);
 		//setMAXBLOCKLEN(clusterStats);
 		//loadBAMData(samPath, contigs, ranges);
-		loadData(samFile, contigs, insRanges);
+		loadData(new File(samFilePath), contigs, insRanges);
 		
 		setParameters(insertStats);
 		printParams();
@@ -259,7 +265,7 @@ public class MisassemblyBreaker {
 	 * 
 	 * @returns true if any regions containing misassemblies are found, false otherwise
 	 */
-	private static Map<String,Vector<MisassemblyRegion>> findMisasmRegions(String logBase, File bedFile, File connectionsFile, Map<String,Contig> contigs) throws IOException{
+	private static Map<String,Vector<MisassemblyRegion>> findMisasmRegions(String logBase, String bedFilePath, String connectionsFilePath, Map<String,Contig> contigs) throws IOException{
 		// collect all of our blocks for each contig
 		Iterator<SpatialClusterer> mbIt = matches.iterator();
 		Map<String,Vector<MisassemblyBlock>> blocks = new HashMap<String,Vector<MisassemblyBlock>>();
@@ -340,11 +346,19 @@ public class MisassemblyBreaker {
 					continue;
 			
 				if (tmpBlks.get(0).getConnection() == tmpBlks.get(tmpBlks.size()-1)) {
+					File connectionsFile = new File(connectionsFilePath);
 					connectionsFile.createNewFile();
 					connectionsOut = new PrintStream(connectionsFile);
 					logConnection(connectionsOut, "circ"+contigs.get(tmpCtg).getId(), tmpBlks.get(0), tmpBlks.get(tmpBlks.size()-1));
 					contigs.get(tmpCtg).addLeftBlock(tmpBlks.get(0));
 					contigs.get(tmpCtg).addRightBlock(tmpBlks.get(tmpBlks.size()-1));
+				} else {
+					int term = MisassemblyBlock.getTerminus(tmpBlks.get(0));
+					if (term == -1)
+						contigs.get(tmpCtg).addLeftBlock(tmpBlks.get(0));
+					else if (term == 1)
+						contigs.get(tmpCtg).addRightBlock(tmpBlks.get(0));
+					
 				}
 				
 				Vector<MisassemblyRegion> ranges = null;
@@ -365,9 +379,11 @@ public class MisassemblyBreaker {
 					if (left != -1 && right != -1){
 						// if they overlap, split at the midpoint of overlap
 						if (bedOut == null) { // don't create the file if we don't need to
+							File bedFile = new File(bedFilePath);
 							bedFile.createNewFile();
 							bedOut = new PrintStream(bedFile);
 							if (connectionsOut == null){
+								File connectionsFile = new File(connectionsFilePath);
 								connectionsFile.createNewFile();
 								connectionsOut = new PrintStream(connectionsFile);
 							}
@@ -1640,4 +1656,72 @@ public class MisassemblyBreaker {
 		matches = clusterers.values();
 	}
 	*/
+	
+	private static void parseArgs(String[] args){
+		if (args.length == 0)
+			printUsage(System.out);
+		int i = 0;
+		String arg;
+		for (; i < args.length; i++){
+			if (!args[i].startsWith("-"))
+				break;
+			arg = args[i].substring(1);
+			if (arg.equals("gap")) {
+				i++;
+				numGapNs = Integer.parseInt(args[i]);
+			} else if (arg.equals("bed")){
+				i++;
+				bedFilePath = args[i];
+			} else if (arg.equals("bam")){
+				i++;
+				bamFilePath = args[i];
+			} else if (arg.equals("samtools")){
+				i++;
+				if (!MBRefiner.setSamToolsPath(args[i])){
+					System.err.println("There is no valid samtools executable in "+args[i]);
+				}
+			} else if (arg.equals("help")){
+				printUsage(System.out);
+			}
+		}
+		samFilePath = args[i++];
+		fastaFilePath = args[i++];
+		outputFastaFilePath = args[i++];
+		if (bedFilePath == null || bamFilePath == null || connectionsFilePath == null){
+			String base = HelperFunctions.dirname(samFilePath)+"/"+HelperFunctions.basename(samFilePath,".sam");
+			if (bedFilePath == null)
+				bedFilePath = base + ".regions.bed";
+			if (bamFilePath == null)
+				bamFilePath = base + ".bam";
+			if (connectionsFilePath == null)
+				connectionsFilePath = base + ".connections";
+		}
+	}
+	private static void printUsage(PrintStream out){
+		String usage =
+				"\n"+
+				"Usage: java -jar A5qc.jar [options] <in.sam> <assembly.in.fasta> <fixed.assembly.out.fasta>\n"+
+				"\n"+
+				"Options:\n" +
+				"         -bed FILE          bed file containing regions identified as potentially containing\n" +
+				"                            misassemblies, or the path to write the bed file to [in.regions.bed]\n"+
+				"         -connections FILE  connections file specifying the connections around the regions in the\n" +
+				"                            bed file [in.connections]\n"+
+				"         -bam FILE          bam file of <in.sam> sorted by genomic position [in.bam]\n"+
+				"         -gap N             the number of Ns to place between two segments when stitching contigs\n"+
+				"                            in the un-mis-assembled order [1]\n" +
+				"         -samtools FILE     a path to the directory containing samtools [/jgi/tools/bin]\n" +
+				"         -help              print this message\n" +
+				"\n" +
+				"      A5qc takes in a sam file, and uses read pairs to identify regions potentially containing\n" +
+				"      misassemblies. These regions are exported to a bed file and the blocks connected by\n" +
+				"      paired-reads that support thes regions as potentially containing misassemblies are exported\n" +
+				"      to a connections file. These regions are then analyzed at the base-level using samtools mpileup.\n" +
+				"      If misassemblies are further supported by base-level pileup, sequences are broken and stitched\n" +
+				"      in the order supported by the read pairing information\n" +
+				"\n";
+		
+		out.print(usage);
+		System.exit(0);
+	}
 }

@@ -40,6 +40,10 @@ public class ContigSegment implements Comparable<ContigSegment>{
 	private int id;
 	
 	
+	public ContigSegment(Contig c){
+		this(c,1,c.len);
+	}
+	
 	public ContigSegment (Contig c, int start, int end){
 		this.contig = c;
 		this.start = start;
@@ -123,5 +127,9 @@ public class ContigSegment implements Comparable<ContigSegment>{
 	
 	public Contig getContig(){
 		return contig;
+	}
+	
+	public int getId(){
+		return id;
 	}
 }

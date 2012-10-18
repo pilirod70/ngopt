@@ -25,8 +25,8 @@ public class TestMBRefiner {
 				File ctgFile = new File(args[2]);
 				File brokenFile = new File(args[3]);
 				Map<String, Contig> contigs = getContigs(new SAMFileReader(bamFile));
-				Map<String, Vector<MisassemblyRegion>> ranges = MBRefiner.getRegions(bedFile, connectionsFile, contigs);
-				MBRefiner.scoreAtBaseLevel(bamFile, bedFile, ctgFile, ranges, contigs);
+				Map<String, Vector<MisassemblyRegion>> ranges = MBRefiner.getRegions(args[1], args[2], contigs);
+				MBRefiner.scoreAtBaseLevel(args[0], args[1], args[2], ranges, contigs);
 				Map<String, int[]> junctions = MBRefiner.refine(ranges);
 				MBRefiner.breakContigs(junctions, ctgFile.getAbsolutePath(), brokenFile.getAbsolutePath());
 

@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.NumberFormat;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -32,12 +33,16 @@ public class ContigOrderer {
 		fixedContigsFile.createNewFile();
 		BufferedWriter bw = new BufferedWriter(new FileWriter(fixedContigsFile));
 		FastaWriter fastaWriter = new FastaWriter(bw);
-		while (it.hasNext()){
+		NumberFormat nf = NumberFormat.getInstance();
+		nf.setMinimumIntegerDigits(4);
+		nf.setMaximumIntegerDigits(4);
+		int numSeqs = 0;
+		while(it.hasNext()){
 			cc = it.next();
 			// Find the left-most segment in this connected component
 			seg = cc.first();
 			Set<ContigSegment> visited = new HashSet<ContigSegment>();
-			fastaWriter.addNewSequence("seq1");
+			fastaWriter.addNewSequence("scaffold"+nf.format(++numSeqs));
 			while (!visited.contains(seg)) {
 				System.out.println(seg.toString());
 				if (visited.size() > 0 && GAP_SEQUENCE.length() > 0)
@@ -108,6 +113,7 @@ public class ContigOrderer {
 		Contig tmpCtg;
 		Map<MisassemblyBlock, ContigSegment> blockMap = new HashMap<MisassemblyBlock, ContigSegment>();
 		Map<ContigSegment, Vector<MisassemblyBlock>> segMap = new HashMap<ContigSegment, Vector<MisassemblyBlock>>();
+		Set<SortedSet<ContigSegment>> connectedComponents = new HashSet<SortedSet<ContigSegment>>();
 		
 		ContigSegment tmpSeg = null;
 		MisassemblyRegion tmpRegion = null;
@@ -118,8 +124,18 @@ public class ContigOrderer {
 		Vector<MisassemblyBlock> tmpBlocks = null;
 		while (ctgIt.hasNext()) {
 			ctgKey = ctgIt.next();
+			tmpCtg = contigs.get(ctgKey); 
 			regions = regionMap.get(ctgKey);
-			tmpCtg = contigs.get(ctgKey);
+			/*
+			 *  If this contig contains no misassemblies, add it to our
+			 *  set of connected components. 
+			if (regions.isEmpty()){
+				TreeSet<ContigSegment> cc = new TreeSet<ContigSegment>();
+				cc.add(new ContigSegment(tmpCtg));
+				connectedComponents.add(cc);
+				continue;
+			}
+			 */
 			blockL = tmpCtg.getLeftBlock();
 			for (int i = 0; i < regions.size(); i++){
 				tmpRegion = regions.get(i);
@@ -132,36 +148,45 @@ public class ContigOrderer {
 					tmpBlocks = new Vector<MisassemblyBlock>();
 					segMap.put(tmpSeg, tmpBlocks);
 					// add the mapping between this segment and its right block
-					if (blockR == null)
+					if (blockR != null){
+						tmpBlocks.add(blockR);
+						blockMap.put(blockR, tmpSeg);
+					} else 
 						System.out.print("");
-					tmpBlocks.add(blockR);
-					blockMap.put(blockR, tmpSeg);
 					// add the mapping between this segment and its left block
-					if (blockL == null)
+					if (blockL != null){
+						tmpBlocks.add(blockL);
+						blockMap.put(blockL, tmpSeg);
+					} else 
 						System.out.print("");
-					tmpBlocks.add(blockL);
-					blockMap.put(blockL, tmpSeg);
-					// update the left block on this segment
 					blockL = tmpRegion.getRightBlock();
 					start = end+1;
 				}
 			}
-			end = contigs.get(ctgKey).len;
+			end = tmpCtg.len;
 			tmpSeg = new ContigSegment(tmpCtg, start, end);
 			tmpBlocks = new Vector<MisassemblyBlock>();
 			segMap.put(tmpSeg, tmpBlocks);
 			end = tmpCtg.len;
 			blockR = tmpCtg.getRightBlock();
 			// add the mapping between this segment and its right block
-			if (blockR == null)
+			if (blockR != null ){
+				tmpBlocks.add(blockR);
+				blockMap.put(blockR, tmpSeg);
+				if (blockR.getId() == 620 || blockR.getId() == 621)
+					System.out.print("");
+			} else {
 				System.out.print("");
-			tmpBlocks.add(blockR);
-			blockMap.put(blockR, tmpSeg);
-			// add the mapping between this segment and its left block
-			if (blockL == null)
+			}
+			// add theB mapping between this segment and its left block
+			if (blockL != null){
+				tmpBlocks.add(blockL);
+				blockMap.put(blockL, tmpSeg);
+				if (blockL.getId() == 621 || blockL.getId() == 620)
+					System.out.print("");
+			} else {
 				System.out.print("");
-			segMap.get(tmpSeg).add(blockL);
-			blockMap.put(blockL, tmpSeg);
+			}
 		}
 		
 		Iterator<ContigSegment> segIt = segMap.keySet().iterator();
@@ -180,16 +205,30 @@ public class ContigOrderer {
 		 */
 		while (segIt.hasNext()){
 			tmpSeg = segIt.next();
+			if (!segMap.containsKey(tmpSeg))
+				continue;
 			blockIt = getLeftBlocks(tmpSeg, segMap.get(tmpSeg)).iterator();
 			while(blockIt.hasNext()){
 				tmpBlock = blockIt.next();
+				if (tmpBlock.getConnection() == null)
+					System.out.print("");
+				if (!blockMap.containsKey(tmpBlock.getConnection()))
+					System.out.print("");
 				tmpCnct = blockMap.get(tmpBlock.getConnection());
+				if (tmpCnct == null)
+					System.out.print("");
 				tmpSeg.addLeftConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
 			}
 			blockIt = getRightBlocks(tmpSeg, segMap.get(tmpSeg)).iterator();
 			while(blockIt.hasNext()){
 				tmpBlock = blockIt.next();
+				if (tmpBlock.getConnection() == null)
+					System.out.print("");
+				if (!blockMap.containsKey(tmpBlock.getConnection()))
+					System.out.print("");
 				tmpCnct = blockMap.get(tmpBlock.getConnection());
+				if (tmpCnct == null)
+					System.out.print("");
 				tmpSeg.addRightConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
 			}
 		}
@@ -198,7 +237,6 @@ public class ContigOrderer {
 		 * BEGIN: Build connected components
 		 */
 		segIt = segMap.keySet().iterator();
-		Set<SortedSet<ContigSegment>> connectedComponents = new HashSet<SortedSet<ContigSegment>>();
 		while (segIt.hasNext()) {
 			tmpSeg = segIt.next();
 			if (tmpSeg.getVisited())
@@ -261,6 +299,8 @@ public class ContigOrderer {
 		MisassemblyBlock tmp = null;
 		for (int i = 0; i < blocks.size(); i++){
 			tmp = blocks.get(i);
+			if (tmp == null)
+				System.out.print("");
 			// if its closer to the left, call this a left block
 			if (tmp.getLeft() - seg.getStart() < seg.getEnd() - tmp.getRight())
 				ret.add(tmp);
@@ -278,5 +318,12 @@ public class ContigOrderer {
 				ret.add(tmp);
 		}
 		return ret;
+	}
+	
+	public static void setGapSequence(int numberOfNs){
+		byte[] ar = new byte[numberOfNs];
+		for (int i = 0; i < ar.length; i++)
+			ar[i] = 'N';
+		GAP_SEQUENCE = new String(ar);
 	}
 }
