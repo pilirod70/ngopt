@@ -9,5 +9,6 @@
 	<classpathentry kind="lib" path="ext/commons-cli-1.2.jar"/>
 	<classpathentry kind="lib" path="ext/sam-1.73.jar"/>
 	<classpathentry kind="lib" path="ext/commons-exec-1.1.jar"/>
+	<classpathentry kind="lib" path="ext/commons-collections-3.2.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

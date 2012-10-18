@@ -70,4 +70,24 @@ public class MisassemblyBlock {
 	public Contig getContig(){
 		return contig;
 	}
+	
+	public int getId(){
+		return id;
+	}
+	
+	/**
+	 * Returns -1, if this block lies at the left end of the contig it is on,
+	 * +1 if this block lies on the right end of the contig, and 0 otherwise.
+	 * 
+	 * @return -1, 0, 1 for left, middle, right end of the contig, respectively
+	 */
+	public static int getTerminus(MisassemblyBlock block){
+		double perc = ((double) block.right - block.left)/block.right;
+		if (perc > 0.5)
+			return -1;
+		perc = ((double) block.right - block.left)/(block.contig.len-block.left+1);
+		if (perc > 0.5)
+			return 1;
+		return 0;
+	}
 }

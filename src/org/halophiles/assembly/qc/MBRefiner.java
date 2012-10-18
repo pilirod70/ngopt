@@ -17,7 +17,7 @@ import org.halophiles.tools.HelperFunctions;
 
 public class MBRefiner {
 
-	private static final String SAMTOOLS = "/jgi/tools/bin/samtools";
+	private static String SAMTOOLS = "/jgi/tools/bin/samtools";
 
 	/**
 	 * This function is used if we already have pileup file.
@@ -36,9 +36,9 @@ public class MBRefiner {
 		return regions;
 	}
 	
-	public static void scoreAtBaseLevel(File bamFile, File bedFile, File ctgFile, Map<String, Vector<MisassemblyRegion>> regions,Map<String,Contig> contigs) throws IOException {
+	public static void scoreAtBaseLevel(String bamFilePath, String bedFilePath, String ctgFilePath, Map<String, Vector<MisassemblyRegion>> regions,Map<String,Contig> contigs) throws IOException {
 		try {
-			runMPileup(bamFile.getAbsolutePath(), bedFile.getAbsolutePath(), ctgFile.getAbsolutePath(), regions);
+			runMPileup(bamFilePath, bedFilePath, ctgFilePath, regions);
 		} catch (InterruptedException e) {
 			System.err.println("Unable to run samtools mpileup. This is what I know:");
 			e.printStackTrace();
@@ -120,13 +120,13 @@ public class MBRefiner {
 	 * @return
 	 * @throws IOException
 	 */
-	public static Map<String, Vector<MisassemblyRegion>> getRegions(File bedFile, File connectionsFile, Map<String,Contig> contigs) throws IOException {
+	public static Map<String, Vector<MisassemblyRegion>> getRegions(String bedFilePath, String connectionsFilePath, Map<String,Contig> contigs) throws IOException {
 		
 		// contig+","+(rev?"-":"+")+","+Integer.toString(left)+","+Integer.toString(right);
 
 		Map<String, Vector<MisassemblyRegion>> ret = new HashMap<String, Vector<MisassemblyRegion>>();
 		
-		BufferedReader connectionsIn = new BufferedReader(new FileReader(connectionsFile));
+		BufferedReader connectionsIn = new BufferedReader(new FileReader(new File(connectionsFilePath)));
 		
 		// Stores the misassembly blocks we've seen so far.
 		Map<Integer, MisassemblyBlock> blockSet = new HashMap<Integer,MisassemblyBlock>();
@@ -150,12 +150,24 @@ public class MBRefiner {
 			if (reg.startsWith("circ")){
 				tmpBlks[0].getContig().addLeftBlock(tmpBlks[0]);
 				tmpBlks[1].getContig().addRightBlock(tmpBlks[1]);
+			} else {
+				int term = MisassemblyBlock.getTerminus(tmpBlks[0]);
+				if (term == -1)
+					tmpBlks[0].getContig().addLeftBlock(tmpBlks[0]);
+				else if (term == 1)
+					tmpBlks[0].getContig().addRightBlock(tmpBlks[0]);
+				
+				term = MisassemblyBlock.getTerminus(tmpBlks[1]);
+				if (term == -1)
+					tmpBlks[1].getContig().addLeftBlock(tmpBlks[1]);
+				else if (term == 1)
+					tmpBlks[1].getContig().addRightBlock(tmpBlks[1]);				
 			}
 			
 			blocksByRegion.put(reg, tmpBlks);
 		}
 		
-		BufferedReader bedIn = new BufferedReader(new FileReader(bedFile));
+		BufferedReader bedIn = new BufferedReader(new FileReader(new File(bedFilePath)));
 
 
 		Vector<MisassemblyRegion> ranges = null;
@@ -219,6 +231,11 @@ public class MBRefiner {
 			tmpConnect.addConnection(tmpFlank);
 		}
 		return tmpFlank;
+	}
+	
+	protected static boolean setSamToolsPath(String path){
+		SAMTOOLS = path+"/samtools";
+		return HelperFunctions.hasNonZeroSize(SAMTOOLS);
 	}
 
 	private static void runMPileup(String bamPath, String bedPath, String ctgPath, Map<String, Vector<MisassemblyRegion>> regions) throws IOException, InterruptedException {

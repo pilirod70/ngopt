@@ -5,11 +5,20 @@
  */
 package org.halophiles.assembly;
 
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Vector;
 
 import org.halophiles.assembly.qc.MisassemblyBlock;
 
+/**
+ * A class to represent any sequence in an assembly. The term contig is not the colloquial contig.
+ * i.e. an Object of type Contig can represent a scaffold or a contig 
+ * 
+ * @author ajtritt
+ *
+ */
 public class Contig implements Comparable<Contig> {
 	private static int CTG_COUNT=0;
 	private static int CONCAT_START = 1;
@@ -32,7 +41,6 @@ public class Contig implements Comparable<Contig> {
 	
 	private MisassemblyBlock leftBlock = null;
 	private MisassemblyBlock rightBlock = null;
-
 	
 	public Contig(String name, int len){
 		this(name);
