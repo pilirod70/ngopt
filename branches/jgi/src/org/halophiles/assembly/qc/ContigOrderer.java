@@ -122,28 +122,26 @@ public class ContigOrderer {
 		MisassemblyBlock blockL = null;
 		MisassemblyBlock blockR = null;
 		Vector<MisassemblyBlock> tmpBlocks = null;
+		/*
+		 * For each contig, slice the contig up into segments delimited by misassembly junctions
+		 */
 		while (ctgIt.hasNext()) {
 			ctgKey = ctgIt.next();
+			start = 1;
 			tmpCtg = contigs.get(ctgKey); 
 			regions = regionMap.get(ctgKey);
-			/*
-			 *  If this contig contains no misassemblies, add it to our
-			 *  set of connected components. 
-			if (regions.isEmpty()){
-				TreeSet<ContigSegment> cc = new TreeSet<ContigSegment>();
-				cc.add(new ContigSegment(tmpCtg));
-				connectedComponents.add(cc);
-				continue;
-			}
-			 */
 			blockL = tmpCtg.getLeftBlock();
 			for (int i = 0; i < regions.size(); i++){
 				tmpRegion = regions.get(i);
 				if (tmpRegion.getMinScore() < MIN_PLP_SCORE){
 					// get the end of this ContigSegment, and the block at that end
 					end = tmpRegion.getMinPos();
+					if (end == 585329)
+						System.out.print("");
 					blockR = tmpRegion.getLeftBlock();
 					// create our ContigSegment object and this segments list of blocks
+					if (end < start)
+						System.out.print("");
 					tmpSeg = new ContigSegment(tmpCtg, start, end);
 					tmpBlocks = new Vector<MisassemblyBlock>();
 					segMap.put(tmpSeg, tmpBlocks);
@@ -151,19 +149,26 @@ public class ContigOrderer {
 					if (blockR != null){
 						tmpBlocks.add(blockR);
 						blockMap.put(blockR, tmpSeg);
-					} else 
-						System.out.print("");
-					// add the mapping between this segment and its left block
+					} 
+					/*
+					 * If a block exists, add a mapping between this segment
+					 * and its left block. It should only be non-existent if
+					 * the contig is not connected to anything.
+					 */
 					if (blockL != null){
 						tmpBlocks.add(blockL);
 						blockMap.put(blockL, tmpSeg);
-					} else 
-						System.out.print("");
+					}
+					// now get the next left block
 					blockL = tmpRegion.getRightBlock();
 					start = end+1;
+					if (start == 585330)
+						System.out.print("");
 				}
 			}
 			end = tmpCtg.len;
+			if (end < start)
+				System.out.print("");
 			tmpSeg = new ContigSegment(tmpCtg, start, end);
 			tmpBlocks = new Vector<MisassemblyBlock>();
 			segMap.put(tmpSeg, tmpBlocks);
@@ -173,17 +178,11 @@ public class ContigOrderer {
 			if (blockR != null ){
 				tmpBlocks.add(blockR);
 				blockMap.put(blockR, tmpSeg);
-				if (blockR.getId() == 620 || blockR.getId() == 621)
-					System.out.print("");
-			} else {
-				System.out.print("");
-			}
+			} 
 			// add theB mapping between this segment and its left block
 			if (blockL != null){
 				tmpBlocks.add(blockL);
 				blockMap.put(blockL, tmpSeg);
-				if (blockL.getId() == 621 || blockL.getId() == 620)
-					System.out.print("");
 			} else {
 				System.out.print("");
 			}
@@ -210,25 +209,17 @@ public class ContigOrderer {
 			blockIt = getLeftBlocks(tmpSeg, segMap.get(tmpSeg)).iterator();
 			while(blockIt.hasNext()){
 				tmpBlock = blockIt.next();
-				if (tmpBlock.getConnection() == null)
-					System.out.print("");
 				if (!blockMap.containsKey(tmpBlock.getConnection()))
-					System.out.print("");
+					continue;
 				tmpCnct = blockMap.get(tmpBlock.getConnection());
-				if (tmpCnct == null)
-					System.out.print("");
 				tmpSeg.addLeftConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
 			}
 			blockIt = getRightBlocks(tmpSeg, segMap.get(tmpSeg)).iterator();
 			while(blockIt.hasNext()){
 				tmpBlock = blockIt.next();
-				if (tmpBlock.getConnection() == null)
-					System.out.print("");
 				if (!blockMap.containsKey(tmpBlock.getConnection()))
-					System.out.print("");
+					continue;
 				tmpCnct = blockMap.get(tmpBlock.getConnection());
-				if (tmpCnct == null)
-					System.out.print("");
 				tmpSeg.addRightConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
 			}
 		}
@@ -276,8 +267,6 @@ public class ContigOrderer {
 	 * @param cc the set of components that are connected to build upon
 	 */
 	private static void buildConnectedComponent(ContigSegment seg, SortedSet<ContigSegment> cc){ 
-		if (seg == null)
-			System.out.print("");
 		if (seg.getVisited())
 			return;
 		seg.setVisited(true);
@@ -299,8 +288,6 @@ public class ContigOrderer {
 		MisassemblyBlock tmp = null;
 		for (int i = 0; i < blocks.size(); i++){
 			tmp = blocks.get(i);
-			if (tmp == null)
-				System.out.print("");
 			// if its closer to the left, call this a left block
 			if (tmp.getLeft() - seg.getStart() < seg.getEnd() - tmp.getRight())
 				ret.add(tmp);

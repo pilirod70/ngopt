@@ -9,6 +9,8 @@ package org.halophiles.assembly.qc;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
@@ -162,6 +164,8 @@ public class MisassemblyBreaker {
 
 	private static String bedFilePath;
 	
+	private static String scoreFilePath;
+	
 	private static String connectionsFilePath;
 	
 	private static String bamFilePath;
@@ -190,11 +194,18 @@ public class MisassemblyBreaker {
 				regions = findMisasmRegions(base, bedFilePath, connectionsFilePath, contigs);
 			} else {
 				raf.close();
-				System.out.println("[a5_qc] Found a bed file. Assuming I generated this in a past run and proceeding");
+				System.out.println("[a5_qc] Found a bed file. Assuming I generated this in a past run and proceeding.");
 				regions = MBRefiner.getRegions(bedFilePath, connectionsFilePath, contigs);
 			}
 			if (regions != null) { // if we created a bedFile, we have regions containing misassemblies
-				MBRefiner.scoreAtBaseLevel(bamFilePath, bedFilePath, fastaFilePath, regions, contigs);
+				if (!HelperFunctions.hasNonZeroSize(scoreFilePath)){
+					MBRefiner.scoreAtBaseLevel(bamFilePath, bedFilePath, fastaFilePath, regions, contigs);
+					System.out.println("[a5_qc] Logging pileup scores to "+scoreFilePath);
+					logScores(scoreFilePath, regions);
+				} else {
+					System.out.println("[a5_qc] Found a scores file. Assuming I generated this in a past run and proceeding.");
+					loadScores(scoreFilePath, regions);
+				}
 				Set<SortedSet<ContigSegment>> conComps = ContigOrderer.buildGraph(regions, contigs);
 				System.out.println("Found " + conComps.size()+" connected components");
 				ContigOrderer.exportNewContigs(conComps, fastaFilePath, outputFastaFilePath);
@@ -442,6 +453,58 @@ public class MisassemblyBreaker {
 		sb.append(right.toString()+",");
 		sb.append(right.getConnection().toString());
 		out.println(sb.toString());
+	}
+	
+	/**
+	 * A function for logging pileup scores to a file
+	 * @param outputPath
+	 * @param regions
+	 * @throws IOException
+	 */
+	private static void logScores(String outputPath, Map<String,Vector<MisassemblyRegion>> regions) throws IOException{
+		File outFile = new File(outputPath);
+		outFile.createNewFile();
+		PrintStream out = new PrintStream(outFile);
+		Iterator<String> it = regions.keySet().iterator();
+		Iterator<MisassemblyRegion> regIt = null;
+		MisassemblyRegion reg = null;
+		while(it.hasNext()){
+			regIt = regions.get(it.next()).iterator();
+			while(regIt.hasNext()){
+				reg = regIt.next();
+				out.println(reg.getId()+"\t"+reg.getMinPos()+"\t"+reg.getMinScore());
+			}
+		}
+	}
+	/**
+	 * A function for loading pileup scores stored in a file.
+	 * @param inputPath
+	 * @param regions
+	 * @throws IOException
+	 */
+	private static void loadScores(String inputPath, Map<String,Vector<MisassemblyRegion>> regions) throws IOException{
+		BufferedReader br = new BufferedReader(new FileReader(new File(inputPath)));
+		Map<String,double[]> dat = new HashMap<String, double[]>();
+		String[] ar = null;
+		double[] tmpDat = null;
+		while(br.ready()){
+			ar = br.readLine().split("\t");
+			tmpDat = new double[2];
+			tmpDat[0] = Double.parseDouble(ar[1]); // position
+			tmpDat[1] = Double.parseDouble(ar[2]); // score
+			dat.put(ar[0], tmpDat);
+		}
+		Iterator<String> it = regions.keySet().iterator();
+		Iterator<MisassemblyRegion> regIt = null;
+		MisassemblyRegion reg = null;
+		while(it.hasNext()){
+			regIt = regions.get(it.next()).iterator();
+			while(regIt.hasNext()){
+				reg = regIt.next();
+				tmpDat = dat.get(reg.getId());
+				reg.addPos((int) tmpDat[0], tmpDat[1]);
+			}
+		}
 	}
 	
 	private static boolean resetParam(String in){
@@ -1687,7 +1750,7 @@ public class MisassemblyBreaker {
 		samFilePath = args[i++];
 		fastaFilePath = args[i++];
 		outputFastaFilePath = args[i++];
-		if (bedFilePath == null || bamFilePath == null || connectionsFilePath == null){
+		if (bedFilePath == null || bamFilePath == null || connectionsFilePath == null || scoreFilePath == null){
 			String base = HelperFunctions.dirname(samFilePath)+"/"+HelperFunctions.basename(samFilePath,".sam");
 			if (bedFilePath == null)
 				bedFilePath = base + ".regions.bed";
@@ -1695,6 +1758,8 @@ public class MisassemblyBreaker {
 				bamFilePath = base + ".bam";
 			if (connectionsFilePath == null)
 				connectionsFilePath = base + ".connections";
+			if (scoreFilePath == null)
+				scoreFilePath = base + ".regions.scores";
 		}
 	}
 	private static void printUsage(PrintStream out){
