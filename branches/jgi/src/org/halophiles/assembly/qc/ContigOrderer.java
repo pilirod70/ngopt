@@ -24,6 +24,8 @@ public class ContigOrderer {
 	
 	private static String GAP_SEQUENCE = "N"; 
 	
+	private static HashSet<ContigSegment> allSegs = new HashSet<ContigSegment>();
+	
 	public static void exportNewContigs(Set<SortedSet<ContigSegment>> conComps, String contigFastaPath, String outputPath) throws IOException{
 		Iterator<SortedSet<ContigSegment>> it = conComps.iterator();
 		SortedSet<ContigSegment> cc = null;
@@ -34,33 +36,64 @@ public class ContigOrderer {
 		BufferedWriter bw = new BufferedWriter(new FileWriter(fixedContigsFile));
 		FastaWriter fastaWriter = new FastaWriter(bw);
 		NumberFormat nf = NumberFormat.getInstance();
-		nf.setMinimumIntegerDigits(4);
+		nf.setMinimumIntegerDigits((int)Math.ceil(Math.log10(conComps.size())));
 		nf.setMaximumIntegerDigits(4);
+		nf.setGroupingUsed(false);
 		int numSeqs = 0;
+		String header = "";
+		boolean inverted = false;
+		ContigSegment nextSeg = null;
 		while(it.hasNext()){
+			inverted = false;
 			cc = it.next();
-			// Find the left-most segment in this connected component
-			seg = cc.first();
+			
+			Iterator<ContigSegment> ccIt = cc.iterator();
+			while (ccIt.hasNext()){
+				seg = ccIt.next();
+				if (seg.getLeftSegments().isEmpty())
+					break;
+			}
+			
+			//seg = cc.first();
 			Set<ContigSegment> visited = new HashSet<ContigSegment>();
-			fastaWriter.addNewSequence("scaffold"+nf.format(++numSeqs));
+			header = "scaffold"+nf.format(++numSeqs);
+			fastaWriter.addNewSequence(header);
+			System.out.println(header);
 			while (!visited.contains(seg)) {
-				System.out.println(seg.toString());
+				System.out.println("\t"+seg.toString()+(inverted ? " (-)": " (+)"));
+				allSegs.remove(seg);
 				if (visited.size() > 0 && GAP_SEQUENCE.length() > 0)
 					fastaWriter.writeSequence(GAP_SEQUENCE);
-				if (seg.inverted()){
-					fastaWriter.writeSequenceInverted(sequence.get(seg.getContig().name).subSequence(seg.getStart()-1, seg.getEnd()));
-					visited.add(seg);
-					if (seg.getLeftSegments().size() > 0) {
-						seg = seg.getLeftSegments().firstElement();
-					}
-				} else {
+				visited.add(seg);
+				if (inverted) {
+					fastaWriter.writeSequenceInverted(sequence.get(seg.getContig().name).subSequence(seg.getStart()-1, seg.getEnd()));					
+					if (seg.getLeftSegments().isEmpty())
+						continue;
+					if (seg.getLeftSegments().size() > 1)
+						System.out.print("");
+					nextSeg = seg.getLeftSegments().firstElement();
+					if (seg.getOri(nextSeg) == MatchPoint.RR) 
+						inverted = !inverted;
+				} else { 
+					//StringBuilder seq = sequence.get(seg.getContig().name);
 					fastaWriter.writeSequence(sequence.get(seg.getContig().name).subSequence(seg.getStart()-1, seg.getEnd()));
-					visited.add(seg);
-					if (seg.getRightSegments().size() > 0) {
-						seg = seg.getRightSegments().firstElement();
-					}
+					if (seg.getRightSegments().isEmpty())
+						continue;
+					if (seg.getRightSegments().size()>1)
+						System.out.print("");
+					nextSeg = seg.getRightSegments().firstElement();
+					if (seg.getOri(nextSeg) == MatchPoint.FF) 
+						inverted = !inverted;
 				}
+				seg = nextSeg;
+				
 			}
+		}
+		System.out.println(allSegs.size());
+		Iterator<ContigSegment> segIt = allSegs.iterator();
+		while(segIt.hasNext()){
+			seg = segIt.next();
+			System.out.println(seg.toString());
 		}
 		bw.close();
 	}
@@ -111,6 +144,7 @@ public class ContigOrderer {
 		Vector<MisassemblyRegion> regions = null;
 		String ctgKey = null;
 		Contig tmpCtg;
+		// A Map to associate ContigSegments with blocks
 		Map<MisassemblyBlock, ContigSegment> blockMap = new HashMap<MisassemblyBlock, ContigSegment>();
 		Map<ContigSegment, Vector<MisassemblyBlock>> segMap = new HashMap<ContigSegment, Vector<MisassemblyBlock>>();
 		Set<SortedSet<ContigSegment>> connectedComponents = new HashSet<SortedSet<ContigSegment>>();
@@ -136,13 +170,16 @@ public class ContigOrderer {
 				if (tmpRegion.getMinScore() < MIN_PLP_SCORE){
 					// get the end of this ContigSegment, and the block at that end
 					end = tmpRegion.getMinPos();
-					if (end == 585329)
-						System.out.print("");
 					blockR = tmpRegion.getLeftBlock();
 					// create our ContigSegment object and this segments list of blocks
 					if (end < start)
 						System.out.print("");
 					tmpSeg = new ContigSegment(tmpCtg, start, end);
+					if (blockL.getId() == 43 || blockR.getId() == 43)
+						System.out.print("");
+					if (tmpSeg.getId() == 10)
+						System.out.print("");
+					allSegs.add(tmpSeg);
 					tmpBlocks = new Vector<MisassemblyBlock>();
 					segMap.put(tmpSeg, tmpBlocks);
 					// add the mapping between this segment and its right block
@@ -161,15 +198,17 @@ public class ContigOrderer {
 					}
 					// now get the next left block
 					blockL = tmpRegion.getRightBlock();
-					start = end+1;
-					if (start == 585330)
-						System.out.print("");
+					start = end+1;                                                                                                    
 				}
 			}
 			end = tmpCtg.len;
 			if (end < start)
 				System.out.print("");
 			tmpSeg = new ContigSegment(tmpCtg, start, end);
+			if (blockL.getId() == 43 || blockR.getId() == 43)
+				System.out.print("");
+			
+			allSegs.add(tmpSeg);
 			tmpBlocks = new Vector<MisassemblyBlock>();
 			segMap.put(tmpSeg, tmpBlocks);
 			end = tmpCtg.len;
@@ -189,10 +228,11 @@ public class ContigOrderer {
 		}
 		
 		Iterator<ContigSegment> segIt = segMap.keySet().iterator();
+		/*
 		while (segIt.hasNext())
-			System.out.println(segIt.next().toString());
-		
+			System.out.println(segIt.next().toString());	
 		segIt = segMap.keySet().iterator();
+		*/
 		
 		
 		Iterator<MisassemblyBlock> blockIt = null;
@@ -204,9 +244,13 @@ public class ContigOrderer {
 		 */
 		while (segIt.hasNext()){
 			tmpSeg = segIt.next();
+			if (tmpSeg.getId() == 10)
+				System.out.print("");
 			if (!segMap.containsKey(tmpSeg))
 				continue;
-			blockIt = getLeftBlocks(tmpSeg, segMap.get(tmpSeg)).iterator();
+			Vector<MisassemblyBlock> vect = segMap.get(tmpSeg);
+			vect = getLeftBlocks(tmpSeg, vect); 
+			blockIt = vect.iterator();
 			while(blockIt.hasNext()){
 				tmpBlock = blockIt.next();
 				if (!blockMap.containsKey(tmpBlock.getConnection()))
@@ -214,7 +258,10 @@ public class ContigOrderer {
 				tmpCnct = blockMap.get(tmpBlock.getConnection());
 				tmpSeg.addLeftConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
 			}
-			blockIt = getRightBlocks(tmpSeg, segMap.get(tmpSeg)).iterator();
+			
+			vect = segMap.get(tmpSeg);
+			vect = getRightBlocks(tmpSeg, vect); 
+			blockIt = vect.iterator();
 			while(blockIt.hasNext()){
 				tmpBlock = blockIt.next();
 				if (!blockMap.containsKey(tmpBlock.getConnection()))

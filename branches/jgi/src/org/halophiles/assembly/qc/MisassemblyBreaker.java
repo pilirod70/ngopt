@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.StringTokenizer;
+import java.util.TreeMap;
 import java.util.Vector;
 /*
 import net.sf.samtools.AbstractBAMFileIndex;
@@ -170,10 +171,10 @@ public class MisassemblyBreaker {
 	
 	private static String bamFilePath;
 	
-	private static int numGapNs = 0;
+	private static int numGapNs = 1;
 	
 	public static void main(String[] args){
-		parseArgs(args);
+		String base = parseArgs(args);
 		try{
 			HelperFunctions.logInputs("A5qc", args);
 			NF = NumberFormat.getInstance();
@@ -182,10 +183,13 @@ public class MisassemblyBreaker {
 			
 			ContigOrderer.setGapSequence(numGapNs);
 			
-			String base = HelperFunctions.dirname(samFilePath)+"/"+HelperFunctions.basename(samFilePath,".sam");
 			Map<String,Vector<MisassemblyRegion>> regions = null;
 			
 			RandomAccessFile raf = new RandomAccessFile(new File(samFilePath), "r");
+			if (raf.length() == 0){
+				System.err.println("SAM file is empty: "+samFilePath);
+				System.exit(-1);
+			}
 			Map<String,Contig> contigs = readContigs(raf);
 			if (!HelperFunctions.hasNonZeroSize(bedFilePath) && !HelperFunctions.hasNonZeroSize(connectionsFilePath)) {
 				double[][] insertStats = getInsertStats(raf, contigs);
@@ -207,7 +211,7 @@ public class MisassemblyBreaker {
 					loadScores(scoreFilePath, regions);
 				}
 				Set<SortedSet<ContigSegment>> conComps = ContigOrderer.buildGraph(regions, contigs);
-				System.out.println("Found " + conComps.size()+" connected components");
+				System.out.println("[a5_qc] Found " + conComps.size()+" connected components");
 				ContigOrderer.exportNewContigs(conComps, fastaFilePath, outputFastaFilePath);
 			}
 			
@@ -269,6 +273,7 @@ public class MisassemblyBreaker {
 		printParams();
 	}
 	
+	
 	/**
 	 * Identifies regions containing misassemblies using the provided SAM file, and writes
 	 * these regions to a BED file under the given path. If no regions are found, nothing 
@@ -279,45 +284,55 @@ public class MisassemblyBreaker {
 	private static Map<String,Vector<MisassemblyRegion>> findMisasmRegions(String logBase, String bedFilePath, String connectionsFilePath, Map<String,Contig> contigs) throws IOException{
 		// collect all of our blocks for each contig
 		Iterator<SpatialClusterer> mbIt = matches.iterator();
-		Map<String,Vector<MisassemblyBlock>> blocks = new HashMap<String,Vector<MisassemblyBlock>>();
+		Map<String,Vector<MisassemblyBlock>> blocks = new TreeMap<String,Vector<MisassemblyBlock>>();
 		Vector<MisassemblyBlock> xBlocks = null;
 		Vector<MisassemblyBlock> yBlocks = null;
+		
 		while(mbIt.hasNext()){
-			SpatialClusterer pc = mbIt.next();
-			String statePath = logBase+".matches."+HelperFunctions.basename(pc.getContig1().name)+".v."+HelperFunctions.basename(pc.getContig2().name)+".txt";
-			pc.exportCurrState(statePath);
+			SpatialClusterer sc = mbIt.next();
 			// get Vector for holding contig X blocks
 			xBlocks = new Vector<MisassemblyBlock>();
 			// get Vector for holding contig Y blocks
 			yBlocks = new Vector<MisassemblyBlock>();
-			pc.buildReadPairClusters();
-			addBlocks(pc, xBlocks, yBlocks);
-			//pc.exportCurrState(new File(matchDir,"match."+pc.getContig1().getId()+"v"+pc.getContig2().getId()+".txt"));
-	//		removeTerminalBlocks(pc.getContig1(), xBlocks);
-	//		removeTerminalBlocks(pc.getContig2(), yBlocks);
-			if (blocks.containsKey(pc.getContig1().name))
-				blocks.get(pc.getContig1().name).addAll(xBlocks);
-			else
-				blocks.put(pc.getContig1().name, xBlocks);
+			sc.buildReadPairClusters();
+			addBlocks(sc, xBlocks, yBlocks);
 			
-			if (blocks.containsKey(pc.getContig2().name))
-				blocks.get(pc.getContig2().name).addAll(yBlocks);
+		
+			if (blocks.containsKey(sc.getContig1().name))
+				blocks.get(sc.getContig1().name).addAll(xBlocks);
 			else
-				blocks.put(pc.getContig2().name, yBlocks);
+				blocks.put(sc.getContig1().name, xBlocks);
+			
+			if (blocks.containsKey(sc.getContig2().name))
+				blocks.get(sc.getContig2().name).addAll(yBlocks);
+			else
+				blocks.put(sc.getContig2().name, yBlocks);
 			
 		}
+		
+		String blocksFilePath = logBase+".blocks";
+		File blocksFile = new File(blocksFilePath);
+		blocksFile.createNewFile();
+		PrintStream blocksOut = new PrintStream(blocksFile);
+		
 		Iterator<String> it = blocks.keySet().iterator();
-		/*
-		while(it.hasNext())
-			removeRepeats(blocks.get(it.next()));
-			
+
+		while(it.hasNext()){
+			Iterator<MisassemblyBlock> blockIt = blocks.get(it.next()).iterator();
+			while (blockIt.hasNext()){
+				MisassemblyBlock tmp = blockIt.next();
+				blocksOut.println(tmp.toString()+"\t"+tmp.getConnection().toString());
+			}
+		}
+		blocksOut.close();
+		
 		it = blocks.keySet().iterator();
-		*/
+		
 		Vector<String> toRm = new Vector<String>();
 		while(it.hasNext()){
 			String tmpCtg = it.next();
 			Vector<MisassemblyBlock> tmpBlocks = blocks.get(tmpCtg);
-			System.out.println("[a5_qc] Found "+tmpBlocks.size()+" blocks on contig " + contigs.get(tmpCtg).getId());
+			System.out.println("[a5_qc] Found "+tmpBlocks.size()+" blocks on contig " + contigs.get(tmpCtg).name);
 			if (tmpBlocks.isEmpty())
 				toRm.add(tmpCtg);
 			else 
@@ -339,7 +354,7 @@ public class MisassemblyBreaker {
 		PrintStream bedOut = null;
 		PrintStream connectionsOut = null;
 		Map<String,Vector<MisassemblyRegion>> ret = null;
-		MisassemblyRegion tmpRange;
+		MisassemblyRegion tmpRegion;
 		if (!blocks.isEmpty()) {
 			Iterator<String> ctgIt = blocks.keySet().iterator();
 			String tmpCtg;
@@ -347,32 +362,50 @@ public class MisassemblyBreaker {
 			int right = -1;
 			int startList = -1;
 			int endList = -1;
+			MisassemblyBlock leftTerm = null;
+			MisassemblyBlock rightTerm = null;
 			while(ctgIt.hasNext()){
 				tmpCtg = ctgIt.next();
+				leftTerm = null;
+				rightTerm = null;
 				Vector<MisassemblyBlock> tmpBlks = blocks.get(tmpCtg);
 				startList = 1;
 				endList = tmpBlks.size()-1;
-				
 				if (tmpBlks.size() < 2)
 					continue;
-			
-				if (tmpBlks.get(0).getConnection() == tmpBlks.get(tmpBlks.size()-1)) {
-					File connectionsFile = new File(connectionsFilePath);
-					connectionsFile.createNewFile();
-					connectionsOut = new PrintStream(connectionsFile);
-					logConnection(connectionsOut, "circ"+contigs.get(tmpCtg).getId(), tmpBlks.get(0), tmpBlks.get(tmpBlks.size()-1));
-					contigs.get(tmpCtg).addLeftBlock(tmpBlks.get(0));
-					contigs.get(tmpCtg).addRightBlock(tmpBlks.get(tmpBlks.size()-1));
-				} else {
-					int term = MisassemblyBlock.getTerminus(tmpBlks.get(0));
-					if (term == -1)
-						contigs.get(tmpCtg).addLeftBlock(tmpBlks.get(0));
-					else if (term == 1)
-						contigs.get(tmpCtg).addRightBlock(tmpBlks.get(0));
-					
-				}
 				
-				Vector<MisassemblyRegion> ranges = null;
+				// BEGIN: check if this contig has terminal blocks
+				if (tmpBlks.get(0).getRev() && MisassemblyBlock.getTerminus(tmpBlks.get(0)) == -1) {
+					leftTerm = tmpBlks.get(0);
+					startList++;
+				}
+				if (!tmpBlks.get(tmpBlks.size()-1).getRev() && 
+						MisassemblyBlock.getTerminus(tmpBlks.get(tmpBlks.size()-1)) == 1) {
+					rightTerm = tmpBlks.get(tmpBlks.size()-1);
+					endList--;
+				}
+								
+				if (leftTerm != null || rightTerm != null){
+					// check if this contig is circular
+					if (leftTerm != null && rightTerm != null && leftTerm == rightTerm.getConnection()){
+						connectionsOut = HelperFunctions.openIfClosed(connectionsOut, connectionsFilePath);
+						logConnection(connectionsOut, "circ"+contigs.get(tmpCtg).getId(), leftTerm, rightTerm);
+						contigs.get(tmpCtg).addLeftBlock(leftTerm);
+						contigs.get(tmpCtg).addRightBlock(rightTerm);
+					} else { // if not circular, see if we can do some scaffolding
+						connectionsOut = HelperFunctions.openIfClosed(connectionsOut, connectionsFilePath);
+						if (leftTerm != null) {
+							contigs.get(tmpCtg).addLeftBlock(leftTerm);
+							logConnection(connectionsOut, "scafl"+contigs.get(tmpCtg).getId(),leftTerm, leftTerm.getConnection());
+						}
+						if (rightTerm != null) { 
+							contigs.get(tmpCtg).addRightBlock(rightTerm);
+							logConnection(connectionsOut, "scafr"+contigs.get(tmpCtg).getId(),rightTerm, rightTerm.getConnection());
+						}
+					}
+				} 
+				// END: check if this contig has terminal blocks 
+				Vector<MisassemblyRegion> regions = null;
 				for (int i = startList; i <= endList; i++){
 					// if they don't face each other, there isn't a misassembly in between this pair of blocks
 					if (tmpBlks.get(i-1).getRev() || !tmpBlks.get(i).getRev()) 
@@ -382,37 +415,39 @@ public class MisassemblyBreaker {
 					if (tmpBlks.get(i-1).getRight() > tmpBlks.get(i).getLeft()) {
 						left = tmpBlks.get(i).getLeft();
 						right = tmpBlks.get(i-1).getRight();
-					} else if (tmpBlks.get(i).getLeft()-tmpBlks.get(i-1).getRight() < MAX_INTERBLOCK_DIST) {
+						if (right - left > MAX_INTERBLOCK_DIST)
+							continue;
+					} else if (tmpBlks.get(i).getLeft()-tmpBlks.get(i-1).getRight() <= MAX_INTERBLOCK_DIST) {
 						left = tmpBlks.get(i-1).getRight();
 						right = tmpBlks.get(i).getLeft();
+					} else {
+						continue;
 					}
 					
 					if (left != -1 && right != -1){
 						// if they overlap, split at the midpoint of overlap
 						if (bedOut == null) { // don't create the file if we don't need to
-							File bedFile = new File(bedFilePath);
-							bedFile.createNewFile();
-							bedOut = new PrintStream(bedFile);
-							if (connectionsOut == null){
-								File connectionsFile = new File(connectionsFilePath);
-								connectionsFile.createNewFile();
-								connectionsOut = new PrintStream(connectionsFile);
-							}
-							System.out.println("[a5_qc] Writing regions containing misassemblies to " + bedFile.getAbsolutePath());
+							bedOut = HelperFunctions.openIfClosed(bedOut, bedFilePath);
+							connectionsOut = HelperFunctions.openIfClosed(connectionsOut, connectionsFilePath);
+							System.out.println("[a5_qc] Writing regions containing misassemblies to " + bedFilePath);
 							ret = new HashMap<String, Vector<MisassemblyRegion>>();
 						}
-						if (ranges == null)
-							ranges = new Vector<MisassemblyRegion>();
-						tmpRange = new MisassemblyRegion(contigs.get(tmpCtg), tmpBlks.get(i-1), tmpBlks.get(i));
-						bedOut.println(tmpRange.toString());
-						logConnection(connectionsOut, tmpRange.getId(), tmpBlks.get(i-1), tmpBlks.get(i));
-						ranges.add(tmpRange);
+						if (regions == null){
+							regions = new Vector<MisassemblyRegion>();
+						}
+						tmpRegion = new MisassemblyRegion(contigs.get(tmpCtg), tmpBlks.get(i-1), tmpBlks.get(i));
+						bedOut.println(tmpRegion.toString());
+						logConnection(connectionsOut, tmpRegion.getId(), tmpBlks.get(i-1), tmpBlks.get(i));
+						regions.add(tmpRegion);
 					}
 				}
-				if (ranges != null) {
+				
+				
+				
+				if (regions != null) {
 					if (ret == null)
 						ret = new HashMap<String, Vector<MisassemblyRegion>>();
-					ret.put(tmpCtg, ranges);
+					ret.put(tmpCtg, regions);
 				}
 			}
 		}
@@ -465,15 +500,20 @@ public class MisassemblyBreaker {
 		File outFile = new File(outputPath);
 		outFile.createNewFile();
 		PrintStream out = new PrintStream(outFile);
+		Vector<MisassemblyRegion> tmp = new Vector<MisassemblyRegion>();
 		Iterator<String> it = regions.keySet().iterator();
-		Iterator<MisassemblyRegion> regIt = null;
-		MisassemblyRegion reg = null;
-		while(it.hasNext()){
-			regIt = regions.get(it.next()).iterator();
-			while(regIt.hasNext()){
-				reg = regIt.next();
-				out.println(reg.getId()+"\t"+reg.getMinPos()+"\t"+reg.getMinScore());
+		while(it.hasNext())
+			tmp.addAll(regions.get(it.next()));
+		Collections.sort(tmp, new Comparator<MisassemblyRegion>() {
+			public int compare(MisassemblyRegion o1, MisassemblyRegion o2) {
+				return Integer.parseInt(o1.getId().substring(1)) - Integer.parseInt(o2.getId().substring(1));
 			}
+		});
+		Iterator<MisassemblyRegion> regIt = tmp.iterator();
+		MisassemblyRegion reg = null;
+		while(regIt.hasNext()){
+			reg = regIt.next();
+			out.println(reg.getId()+"\t"+reg.getMinPos()+"\t"+reg.getMinScore());
 		}
 	}
 	/**
@@ -642,11 +682,35 @@ public class MisassemblyBreaker {
 			case 'c': return true;
 			case 'g': return true;
 			case 't': return true;
+			case 'u': return true; 
+			case 'm': return true; 
+			case 'r': return true; 
+			case 'w': return true; 
+			case 's': return true; 
+			case 'y': return true; 
+			case 'k': return true; 
+			case 'v': return true; 
+			case 'h': return true; 
+			case 'd': return true; 
+			case 'b': return true; 
+			case 'x': return true; 
 			case 'n': return true;
 			case 'A': return true;
 			case 'C': return true;
 			case 'G': return true;
 			case 'T': return true;
+			case 'U': return true; 
+			case 'M': return true; 
+			case 'R': return true; 
+			case 'W': return true; 
+			case 'S': return true; 
+			case 'Y': return true; 
+			case 'K': return true; 
+			case 'V': return true; 
+			case 'H': return true; 
+			case 'D': return true; 
+			case 'B': return true; 
+			case 'X': return true;
 			case 'N': return true;
 			default : return false;
 		}
@@ -734,12 +798,12 @@ public class MisassemblyBreaker {
 		double ten = 1;
 		int numKeep = 0;
 		int total = 0;
-		int index = 0;
 		long before = System.currentTimeMillis();
 		int rdLen = 0;
 		boolean rev1 = false;
 		boolean rev2 = false;
-		
+		int flag1 = -1;
+		int flag2 = -1;
 		while (br.ready()){
 			currPos = fis.getChannel().position()-start;
 			if (((double)currPos/len)*10 > ten){
@@ -748,6 +812,13 @@ public class MisassemblyBreaker {
 			}
 			line1 = br.readLine().split("\t");
 			line2 = br.readLine().split("\t");
+			
+			flag1 = Integer.parseInt(line1[1]);
+			flag2 = Integer.parseInt(line2[1]);
+			
+			if (HelperFunctions.isUnmapped(flag1) || HelperFunctions.isUnmapped(flag2))
+				continue;
+			
 			line1[0] = HelperFunctions.trimPairNumber(line1[0]);
 			line2[0] = HelperFunctions.trimPairNumber(line2[0]);
 			while (!line1[0].equals(line2[0]) && br.ready()){
@@ -759,6 +830,9 @@ public class MisassemblyBreaker {
 			left1 = Integer.parseInt(line1[3]);
 			left2 = Integer.parseInt(line2[3]);
 			
+			
+			
+			
 			// if pair didn't map, just jump to next
 			// line instead of jumping a full step
 			if (left1 == 0 || left2 == 0) 
@@ -766,12 +840,19 @@ public class MisassemblyBreaker {
 			if (line1[5].equals("*") || line2[5].equals("*"))
 				continue;
 
-			right1 = left1 + HelperFunctions.cigarRefLength(line1[5]);
-			right2 = left2 + HelperFunctions.cigarRefLength(line2[5]);
+			right1 = left1 + HelperFunctions.cigarRefLength(line1[5]) - 1;
+			right2 = left2 + HelperFunctions.cigarRefLength(line2[5]) - 1;
 			
 			ctg1 = ctgs.get(line1[2]);
 			ctg2 = ctgs.get(line2[2]);
 
+			
+			if (right1 > ctg1.len){
+				System.out.print("");
+			}
+			if (right2 > ctg2.len){
+				System.out.print("");
+			}
 			
 			int tmpLen = HelperFunctions.cigarLength(line1[5]);
 			if (tmpLen > rdLen)
@@ -780,13 +861,8 @@ public class MisassemblyBreaker {
 			if (tmpLen > rdLen)
 				rdLen = tmpLen;
 			
-			// Remove repetitive reads
-			//if (line1[11].equals("XT:A:R")||line2[11].equals("XT:A:R")){
-			//	continue;
-			//}
-			
-			rev1 = HelperFunctions.isReverse(line1[1]);
-			rev2 = HelperFunctions.isReverse(line2[1]);
+			rev1 = HelperFunctions.isReverse(flag1);
+			rev2 = HelperFunctions.isReverse(flag2);
 			
 			/* begin: tally these read positions */
 			// tally read 1
@@ -831,10 +907,45 @@ public class MisassemblyBreaker {
 				else
 					counts.put(ctg2.name, 2);
 			} else { // same contig, so check to see it's within the given ranges
-				int ins = (left2 > left1 ? left2+HelperFunctions.cigarLength(line2[5])-left1 : left1+HelperFunctions.cigarLength(line1[5])-left2);
-				if (inRange(ranges,ins)) 
-						continue;
 				
+				int ins = (left2 > left1 ? left2+HelperFunctions.cigarLength(line2[5])-left1 : left1+HelperFunctions.cigarLength(line1[5])-left2);
+				
+				if (inRange(ranges,ins)) {
+					continue;
+				}
+				/*
+				int ins = -1;
+				int ori = -1;
+				if (left2 > left1) {
+					ins = left2+HelperFunctions.cigarLength(line2[5])-left1;
+					if (rev1) 
+						if (rev2)
+							ori = MatchPoint.RR;
+						else
+							ori = MatchPoint.RF;
+					else
+						if (rev2)
+							ori = MatchPoint.FR;
+						else
+							ori = MatchPoint.FF;
+						
+				} else {
+					ins = left1+HelperFunctions.cigarLength(line1[5])-left2;
+					if (rev2) 
+						if (rev1)
+							ori = MatchPoint.RR;
+						else
+							ori = MatchPoint.RF;
+					else
+						if (rev1)
+							ori = MatchPoint.FR;
+						else
+							ori = MatchPoint.FF;
+				}
+				
+				if (inRange(ranges,ins) && ori == MatchPoint.FR) 
+						continue;
+				*/
 				ctgStr = line2[2]+"-"+line1[2];
 				if (clusterers.containsKey(ctgStr))
 					pc = clusterers.get(ctgStr);
@@ -1181,21 +1292,6 @@ public class MisassemblyBreaker {
 		for (int i = 0; i < clusterStats.length; i++){
 			ranges[i][0] = Math.max(1,clusterStats[i][0]-6*clusterStats[i][1]);
 			ranges[i][1] = clusterStats[i][0]+6*clusterStats[i][1];
-			/*
-			if (clusterStats[i][0]>1000){
-				/* Use as many standard deviations as possible without going negative
-				ranges[i][0] = clusterStats[i][0]-clusterStats[i][3]*clusterStats[i][1];
-				ranges[i][1] = clusterStats[i][0]+clusterStats[i][3]*clusterStats[i][1];
-				* /
-				// Use 6 standard devations to the right, and as many as possible to the left
-				ranges[i][0] = Math.max(1,clusterStats[i][0]-6*clusterStats[i][1]);
-				ranges[i][1] = clusterStats[i][0]+6*clusterStats[i][1];
-				
-			} else {
-				ranges[i][0] = 1;
-				ranges[i][1] = clusterStats[i][0]*2;
-			}
-			*/
 		}
 		return ranges;
 	}
@@ -1252,6 +1348,9 @@ public class MisassemblyBreaker {
 				System.err.println("[a5_qc] Found nameless contig in SAM header");
 			else if (len == -1) 
 				System.err.println("[a5_qc] Found contig of unknown length in SAM header");
+			if (contigs.containsKey(name)){
+				throw new IOException("non-unique contig names: " + name);
+			}
 			contigs.put(name, new Contig(name,len));
 		}
 		return contigs;
@@ -1292,8 +1391,8 @@ public class MisassemblyBreaker {
 			// if pair didn't map, just jump to next line instead of jumping a full step
 			if (left1 == 0 || left2 == 0) continue;
 			tmp = new ReadPair(line1[0]);
-			boolean rev1 = HelperFunctions.isReverse(line1[1]);
-			boolean rev2 = HelperFunctions.isReverse(line2[1]);
+			boolean rev1 = HelperFunctions.isReverse(Integer.parseInt(line1[1]));
+			boolean rev2 = HelperFunctions.isReverse(Integer.parseInt(line2[1]));
 			
 			if (contigs.get(line1[2]).equals(contigs.get(line2[2])) && rev1 != rev2 &&
 					// If this information is present, require this mapping to be unique. 
@@ -1720,7 +1819,7 @@ public class MisassemblyBreaker {
 	}
 	*/
 	
-	private static void parseArgs(String[] args){
+	private static String parseArgs(String[] args){
 		if (args.length == 0)
 			printUsage(System.out);
 		int i = 0;
@@ -1748,10 +1847,10 @@ public class MisassemblyBreaker {
 			}
 		}
 		samFilePath = args[i++];
+		String base = HelperFunctions.dirname(samFilePath)+"/"+HelperFunctions.basename(samFilePath,".sam");
 		fastaFilePath = args[i++];
 		outputFastaFilePath = args[i++];
 		if (bedFilePath == null || bamFilePath == null || connectionsFilePath == null || scoreFilePath == null){
-			String base = HelperFunctions.dirname(samFilePath)+"/"+HelperFunctions.basename(samFilePath,".sam");
 			if (bedFilePath == null)
 				bedFilePath = base + ".regions.bed";
 			if (bamFilePath == null)
@@ -1761,6 +1860,7 @@ public class MisassemblyBreaker {
 			if (scoreFilePath == null)
 				scoreFilePath = base + ".regions.scores";
 		}
+		return base;
 	}
 	private static void printUsage(PrintStream out){
 		String usage =
@@ -1780,7 +1880,7 @@ public class MisassemblyBreaker {
 				"\n" +
 				"      A5qc takes in a sam file, and uses read pairs to identify regions potentially containing\n" +
 				"      misassemblies. These regions are exported to a bed file and the blocks connected by\n" +
-				"      paired-reads that support thes regions as potentially containing misassemblies are exported\n" +
+				"      paired-reads that support these regions as potentially containing misassemblies are exported\n" +
 				"      to a connections file. These regions are then analyzed at the base-level using samtools mpileup.\n" +
 				"      If misassemblies are further supported by base-level pileup, sequences are broken and stitched\n" +
 				"      in the order supported by the read pairing information\n" +

@@ -24,14 +24,13 @@ public class MisassemblyBlock {
 	private MisassemblyBlock connection;
 	
 	public MisassemblyBlock (Contig contig, int left, int right, boolean rev){
-		this.contig = contig;
-		this.left = left;
-		this.right = right;
-		this.rev = rev;
-		id = COUNT++;
+		this(contig, left, right, rev, COUNT++);
 	}
 	
 	public MisassemblyBlock (Contig contig, int left, int right, boolean rev, int id){
+		if (left < 1 || right > contig.len){
+			System.out.print("");
+		}
 		this.contig = contig;
 		this.left = left;
 		this.right = right;

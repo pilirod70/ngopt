@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.RandomAccessFile;
 import java.text.NumberFormat;
 import java.util.StringTokenizer;
@@ -101,9 +102,8 @@ public class HelperFunctions {
 	/**
 	 * Returns true of the 4th bit is set in the flag given in the SAM file
 	 */
-	public static boolean isReverse(String flag){
-		int iflag = Integer.parseInt(flag);
-		if (getBit(4,iflag) == 1) return true;
+	public static boolean isReverse(int flag){
+		if (getBit(4,flag) == 1) return true;
 			else return false;
 	}
 	
@@ -201,5 +201,20 @@ public class HelperFunctions {
 				return true;
 		else
 			return false;
+	}
+	
+	public static PrintStream openIfClosed(PrintStream out, String path) throws IOException{
+		if (out == null){
+			File file = new File(path);
+			file.createNewFile();
+			return new PrintStream(file);
+		} else
+			return out;
+		
+			
+	}
+	
+	public static boolean isUnmapped(int flag){
+		return getBit(2, flag) == 1;
 	}
 }
