@@ -145,17 +145,6 @@ public class SpatialClusterer {
 			MatchPoint tmp = it.next();
 			out.println(tmp.xLeft()+"\t"+Math.abs(tmp.yLeft())+"\t"+tmp.ori());
 		}
-		/*
-		Iterator<ReadCluster> kcIt = readPairClusters.iterator();
-		while(kcIt.hasNext()){
-			ReadCluster tmpKc = kcIt.next();
-			it = tmpKc.getMatchPoints().iterator();
-			while(it.hasNext()){
-				MatchPoint tmp = it.next();
-				out.println(tmp.x()+"\t"+Math.abs(tmp.y())+"\t"+tmpKc.id);
-			}
-		}
-		*/
 		out.close();
 	}
 	

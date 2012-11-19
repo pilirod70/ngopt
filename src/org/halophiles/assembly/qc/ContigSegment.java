@@ -94,7 +94,7 @@ public class ContigSegment implements Comparable<ContigSegment>{
 	}
 	
 	public String toString(){
-		return contig.name+":"+Integer.toString(start)+"-"+Integer.toString(end);
+		return id+"\t"+contig.name+":"+Integer.toString(start)+"-"+Integer.toString(end);
 	}
 	
 	public int hashCode(){
