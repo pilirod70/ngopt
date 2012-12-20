@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+unsigned int counts[256];
+
 int compare (const void * a, const void * b) {
   return ( *(int*)a - *(int*)b );
 }
@@ -19,9 +21,6 @@ void printStats(char* file) {
 		printf ("%s does not exist.\n", file);
 		return;
 	}
-	unsigned int tot = 0;
-	unsigned int numN = 0;
-	unsigned int numNuc = 0;
 	unsigned int len = 0;
 	unsigned int numGaps = 0;
 	int buf_size = 1024;
@@ -57,10 +56,10 @@ void printStats(char* file) {
 				continue;
 			}  else if (!inHdr) {
 				if (buf[i] == 'n' || buf[i] == 'N') {
-					numN++;
+					counts[buf[i]]++;
 					inGap = 1;
 				} else {
-					numNuc++;
+					counts[buf[i]]++;
 					if (inGap) {
 						inGap = 0;
 						numGaps++;	
@@ -79,8 +78,11 @@ void printStats(char* file) {
 		dat = tmp_dat;
 	}
 	dat[count++] = len;
-
-	tot = numN + numNuc;
+	
+	unsigned int numN = counts['n'] + counts['N'];
+	unsigned int numGC = counts['c'] + counts['C'] + counts['g'] + counts['G'];
+	unsigned int numNuc = numGC + counts['a'] + counts['A'] + counts['t'] + counts['T'];
+	unsigned int tot = numN + numNuc;
 	qsort(dat, count, sizeof(int), compare);
 	unsigned int tally = 0;
 	unsigned int n50 = 0;
@@ -94,7 +96,7 @@ void printStats(char* file) {
 	}
 	
 	// Fasta_File	Num_Ctgs	N50	AvgCtgLen	MaxCtgLen	MinCtgLen	Total_Bases	Num_Nucs	Num_Unks	NumGaps
-	printf("%s\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\n",file, count, n50, tot/count, dat[count-1], dat[0], tot, numNuc, numN, numGaps);
+	printf("%s\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%0.2f\n",file, count, n50, tot/count, dat[count-1], dat[0], tot, numNuc, numN, numGaps, (100*((double) numGC)/numNuc));
 }
 
 void usage() {
