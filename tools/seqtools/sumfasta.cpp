@@ -28,30 +28,41 @@ void printStats(char* file) {
 	int numNuc = 0;
 	int len = 0;
 	int numGaps = 0;
- 	char buf[256];	
-	fa_in.getline(buf,256,'\n');	
+	int buf_size = 1024;
+	int iter_size = buf_size;
+ 	char buf[1024];	
+//	fa_in.getline(buf,256,'\n');	
 	vector<int> data;
 	bool inGap = false;
-	while (fa_in.peek() != -1){
-		c = (char) fa_in.get();
-		if (c == '>'){
-			data.push_back(len);
-			len = 0;
-			fa_in.getline(buf,256,'\n');
-		} else if (c == '\n') {
-			continue;
-		}  else {
-			if (c == 'n' || c == 'N') {
-				numN++;
-				inGap = true;
-			} else {
-				numNuc++;
-				if (inGap) {
-					inGap = false;
-					numGaps++;	
+	bool inHdr = false;
+	int i;
+//	while (fa_in.peek() != -1){
+	while (! fa_in.eof()){
+		fa_in.read(buf,buf_size);
+		iter_size = fa_in.gcount();
+		for (i = 0; i < iter_size; i++){
+			if (buf[i] == '>'){
+				if (len > 0)
+					data.push_back(len);
+				len = 0;
+				inHdr = true;
+			} else if (buf[i] == '\n') {
+				if (inHdr)
+					inHdr = false;
+				continue;
+			} else if (!inHdr){
+				if (buf[i] == 'n' || buf[i] == 'N') {
+					numN++;
+					inGap = true;
+				} else {
+					numNuc++;
+					if (inGap) {
+						inGap = false;
+						numGaps++;	
+					}
 				}
+				len++;
 			}
-			len++;
 		}
 	}
 	data.push_back(len);

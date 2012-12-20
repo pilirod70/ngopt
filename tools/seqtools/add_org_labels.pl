@@ -4,7 +4,7 @@ use warnings;
 use File::Basename;
 
 if (scalar(@ARGV) == 0) {
-	print "Usage: ".basename($0)." <org> <fasta_file>\n";
+	print "Usage: ".basename($0)." <org> <fasta_file|stdout>\n";
 	exit 1;
 }
 
