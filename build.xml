@@ -25,7 +25,7 @@
 				<include name="**/org/halophiles/assembly/Contig.class"/>
 				<include name="**/org/halophiles/assembly/ContigTerminal.class"/>
 				<include name="**/org/halophiles/assembly/ReadSet.class"/>
-				<include name="**/org/halophiles/assembly/ReadPair.class"/>
+				<include name="**/org/halophiles/assembly/ReadPair*.class"/>
 				<include name="**/org/halophiles/assembly/SAMFileParser.class"/>
 				<include name="**/org/halophiles/tools/SummaryStats.class"/>
 			</fileset>
@@ -50,7 +50,7 @@
 				<include name="**/org/halophiles/assembly/Contig.class"/>
 				<include name="**/org/halophiles/assembly/ContigTerminal.class"/>
 				<include name="**/org/halophiles/assembly/ReadSet.class"/>
-				<include name="**/org/halophiles/assembly/ReadPair.class"/>
+				<include name="**/org/halophiles/assembly/ReadPair*.class"/>
 				<include name="**/org/halophiles/tools/SummaryStats.class"/>
 			</fileset>
         </jar>
