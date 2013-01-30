@@ -310,24 +310,19 @@ public class MisassemblyBreaker {
 			
 		}
 		
+		// Write misassembly blocks to file.
 		String blocksFilePath = logBase+".blocks";
+		System.out.println("[a5_qc] Logging misassembly blocks to "+blocksFilePath);
 		File blocksFile = new File(blocksFilePath);
 		blocksFile.createNewFile();
 		PrintStream blocksOut = new PrintStream(blocksFile);
 		
 		Iterator<String> it = blocks.keySet().iterator();
-
-		while(it.hasNext()){
-			Iterator<MisassemblyBlock> blockIt = blocks.get(it.next()).iterator();
-			while (blockIt.hasNext()){
-				MisassemblyBlock tmp = blockIt.next();
-				blocksOut.println(tmp.toString()+"\t"+tmp.getConnection().toString());
-			}
-		}
-		blocksOut.close();
-		
-		it = blocks.keySet().iterator();
-		
+		/*
+		 * Remove contigs that have no blocks and sort blocks by sequence coordinate.
+		 * We need to sort for the next step, when we walk along each contig and find 
+		 * misassembly regions
+		 */
 		Vector<String> toRm = new Vector<String>();
 		while(it.hasNext()){
 			String tmpCtg = it.next();
@@ -340,17 +335,17 @@ public class MisassemblyBreaker {
 			Iterator<MisassemblyBlock> blockIt = tmpBlocks.iterator();
 			while(blockIt.hasNext()){
 				MisassemblyBlock tmp = blockIt.next();
+				blocksOut.println(tmp.toString()+"\t"+tmp.getConnection().toString());
 				System.out.println("        "+tmp.toString());
 				
 			}
 		}
+		blocksOut.close();
+		
 		// clear out contigs from the blocks Map if they don't have any blocks.
 		if (toRm.size() > 0)
 			removeKeys(blocks, toRm);
 		
-		/*if (blocks.isEmpty()){
-			return false;
-		}*/
 		PrintStream bedOut = null;
 		PrintStream connectionsOut = null;
 		Map<String,Vector<MisassemblyRegion>> ret = null;
@@ -390,16 +385,16 @@ public class MisassemblyBreaker {
 					if (leftTerm != null && rightTerm != null && leftTerm == rightTerm.getConnection()){
 						connectionsOut = HelperFunctions.openIfClosed(connectionsOut, connectionsFilePath);
 						logConnection(connectionsOut, "circ"+contigs.get(tmpCtg).getId(), leftTerm, rightTerm);
-						contigs.get(tmpCtg).addLeftBlock(leftTerm);
-						contigs.get(tmpCtg).addRightBlock(rightTerm);
+						contigs.get(tmpCtg).add5PrimeBlock(leftTerm);
+						contigs.get(tmpCtg).add3PrimeBlock(rightTerm);
 					} else { // if not circular, see if we can do some scaffolding
 						connectionsOut = HelperFunctions.openIfClosed(connectionsOut, connectionsFilePath);
 						if (leftTerm != null) {
-							contigs.get(tmpCtg).addLeftBlock(leftTerm);
+							contigs.get(tmpCtg).add5PrimeBlock(leftTerm);
 							logConnection(connectionsOut, "scafl"+contigs.get(tmpCtg).getId(),leftTerm, leftTerm.getConnection());
 						}
 						if (rightTerm != null) { 
-							contigs.get(tmpCtg).addRightBlock(rightTerm);
+							contigs.get(tmpCtg).add3PrimeBlock(rightTerm);
 							logConnection(connectionsOut, "scafr"+contigs.get(tmpCtg).getId(),rightTerm, rightTerm.getConnection());
 						}
 					}
@@ -412,7 +407,8 @@ public class MisassemblyBreaker {
 						continue;
 					left = -1;
 					right = -1;
-					if (tmpBlks.get(i-1).getRight() > tmpBlks.get(i).getLeft()) {
+					if (blocksOverlap(tmpBlks.get(i-1),tmpBlks.get(i))  && percOverlap(tmpBlks.get(i-1),tmpBlks.get(i)) < 0.2) {
+						System.out.println(percOverlap(tmpBlks.get(i-1),tmpBlks.get(i)));
 						left = tmpBlks.get(i).getLeft();
 						right = tmpBlks.get(i-1).getRight();
 						if (right - left > MAX_INTERBLOCK_DIST)
@@ -715,7 +711,43 @@ public class MisassemblyBreaker {
 			default : return false;
 		}
 	}
+	/**
+	 * Returns true of the blocks overlap and one block is not contained within the other
+	 * 
+	 * @param b1 a block to be compared
+	 * @param b2 another block to be compared
+	 * @return if b1 and b2 overlap and one is not contained within the other, false otherwise.
+	 */
+	private static boolean blocksOverlap(MisassemblyBlock b1, MisassemblyBlock b2){
+		if (b1.getLeft() < b2.getRight() && b2.getLeft() < b1.getRight()) {
+			if (b1.getLeft() < b2.getLeft() && b1.getRight() < b2.getRight()){
+					return true;
+			} else if  (b1.getLeft() > b2.getLeft() && b1.getRight() > b2.getRight()) {
+					return true;
+			} else
+				return false;
+		} else
+			return false;
+	}
 	
+	/**
+	 * Returns the percent overlap of two overlapping blocks
+	 * @param b1
+	 * @param b2
+	 * @return
+	 */
+	private static double percOverlap(MisassemblyBlock b1, MisassemblyBlock b2) {
+		double num = 0.0;
+		double den = 0.0;
+		if (b1.getRight() < b2.getRight()){
+			num = b1.getRight() - b2.getLeft();
+			den = b2.getRight() - b1.getLeft();
+		} else {
+			num = b2.getRight() - b1.getLeft();
+			den = b1.getRight() - b2.getLeft();
+		}
+		return num/den;
+	}
 	
 	/**
 	 * Read data from a SAM file. Filters out pairs with inserts with in the given ranges
@@ -860,6 +892,8 @@ public class MisassemblyBreaker {
 			tmpLen = HelperFunctions.cigarLength(line2[5]);
 			if (tmpLen > rdLen)
 				rdLen = tmpLen;
+			
+			
 			
 			rev1 = HelperFunctions.isReverse(flag1);
 			rev2 = HelperFunctions.isReverse(flag2);
@@ -1069,7 +1103,7 @@ public class MisassemblyBreaker {
 		 *
 		 * LAMBDA Rate of mapping points (Poisson rate parameter)
 		 */	
-		MAX_INTERPOINT_DIST = Math.max(ReadCluster.RDLEN, (int) (Math.log(ALPHA)/Math.log(Math.max(1-P,0)))-1);
+		MAX_INTERPOINT_DIST = Math.min(ReadCluster.RDLEN, (int) (Math.log(ALPHA)/Math.log(Math.max(1-P,0)))-1);
 		//MIN_BLOCK_LEN = 2*MAX_INTERPOINT_DIST;
 		MIN_BLOCK_LEN = (int) (1/P)*2;
 		for (double[] cluster: ranges){

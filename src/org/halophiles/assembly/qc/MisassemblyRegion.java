@@ -18,20 +18,20 @@ public class MisassemblyRegion {
 	private int n;
 	private double oldM, newM, oldS, newS, min, max;
 	
-	public MisassemblyRegion (Contig contig, MisassemblyBlock leftBlock, MisassemblyBlock rightBlock) {
+	public MisassemblyRegion (Contig contig, MisassemblyBlock fwdBlock, MisassemblyBlock revBlock) {
 		this.contig = contig;
-		this.leftBlock = leftBlock;
-		this.rightBlock = rightBlock;
+		this.leftBlock = fwdBlock;
+		this.rightBlock = revBlock;
 		this.minPos = -1;
-		if (leftBlock.getRight() == rightBlock.getLeft()){
-			left = leftBlock.getRight();
+		if (fwdBlock.getRight() == revBlock.getLeft()){
+			left = fwdBlock.getRight();
 			right = left;
-		} else if (leftBlock.getRight() > rightBlock.getLeft()) {
-			left = rightBlock.getLeft();
-			right = leftBlock.getRight();
+		} else if (fwdBlock.getRight() > revBlock.getLeft()) {
+			left = revBlock.getLeft();
+			right = fwdBlock.getRight();
 		} else {
-			left = leftBlock.getRight();
-			right = rightBlock.getLeft();
+			left = fwdBlock.getRight();
+			right = revBlock.getLeft();
 		}
 		// expand out because our pairs aren't completely perfect.
 		left -= 25;
@@ -47,11 +47,11 @@ public class MisassemblyRegion {
 		
 	}
 	
-	public MisassemblyBlock getLeftBlock(){
+	public MisassemblyBlock getForwardBlock(){
 		return leftBlock;
 	}
 	
-	public MisassemblyBlock getRightBlock(){
+	public MisassemblyBlock getReverseBlock(){
 		return rightBlock;
 	}
 	

@@ -162,27 +162,27 @@ public class Contig implements Comparable<Contig> {
 		return end;
 	}
 	
-	public MisassemblyBlock getLeftBlock(){
+	public MisassemblyBlock get5PrimeBlock(){
 		return leftBlock;
 	}
 	
-	public void addLeftBlock(MisassemblyBlock block){
+	public void add5PrimeBlock(MisassemblyBlock block){
 		leftBlock = block;
 	}
 	
-	public boolean hasLeftBlock(){
+	public boolean has5PrimeBlock(){
 		return leftBlock != null;
 	}
 	
-	public MisassemblyBlock getRightBlock(){
+	public MisassemblyBlock get3PrimeBlock(){
 		return rightBlock;
 	}
 	
-	public void addRightBlock(MisassemblyBlock block){
+	public void add3PrimeBlock(MisassemblyBlock block){
 		rightBlock = block;
 	}
 	
-	public boolean hasRightBlock(){
+	public boolean has3PrimeBlock(){
 		return rightBlock != null;
 	}
 }

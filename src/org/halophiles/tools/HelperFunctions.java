@@ -72,7 +72,7 @@ public class HelperFunctions {
 			char op = tok.nextToken().charAt(0);
 			switch (op) {
 				case 'M': alignLen += len; break;
-				case 'D': alignLen += len; break;
+				case 'I': alignLen += len; break;
 				default: continue;
 			}
 		}

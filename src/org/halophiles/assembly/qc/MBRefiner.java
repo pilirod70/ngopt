@@ -148,20 +148,20 @@ public class MBRefiner {
 			tmpBlks[1] = addFlankingBlocks(entry[2], blockSet, contigs);
 			
 			if (reg.startsWith("circ")){
-				tmpBlks[0].getContig().addLeftBlock(tmpBlks[0]);
-				tmpBlks[1].getContig().addRightBlock(tmpBlks[1]);
+				tmpBlks[0].getContig().add5PrimeBlock(tmpBlks[0]);
+				tmpBlks[1].getContig().add3PrimeBlock(tmpBlks[1]);
 			} else {
 				int term = MisassemblyBlock.getTerminus(tmpBlks[0]);
 				if (term == -1)
-					tmpBlks[0].getContig().addLeftBlock(tmpBlks[0]);
+					tmpBlks[0].getContig().add5PrimeBlock(tmpBlks[0]);
 				else if (term == 1)
-					tmpBlks[0].getContig().addRightBlock(tmpBlks[0]);
+					tmpBlks[0].getContig().add3PrimeBlock(tmpBlks[0]);
 				
 				term = MisassemblyBlock.getTerminus(tmpBlks[1]);
 				if (term == -1)
-					tmpBlks[1].getContig().addLeftBlock(tmpBlks[1]);
+					tmpBlks[1].getContig().add5PrimeBlock(tmpBlks[1]);
 				else if (term == 1)
-					tmpBlks[1].getContig().addRightBlock(tmpBlks[1]);				
+					tmpBlks[1].getContig().add3PrimeBlock(tmpBlks[1]);				
 			}
 			
 			blocksByRegion.put(reg, tmpBlks);
