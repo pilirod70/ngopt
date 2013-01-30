@@ -55,14 +55,14 @@ public class ContigSegment implements Comparable<ContigSegment>{
 		right = new Vector<ContigSegment>();
 	}
 	
-	public void addLeftConnection(ContigSegment seg, int ori){
+	public void add5PrimeConnection(ContigSegment seg, int ori){
 		if (seg == null)
 			System.out.print("");
 		left.add(seg);
 		this.ori.put(seg,ori);
 	}
 	
-	public void addRightConnection(ContigSegment seg, int ori){
+	public void add3PrimeConnection(ContigSegment seg, int ori){
 		if (seg == null)
 			System.out.print("");
 		right.add(seg);
@@ -81,11 +81,11 @@ public class ContigSegment implements Comparable<ContigSegment>{
 		return true;
 	}
 	
-	public Vector<ContigSegment> getLeftSegments(){
+	public Vector<ContigSegment> get5PrimeSegments(){
 		return left;
 	}
 	
-	public Vector<ContigSegment> getRightSegments(){
+	public Vector<ContigSegment> get3PrimeSegments(){
 		return right;
 	}
 	

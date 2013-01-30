@@ -6,6 +6,7 @@
 package org.halophiles.assembly;
 
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
@@ -15,7 +16,7 @@ import java.util.Vector;
 
 import org.halophiles.tools.SummaryStats;
 
-public class ReadPair{
+public class ReadPair implements Serializable{
 	public static boolean INWARD;
 	public static boolean OUTWARD;
 	

@@ -50,7 +50,7 @@ public class ContigOrderer {
 			Iterator<ContigSegment> ccIt = cc.iterator();
 			while (ccIt.hasNext()){
 				seg = ccIt.next();
-				if (seg.getLeftSegments().isEmpty())
+				if (seg.get5PrimeSegments().isEmpty())
 					break;
 			}
 			
@@ -67,21 +67,17 @@ public class ContigOrderer {
 				visited.add(seg);
 				if (inverted) {
 					fastaWriter.writeSequenceInverted(sequence.get(seg.getContig().name).subSequence(seg.getStart()-1, seg.getEnd()));					
-					if (seg.getLeftSegments().isEmpty())
+					if (seg.get5PrimeSegments().isEmpty())
 						continue;
-					if (seg.getLeftSegments().size() > 1)
-						System.out.print("");
-					nextSeg = seg.getLeftSegments().firstElement();
+					nextSeg = seg.get5PrimeSegments().firstElement();
 					if (seg.getOri(nextSeg) == MatchPoint.RR) 
 						inverted = !inverted;
 				} else { 
 					//StringBuilder seq = sequence.get(seg.getContig().name);
 					fastaWriter.writeSequence(sequence.get(seg.getContig().name).subSequence(seg.getStart()-1, seg.getEnd()));
-					if (seg.getRightSegments().isEmpty())
+					if (seg.get3PrimeSegments().isEmpty())
 						continue;
-					if (seg.getRightSegments().size()>1)
-						System.out.print("");
-					nextSeg = seg.getRightSegments().firstElement();
+					nextSeg = seg.get3PrimeSegments().firstElement();
 					if (seg.getOri(nextSeg) == MatchPoint.FF) 
 						inverted = !inverted;
 				}
@@ -89,7 +85,9 @@ public class ContigOrderer {
 				
 			}
 		}
-		System.out.println(allSegs.size());
+		if (allSegs.size() > 0) {
+			System.out.println("[a5_qc] "+allSegs.size() +" EXTRA SEGMENTS. Looks like there's a bug somewheres.");
+		}
 		Iterator<ContigSegment> segIt = allSegs.iterator();
 		while(segIt.hasNext()){
 			seg = segIt.next();
@@ -164,21 +162,17 @@ public class ContigOrderer {
 			start = 1;
 			tmpCtg = contigs.get(ctgKey); 
 			regions = regionMap.get(ctgKey);
-			blockL = tmpCtg.getLeftBlock();
+			blockL = tmpCtg.get5PrimeBlock();
 			for (int i = 0; i < regions.size(); i++){
 				tmpRegion = regions.get(i);
 				if (tmpRegion.getMinScore() < MIN_PLP_SCORE){
 					// get the end of this ContigSegment, and the block at that end
 					end = tmpRegion.getMinPos();
-					blockR = tmpRegion.getLeftBlock();
+					blockR = tmpRegion.getForwardBlock();
 					// create our ContigSegment object and this segments list of blocks
 					if (end < start)
 						System.out.print("");
 					tmpSeg = new ContigSegment(tmpCtg, start, end);
-					if (blockL.getId() == 43 || blockR.getId() == 43)
-						System.out.print("");
-					if (tmpSeg.getId() == 10)
-						System.out.print("");
 					allSegs.add(tmpSeg);
 					tmpBlocks = new Vector<MisassemblyBlock>();
 					segMap.put(tmpSeg, tmpBlocks);
@@ -197,7 +191,7 @@ public class ContigOrderer {
 						blockMap.put(blockL, tmpSeg);
 					}
 					// now get the next left block
-					blockL = tmpRegion.getRightBlock();
+					blockL = tmpRegion.getReverseBlock();
 					start = end+1;                                                                                                    
 				}
 			}
@@ -205,14 +199,11 @@ public class ContigOrderer {
 			if (end < start)
 				System.out.print("");
 			tmpSeg = new ContigSegment(tmpCtg, start, end);
-			if (blockL.getId() == 43 || blockR.getId() == 43)
-				System.out.print("");
-			
 			allSegs.add(tmpSeg);
 			tmpBlocks = new Vector<MisassemblyBlock>();
 			segMap.put(tmpSeg, tmpBlocks);
 			end = tmpCtg.len;
-			blockR = tmpCtg.getRightBlock();
+			blockR = tmpCtg.get3PrimeBlock();
 			// add the mapping between this segment and its right block
 			if (blockR != null ){
 				tmpBlocks.add(blockR);
@@ -222,8 +213,6 @@ public class ContigOrderer {
 			if (blockL != null){
 				tmpBlocks.add(blockL);
 				blockMap.put(blockL, tmpSeg);
-			} else {
-				System.out.print("");
 			}
 		}
 		
@@ -244,8 +233,6 @@ public class ContigOrderer {
 		 */
 		while (segIt.hasNext()){
 			tmpSeg = segIt.next();
-			if (tmpSeg.getId() == 10)
-				System.out.print("");
 			if (!segMap.containsKey(tmpSeg))
 				continue;
 			Vector<MisassemblyBlock> vect = segMap.get(tmpSeg);
@@ -256,7 +243,7 @@ public class ContigOrderer {
 				if (!blockMap.containsKey(tmpBlock.getConnection()))
 					continue;
 				tmpCnct = blockMap.get(tmpBlock.getConnection());
-				tmpSeg.addLeftConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
+				tmpSeg.add5PrimeConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
 			}
 			
 			vect = segMap.get(tmpSeg);
@@ -267,7 +254,7 @@ public class ContigOrderer {
 				if (!blockMap.containsKey(tmpBlock.getConnection()))
 					continue;
 				tmpCnct = blockMap.get(tmpBlock.getConnection());
-				tmpSeg.addRightConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
+				tmpSeg.add3PrimeConnection(tmpCnct, getOri(tmpBlock.getRev(),tmpBlock.getConnection().getRev()));
 			}
 		}
 		
@@ -318,13 +305,13 @@ public class ContigOrderer {
 			return;
 		seg.setVisited(true);
 		cc.add(seg);
-		if (seg.getLeftSegments().size() > 0){
-			Iterator<ContigSegment> it = seg.getLeftSegments().iterator();
+		if (seg.get5PrimeSegments().size() > 0){
+			Iterator<ContigSegment> it = seg.get5PrimeSegments().iterator();
 			while (it.hasNext())
 				buildConnectedComponent(it.next(),cc);
 		}
-		if (seg.getRightSegments().size() > 0){
-			Iterator<ContigSegment> it = seg.getRightSegments().iterator();
+		if (seg.get3PrimeSegments().size() > 0){
+			Iterator<ContigSegment> it = seg.get3PrimeSegments().iterator();
 			while (it.hasNext())
 				buildConnectedComponent(it.next(),cc);
 		}
