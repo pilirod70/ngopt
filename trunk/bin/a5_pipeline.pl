@@ -534,7 +534,7 @@ Returns whether or not the given FastQ file has phred64 quality scores
 =cut 
 sub get_phred64{
 	my $tail_file = shift;
-	my $qline = `head -n 1000 $tail_file | tail -n 1`;
+	my $qline = `head -n 1000 $tail_file | perl -ne 'print if $. % 4 == 0'`;
 	chomp $qline;
 	my $phred64 = 1;
 	for my $q (split(//,$qline)){
