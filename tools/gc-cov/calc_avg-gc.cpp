@@ -5,6 +5,7 @@
 #include <list>
 #include <deque>
 #include <map>
+#include <cmath>
 using namespace std;
 
 double wt;
@@ -15,6 +16,19 @@ int A = 0;
 int T = 0;
 int G = 0;
 int C = 0;
+
+double win_G = 0;
+double win_C = 0;
+double win_size = 0;
+
+double get_and_reset_window() {
+	double ret = win_G+win_C;
+	ret = ret/win_size;
+	win_G = 0;
+	win_C = 0;
+	win_size = 0;
+	return ret;
+}
 
 double curr_gc;
 void resetCounts(){
@@ -36,10 +50,10 @@ void addbase(char& b) {
 		case 'A': A++; tot['a']++; break;
 		case 't': T++; tot['t']++; break;
 		case 'T': T++; tot['t']++; break;
-		case 'g': G++; tot['g']++; break;
-		case 'G': G++; tot['g']++; break;
-		case 'c': C++; tot['c']++; break;
-		case 'C': C++; tot['c']++; break;
+		case 'g': win_G++; G++; tot['g']++; break;
+		case 'G': win_G++; G++; tot['g']++; break;
+		case 'c': win_C++; C++; tot['c']++; break;
+		case 'C': win_C++; C++; tot['c']++; break;
 		case 'M': num_amb++; break;
 		case 'm': num_amb++; break;
 		case 'R': num_amb++; break;
@@ -99,6 +113,7 @@ int main (int argc, char** argv) {
 	ifstream in(inFile.c_str());
 	list<string> seq_names;
 	list<double> gc_cont;
+	list<double> window_gc;
 	string hdr;
 	const char* split = " \t|:";
 	in.get();
@@ -125,6 +140,10 @@ int main (int argc, char** argv) {
 			continue;
 		addbase(b);
 		len++;
+		win_size++;
+		if (win_size == 1000) {
+			window_gc.push_back(get_and_reset_window());
+		}
 	}
 //	cerr << hdr << " -> G: "<< G << "  C:  " << C << "  Length: " << len << endl;
 	GC = G+C;
@@ -140,7 +159,17 @@ int main (int argc, char** argv) {
 		ctg_it++;
 		gc_it++;
 	}
-		
+	
+	list<double>::iterator win_it = window_gc.begin();
+	double s1 = 0.0;
+	double s2 = 0.0;
+	while (win_it != window_gc.end()){
+		s1 += *win_it;
+		s2 += pow(*win_it,2);
+		win_it++;
+	}
+	double stdev = sqrt((s2 - ((pow(s1,2))/window_gc.size()))/(window_gc.size()-1)) * 100;
+	double mean = s1/window_gc.size() * 101;
 
 	double tot_gc = tot['g']+tot['c'];
 	int tot_bases = tot['g']+tot['c']+tot['a']+tot['t'];
@@ -150,7 +179,7 @@ int main (int argc, char** argv) {
 	cerr << "   G: " << tot['g'] << endl; 
 	cerr << "   C: " << tot['c'] << endl; 
 	tot_gc = 100*tot_gc/tot_bases;	
-	fprintf(stderr,"Genome-wide GC-content: %.2g%%\n",tot_gc);
+	fprintf(stderr,"Genome-wide GC-content: %.2f +/- %.2f%%\n",tot_gc,stdev);
 	if (num_amb > 0) {
 		cerr << "Ignored " << num_amb << " ambiguous bases." << endl;
 	}
