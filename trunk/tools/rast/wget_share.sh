@@ -18,7 +18,7 @@ function share {
 
 wget --save-cookie $cookie http://rast.nmpdr.org/rast.cgi\?login=$user\&password=$pass\&action=perform_login
 if [ -f $jobid ]; then
-	for id in `cat $jobid`; do
+	for id in `cut -f 1 $jobid`; do
 		share $id
 	done
 else
