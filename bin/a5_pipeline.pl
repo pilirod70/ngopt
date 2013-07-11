@@ -67,11 +67,11 @@ This software is licensed under the terms of the GPLv3
 =cut
 
 use constant {
-	IDBA_MIN_K => 29,
-	IDBA_MAX_K => 90,
-	SGA_Q_TRIM => 10,
+	IDBA_MIN_K => 35,
+	SGA_Q_TRIM => 25,
 	SGA_Q_FILTER => 20,
-	SGA_MIN_READ_LENGTH => 29,
+	SGA_DUST => 8,
+	SGA_MIN_READ_LENGTH => 35,
 };
 
 
@@ -123,6 +123,9 @@ my $OUTBASE = $ARGV[1];
 # check whether command-line input was FastQ files or a library file
 if(@ARGV==3){
 	# assume the user provided two FastQ files instead of a library file
+	# first check the files exist
+	die "Unable to read input FastQ file $ARGV[0]" unless -e $ARGV[0] && -s $ARGV[0] > 0;
+	die "Unable to read input FastQ file $ARGV[1]" unless -e $ARGV[1] && -s $ARGV[1] > 0;
 	$OUTBASE = $ARGV[2];
 	open(TMPLIBFILE, ">$OUTBASE.tmplibs");
 	print TMPLIBFILE "[LIB]\n";
@@ -230,7 +233,7 @@ if ($start <= 2) {
 	($reads, $maxrdlen) = fastq_to_fasta($reads,"$WD/$OUTBASE.ec.fasta");
 	`gzip -f $fq_reads`;
 
-	$ctgs = idba_assemble($OUTBASE, $reads, $maxrdlen); 
+	$ctgs = idba_pe_assemble($OUTBASE, \%RAW_LIBS, $maxrdlen);
 	`rm $reads`;
 	open (my $filtered, ">", "$OUTBASE.contigs.fasta");
 	open (IN,"<",$ctgs);
@@ -294,6 +297,7 @@ if ($start <= 4) {
 		$need_qc = 0;
 		`cp $scafs $OUTBASE.final.scaffolds.fasta`;
 		print "[a5_s5] No misassemblies found.\n";
+		map_all_libs($OUTBASE, \%RAW_LIBS);
 	} else {
 		`mv $scafs $OUTBASE.broken.scaffolds.fasta`; 
 	}
@@ -316,6 +320,7 @@ if ($start <= 5 && $need_qc) {
 	mkdir($WD) if ! -d $WD;
 	$scafs = scaffold_sspace("$OUTBASE.rescaf",\%PAIR_LIBS,$scafs,1);
 	`mv $scafs $OUTBASE.final.scaffolds.fasta`;
+	map_all_libs($OUTBASE, \%RAW_LIBS);
 } 
 if ($end == 5){
 	print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
@@ -438,7 +443,29 @@ sub qfilter_paired_easy {
 	}
 }
 
-=item qfilter_correct_tagdust_paired
+sub shuffle_fastq {
+	my $r1file = shift;
+	my $r2file = shift;
+	my $outfile = shift;
+	open(R1, $r1file);
+	open(R2, $r2file);
+	open(OUTTER, ">$outfile");
+	while(1){
+		my $r1_entry;
+		my $r2_entry;
+		for(my $i=0; $i<4; $i++){
+			my $r1l = <R1>;
+			my $r2l = <R2>;
+			last unless defined $r1l && $r2l;
+			$r1_entry .= $r1l;
+			$r2_entry .= $r2l;
+		}
+		last unless defined $r1_entry && $r2_entry;
+		print OUTTER $r1_entry.$r2_entry;
+	}
+}
+
+=item qfilter_correct_scythe_paired
 
 Preprocesses paired reads with SGA by filtering low quality reads, quality trimming, 
 and discarding unpaired reads. After preprocessing reads, error corrects reads and 
@@ -452,46 +479,69 @@ where
 	$lib = the library name to use for output generating throughout this subroutine 
 
 =cut
-sub qfilter_correct_tagdust_paired {
+sub qfilter_correct_scythe_paired {
 	my $r1file = shift;
 	my $r2file = shift;
 	my $t = shift;
 	my $lib = shift;
+	
+	# shuffle reads
+	my $p1_name = basename($r1file);
+	shuffle_fastq($r1file, $r2file, "$WD/$p1_name.both.fastq");
 
+	# tagdust
+	my $scythe_cmd = "$DIR/scythe -a $DIR/../adapter.fasta -o $WD/$p1_name.both.scythe.fastq $WD/$p1_name.both.fastq";
+	print STDERR "[a5] $scythe_cmd\n";
+	$scythe_cmd = $TIME.$scythe_cmd if $debug;	
+	system($scythe_cmd);
 
 	# quality filter
-	my $pp_cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
+	my $pp_cmd = "$DIR/sga preprocess --permute-ambiguous -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH."  --pe-mode=0 ";
 	$pp_cmd .= "--phred64 " if (get_phred64($r1file));
-	$pp_cmd .= " $r1file $r2file > $r1file.both.pp";
+	$pp_cmd .= " $WD/$p1_name.both.fastq > $WD/$p1_name.both.pp 2> /dev/null";
 	print STDERR "[a5] $pp_cmd\n";
-	$pp_cmd = "$DIR/$pp_cmd";
 	$pp_cmd = $TIME.$pp_cmd if $debug;	
 	system($pp_cmd);
 
+	# dust filter (use a very high dust threshold to distinguish seq adapter readthrough error from natural low complexity)
+#	my $dust_cmd = "$DIR/sga preprocess --dust-threshold ".SGA_DUST." -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH."  --pe-mode=0 ";
+#	$dust_cmd .= "--phred64 " if (get_phred64($r1file));
+#	$dust_cmd .= " $WD/$p1_name.both.pp > $WD/$p1_name.both.pp.dust 2> /dev/null";
+#	print STDERR "[a5] $dust_cmd\n";
+#	$dust_cmd = $TIME.$dust_cmd if $debug;	
+#	system($dust_cmd);
+
 	# error correct
-	my $ec_cmd = "sga correct -t $t -p $OUTBASE.pp -o $r1file.both.pp.ec.fastq $r1file.both.pp > $WD/$lib.correct.out";
+	my $ec_cmd = "$DIR/sga correct -t $t -p $OUTBASE.pp -o $WD/$p1_name.both.pp.ec.fastq $WD/$p1_name.both.pp > $WD/$lib.correct.out";
 	print STDERR "[a5] $ec_cmd\n";
-	$ec_cmd = "$DIR/$ec_cmd";
 	$ec_cmd = $TIME.$ec_cmd if $debug;	
 	system($ec_cmd);
-	system("rm -rf $r1file.both.pp"); # clear up some disk space
+#	system("rm -rf $WD/$p1_name.both.pp"); # clear up some disk space
+	
+	# re-pair the reads
+	repair_fastq("$WD/$p1_name.both.pp.ec.fastq", "$WD/$p1_name.both.repair.fastq", "$WD/$p1_name.both.unpaired.fastq");
 
-	# tagdust and repair
-	my $td_cmd = "tagdust -s $DIR/../adapter.fasta -o $r1file.both.pp.ec.tagdust.fastq $r1file.both.pp.ec.fastq";
-	print STDERR "[a5] $td_cmd\n";
-	$td_cmd = "$DIR/$td_cmd";
-	$td_cmd = $TIME.$td_cmd if $debug;	
-	system($td_cmd);
-	system("rm -rf $r1file.both.pp.ec.fastq"); # clear up some disk space
+	# convert to fasta for idba
+	fastq_to_fasta("$WD/$p1_name.both.repair.fastq","$WD/$p1_name.both.pp.ec.tagdust.fasta");
+	fastq_to_fasta("$WD/$p1_name.both.unpaired.fastq","$WD/$p1_name.both.unpaired.fasta");
+	system("rm -rf $WD/$p1_name.both.repair.fastq"); # clear up some disk space
+	system("rm -rf $WD/$p1_name.both.unpaired.fastq"); # clear up some disk space
+}
+
+sub repair_fastq{
+	my $input = shift;
+	my $output = shift;
+	my $unpair = shift;
+	open(TDPIPE, $input);
+	open(REPAIR, ">".$output);
+	open(UNPAIR, ">".$unpair);
 	my $lc = -1;
 	my $prev_read = "";
 	my $prev_record = "";
-	open(R1OUT, ">$r1file.pp.ec.fastq");
-	open(R2OUT, ">$r2file.pp.ec.fastq");
-	open(TDPIPE, "$r1file.both.pp.ec.tagdust.fastq");
+	my $faq_modulo = 4;
 	while( my $line = <TDPIPE> ){
 		$lc++;
-		if($lc%4 != 0){
+		if($lc%$faq_modulo != 0){
 			$prev_record .= $line;
 			next;
 		}
@@ -503,30 +553,31 @@ sub qfilter_correct_tagdust_paired {
 		# we're at a header line and we have a previous FastQ record loaded
 		chomp $prev_read;
 		$prev_read =~ s/\/\d$//g;
+		$prev_read =~ s/ .+//g;  # illumina 1.8+ tags
 		my $cur_read = $line;
 		chomp $cur_read;
 		$cur_read =~ s/\/\d$//g;
+		$cur_read =~ s/ .+//g; # illumina 1.8+ tags
 		# read the rest of the current FastQ entry
 		my $cur_record = $line;
-		$cur_record .= <TDPIPE>;
-		$cur_record .= <TDPIPE>;
-		$cur_record .= <TDPIPE>;
-		$lc += 3;
+		for(my $i=1; $i<$faq_modulo; $i++){
+			$cur_record .= <TDPIPE>;
+			$lc++;
+		}
 		# if records are paired, write them out
 		# otherwise ignore the previous entry
 		if($cur_read eq $prev_read){
-			print R1OUT $prev_record;
-			print R2OUT $cur_record;
+			print REPAIR $prev_record.$cur_record;
 			$prev_record = "";
 			$prev_read = "";
 		}else{
+			print UNPAIR $prev_record;
 			$prev_record = $cur_record;
 			$prev_read = $line;
 		}
 	}
-	close R1OUT;
-	close R2OUT;
-	system("rm -rf $r1file.both.pp.ec.tagdust.fastq"); # clear up some disk space
+	close REPAIR;
+	close UNPAIR;
 }
 
 =item get_phred64
@@ -570,7 +621,7 @@ $outbase.pp.fastq is error corrected using the following command:
 For the indexing and correcting step, n_threads is to 1 if running in a Macintosh environment, 4 otherwise. 
 
 Second, for each paired library in $libsref, error correct reads from each library individually for scaffolding using
-the qfilter_correct_tagdust_paired function.
+the qfilter_correct_scythe_paired function.
 
 =cut 
 sub sga_clean {
@@ -602,7 +653,7 @@ sub sga_clean {
 	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous ";
 	$cmd .= "--phred64 " if ($phred64);
 	$cmd .= " $files >$WD/$outbase.pp.fastq";
-	$cmd = "$DIR/$cmd";
+	$cmd = "$DIR/$cmd 2> /dev/null"; # SGA prints errors about unpaired reads, send them to the bitbucket
 	$cmd = $TIME.$cmd if $debug;	
 	system("$cmd");
 	die "[a5] Error preprocessing reads with SGA\n" if( $? != 0 );
@@ -633,9 +684,11 @@ sub sga_clean {
 	$cmd = $TIME.$cmd if $debug;	
 	system("$cmd");
 
+	print STDERR "cleaning each PE lib\n\n";
 	#
 	# error correct individual paired-end libraries
 	for my $lib (keys %libs) {
+		print STDERR "p1 is ".$libs{$lib}{"p1"}."\n";
 		next unless defined($libs{$lib}{"p1"});
 		my $ec1 = $libs{$lib}{"p1"};
 		my $ec2 = $libs{$lib}{"p2"};
@@ -644,7 +697,8 @@ sub sga_clean {
 		fix_read_id($ec1,1);
 		fix_read_id($ec2,2);
 		# clean these reads!
-		qfilter_correct_tagdust_paired($ec1, $ec2, $t, $lib);
+		print STDERR "Cleaning reads\n\n";
+		qfilter_correct_scythe_paired($ec1, $ec2, $t, $lib);
 	}
 	
 	die "[a5] Error correcting reads with SGA\n" if( $? != 0 );
@@ -669,7 +723,7 @@ sub check_and_unzip {
 }
 
 =item map_all_libs
-Maps all librarie back to the final scaffolds generated by the A5 pipeline. 
+Maps all libraries back to the final scaffolds generated by the A5 pipeline. 
 Takes two parameters: $outbase, $libsref
 
 where 
@@ -867,28 +921,59 @@ sub tagdust {
 	return "$WD/$outbase.dusted.fq";
 }
 
-=item idba_assemble
+=item idba_pe_assemble
 Assemble reads using IDBA. 
 Takes 3 parameters: $outbase, $reads, $maxrdlen
 where 
 	$outbase = the basename for output generated throughout this subroutine
 	$reads = the path to the file containing the reads to assemble into contigs
 	$maxrdlen = the maximum kmer to iterate up to. 
+expects a file called $outbase.clean.fa in the current working directory
 =cut
-sub idba_assemble {
+sub idba_pe_assemble {
 	my $outbase = shift;
-	my $reads = shift;
+	my $libs = shift;
 	my $maxrdlen = shift;
-	$maxrdlen = IDBA_MAX_K if $maxrdlen > IDBA_MAX_K;	# idba seems to break if the max k gets too big
-	my $idba_cmd = "idba -r $reads -o $WD/$outbase --mink ".IDBA_MIN_K." --maxk $maxrdlen";
+
+	# construct a merged fasta
+	my $merged_pe_fa = "$WD/$outbase.merged.clean.pe.fa";
+	`rm -f $merged_pe_fa`; #ensure we are starting fresh
+	for my $lib (keys %$libs) {
+		if (defined($libs->{$lib}{"p1"})) {
+			# skip if this is a mate pair lib
+			next if(defined($libs->{$lib}{"ins"}) && $libs->{$lib}{"ins"} > 1000);
+			my $p1_name = basename($libs->{$lib}{"p1"});
+			my $both = "$OUTBASE.s1/$p1_name.both.pp.ec.tagdust.fasta";
+			print STDERR "Running cat $both >> $merged_pe_fa\n";
+			`cat $both >> $merged_pe_fa`;
+			if( -f "$OUTBASE.s1/$p1_name.both.unpaired.fasta" ){
+				`cat $OUTBASE.s1/$p1_name.both.unpaired.fasta >> $WD/$outbase.merged.clean.unpaired.fa`;
+			}
+		}
+	}
+	print STDERR "Done merging libraries\n";
+	
+	my $unpaired_option = "";
+	$unpaired_option = " -l $WD/$outbase.merged.clean.unpaired.fa " if -f "$WD/$outbase.merged.clean.unpaired.fa";
+	my $idba_cmd = "$DIR/idba_ud -r $merged_pe_fa $unpaired_option -o $WD/$outbase --mink ".IDBA_MIN_K." --maxk $maxrdlen --min_pairs 2 --min_count 1";
+	my $pe_size = -s $merged_pe_fa;
+	print STDERR "[a5] $merged_pe_fa has $pe_size bytes of FastA sequence data\n";
 	print STDERR "[a5] $idba_cmd\n";
-	$idba_cmd = "$DIR/$idba_cmd";
-	$idba_cmd = $TIME.$idba_cmd if $debug;	
 	`$idba_cmd > $WD/idba.out`;
-	die "[a5] Error building contigs with IDBA\n" if ($? != 0);
-	`rm $WD/$outbase.kmer $WD/$outbase.graph`;
+	if ($? != 0){
+		# idba_ud has a bug in estimating the insert size which causes a crash before scaffolding.
+		# when that happens, the contigs can still be used. If contigs were not generated then
+		# idba failed early and there is no point continuing.
+		die "[a5] Error building contigs with IDBA\n" unless -e "$WD/$outbase/contig.fa";
+		`cp $WD/$outbase/contig.fa $WD/$outbase-contig.fa`;
+		
+	}else{
+		`cp $WD/$outbase/scaffold.fa $WD/$outbase-contig.fa`;
+	}
+	`rm -rf $WD/$outbase`; # free up disk space (the idba_ud output can be very large)
 	return "$WD/$outbase-contig.fa";
 }
+
 
 =item scaffold_sspace
 Scaffold contigs using SSPACE. 
@@ -1453,7 +1538,7 @@ sub get_insert($$$$) {
 	my $fq_linecount = $estimate_pair_count*4;
 	# estimate the library insert size with bwa
 	# just use a subsample of $estimate_pair_count reads
-	`$DIR/bwa index -a is $ctgs`;
+	`$DIR/bwa index $ctgs`;
 	# check that there are enough reads in the file, don't want to duplicate reads...
 	my $headcheck = `head -n $fq_linecount $r1fq | wc -l`;
 	chomp $headcheck;
@@ -1469,10 +1554,10 @@ sub get_insert($$$$) {
 	`tail -n $half_lines $r1fq >> $r1fq.sub`;
 	`head -n $half_lines $r2fq > $r2fq.sub`;
 	`tail -n $half_lines $r2fq >> $r2fq.sub`;
-	`$DIR/bwa aln $ctgs $r1fq.sub > $r1fq.sub.sai`;
-	`$DIR/bwa aln $ctgs $r2fq.sub > $r2fq.sub.sai`;
+#	`$DIR/bwa aln $ctgs $r1fq.sub > $r1fq.sub.sai`;
+#	`$DIR/bwa aln $ctgs $r2fq.sub > $r2fq.sub.sai`;
 	# use bwa to map the reads
-	my $cmd = "$DIR/bwa sampe -P $ctgs $r1fq.sub.sai $r2fq.sub.sai $r1fq.sub $r2fq.sub ".
+	my $cmd = "$DIR/bwa mem $ctgs $r1fq.sub $r2fq.sub ".
 			"> $outbase.sub.pe.sam 2> $outbase.sampe.out";
 	`$cmd`;
 	$cmd = "GetInsertSize.jar $outbase.sub.pe.sam";
@@ -1489,7 +1574,7 @@ sub get_insert($$$$) {
 		$ins_error = sprintf("%.3f",$ins_error);
 		$ins_error =~ s/0+$//g;
 	} else {
-		print STDERR "[a5] Discarding estimate. Not enough data points: $ins_n\n";
+		print STDERR "[a5] Discarding estimate. Not enough data points: $ins_n but requiring $require_reads\n";
 		$ins_mean *= -1; 
 		$ins_error *= -1;
 	}
@@ -1507,3 +1592,5 @@ sub get_rdlen($$){
 	close FILE;
 	return length($line);
 }
+
+
