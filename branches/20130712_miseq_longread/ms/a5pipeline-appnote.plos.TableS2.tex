@@ -1,0 +1,85 @@
+% Template for PLoS
+% Version 1.0 January 2009
+%
+% To compile to pdf, run:
+% latex plos.template
+% bibtex plos.template
+% latex plos.template
+% latex plos.template
+% dvipdf plos.template
+
+\documentclass[10pt]{article}
+
+% amsmath package, useful for mathematical formulas
+\usepackage{amsmath}
+% amssymb package, useful for mathematical symbols
+\usepackage{amssymb}
+
+% graphicx package, useful for including eps and pdf graphics
+% include graphics with the command \includegraphics
+\usepackage{graphicx}
+
+% cite package, to clean up citations in the main text. Do not remove.
+\usepackage{cite}
+
+\usepackage{color} 
+
+% Use doublespacing - comment out for single spacing
+%\usepackage{setspace} 
+%\doublespacing
+
+
+% Text layout
+\topmargin 0.0cm
+\oddsidemargin 0.5cm
+\evensidemargin 0.5cm
+\textwidth 16cm 
+\textheight 21cm
+
+% Bold the 'Figure #' in the caption and separate it with a period
+% Captions will be left justified
+\usepackage[labelfont=bf,labelsep=period,justification=raggedright]{caption}
+
+% Use the PLoS provided bibtex style
+\bibliographystyle{plos2009}
+
+% Remove brackets from numbering in List of References
+\makeatletter
+\renewcommand{\@biblabel}[1]{\quad#1.}
+\makeatother
+
+
+\begin{document}
+
+\setcounter{table}{1}
+\renewcommand{\thetable}{S\arabic{table}}
+
+\begin{table}[hp] 
+\caption{ 
+\bf{Assembly metrics for SOAPdenovo running on error corrected reads from \textit{H. volcanii} DS2}}
+\footnotesize
+\begin{tabular}{l|cccccc|ccc}
+&\multicolumn{6}{c|}{SOAPdenovo on clean reads} \\
+Assembly           & ctg-CDS & scaf-CDS & ctg-N50 & scaf-N50 & ctg-LCB & scaf-LCB \\
+Sequence count     & 6965    & 237      & 6965    & 237      & 4101    & 227      \\
+N50                & 3781    & 125630   & 3781    & 125630   & 2457    & 85544   \\
+Miscalled bases    & 187     & 385      & 187     & 385      & 249     & 417      \\
+Uncalled bases     & 0       & 11567    & 0       & 11567    & 0       & 22162    \\
+Extra bases        & 31091   & 14830    & 31091   & 14830    & 65895   & 23369    \\
+Missing bases      & 154938  & 150235   & 154938  & 150235   & 160316  & 176787   \\
+Extra sequences    & 4964    & 92       & 4964    & 92       & 1206    & 81       \\
+Missing replicons  & 0       & 0        & 0       & 0        & 0       & 0        \\
+DCJ Distance       & 2005    & 150      & 2005    & 150      & 2897    & 148      \\
+LCB Count          & 9       & 13       & 9       & 13       & 10      & 10       \\
+Broken CDS         & 524     & 539      & 524     & 539      & 760     & 769      \\
+\end{tabular}
+\begin{flushleft} Reference-based assembly metrics for SOAPdenovo assemblies of \textit{H. volcanii} DS2 
+(\textbf{Volc}) reads cleaned by stage 1 of the A5 pipeline. ``scaf'' indicates an assembly that has been scaffolded, while ``ctg'' indicates no scaffolding. 
+Labels ``-CDS'', ``-N50'', and ``-LCB'' indicate SOAPdenovo assemblies run with parameter combinations that minimized broken coding 
+sequences, maximized scaffold N50, and minimized LCB (Locally Collinear Block) count, respectively.
+SOAPdenovo with $K=27$ produced the best assemblies for -CDS, -N50, while $K=41$ was optimal for -LCB. Contig statistics are on the contigs matching the optimal scaffold assemblies.
+\end{flushleft}
+\label{tab:soapcleanvolc}
+\end{table}
+
+\end{document}

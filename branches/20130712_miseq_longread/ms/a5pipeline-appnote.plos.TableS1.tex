@@ -1,0 +1,90 @@
+% Template for PLoS
+% Version 1.0 January 2009
+%
+% To compile to pdf, run:
+% latex plos.template
+% bibtex plos.template
+% latex plos.template
+% latex plos.template
+% dvipdf plos.template
+
+\documentclass[10pt]{article}
+
+% amsmath package, useful for mathematical formulas
+\usepackage{amsmath}
+% amssymb package, useful for mathematical symbols
+\usepackage{amssymb}
+
+% graphicx package, useful for including eps and pdf graphics
+% include graphics with the command \includegraphics
+\usepackage{graphicx}
+
+% cite package, to clean up citations in the main text. Do not remove.
+\usepackage{cite}
+
+\usepackage{color} 
+
+% Use doublespacing - comment out for single spacing
+%\usepackage{setspace} 
+%\doublespacing
+
+
+% Text layout
+\topmargin 0.0cm
+\oddsidemargin 0.5cm
+\evensidemargin 0.5cm
+\textwidth 16cm 
+\textheight 21cm
+
+% Bold the 'Figure #' in the caption and separate it with a period
+% Captions will be left justified
+\usepackage[labelfont=bf,labelsep=period,justification=raggedright]{caption}
+
+% Use the PLoS provided bibtex style
+\bibliographystyle{plos2009}
+
+% Remove brackets from numbering in List of References
+\makeatletter
+\renewcommand{\@biblabel}[1]{\quad#1.}
+\makeatother
+
+%\newcommand\startsupplement{%
+%       \renewcommand{\thetable}{S\arabic}
+%}
+
+\begin{document}
+
+%\startsupplement
+
+\renewcommand{\thetable}{S\arabic{table}}
+
+
+\begin{table}[hp]
+\caption{\bf{Supplementary Table: Automatically set parameters}}
+\footnotesize
+{\begin{tabular}{l|c|l}
+Parameter                       & Stage & Default setting  \\
+SGA Quality Trim (-q)           & 1     & fixed to 10, not optimized \\
+SGA Quality Filter (-f)         & 1     & fixed to 20, not optimized \\
+SGA Min Read Length (-m)        & 1     & fixed to 30, this should be larger than IDBA's min $k$-mer \\
+IDBA min $k$-mer                & 2     & 29, most $k$-mers of this size are unique in a microbial genome but larger values may be better for larger genomes \\
+IDBA max $k$-mer                & 2     & maximum read length of trimmed reads \\
+SSPACE Overhang MinOverlap (-m) & 3,5   & Max of 15 and floor of binary logarithm of genome size, plus 3.99  \\
+SSPACE ExtendCall MinBases (-o) & 3,5   & fixed to 1 \\
+SSPACE Minimum Links (-k)       & 3,5   & base 1.4 logarithm of $E\_links$, minus 11.5, where $E\_links$ = $\dfrac{2c\mu}{l_r}$ and $c$ is coverage \\
+SSPACE Min Link Ratio (-a)      & 3,5   & fixed to 0.6,0.3. These values give higher accuracy than SSPACE defaults  \\
+SSPACE Merge MinOverlap (-n)    & 3,5   & floor of (binary logarithm of mean insert size, scaled by 1.24, plus 0.99) \\
+SSPACE Insert Mean 	        & 3,5   & Calculated using EM-clustering \\
+SSPACE Insert StDev             & 3,5   & Calculated using EM-clustering \\
+DBSCAN $\varepsilon$            & 4     & Derived from coverage as described in main text \\
+DBSCAN $MinPts$                 & 4     & Derived from coverage as described in main text \\
+\end{tabular}}
+\begin{flushleft} Assembly parameters within the A5 pipeline and how their values are chosen. $\varepsilon$ is the maximum inter-point distance 
+used for spatial clustering and $MinPts$ is the minimum number of points in a cluster.
+\end{flushleft}
+\label{tab:tab03}
+\end{table}
+
+
+
+\end{document}

@@ -1,0 +1,147 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with jLaTeX2HTML 2002 (1.62) JA patch-1.4
+patched version by:  Kenshi Muto, Debian Project.
+LaTeX2HTML 2002 (1.62),
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Step 1: From markers to features </TITLE>
+<META NAME="description" CONTENT="Step 1: From markers to features ">
+<META NAME="keywords" CONTENT="fishmanual">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="jLaTeX2HTML v2002 JA patch-1.4">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="fishmanual.css">
+
+<LINK REL="next" HREF="node14.html">
+<LINK REL="previous" HREF="node12.html">
+<LINK REL="up" HREF="node12.html">
+<LINK REL="next" HREF="node14.html">
+</HEAD>
+
+<BODY >
+<!--Navigation Panel-->
+<A NAME="tex2html268"
+  HREF="node14.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="file:/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html264"
+  HREF="node12.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="file:/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html258"
+  HREF="node12.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="file:/usr/share/latex2html/icons/prev.png"></A> 
+<A NAME="tex2html266"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents"
+ SRC="file:/usr/share/latex2html/icons/contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html269"
+  HREF="node14.html">Step 2: From features</A>
+<B> Up:</B> <A NAME="tex2html265"
+  HREF="node12.html">How it works</A>
+<B> Previous:</B> <A NAME="tex2html259"
+  HREF="node12.html">How it works</A>
+ &nbsp <B>  <A NAME="tex2html267"
+  HREF="node1.html">Contents</A></B> 
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<H1><A NAME="SECTION00310000000000000000"></A><A NAME="step1"></A>
+<BR>
+Step 1: From markers to features 
+</H1>
+The names, positions and transcriptional orientations (when known) of the
+markers are read from a
+set of <I>map files</I>, one map file per contig.
+Markers within each map file must be ordered according to their physical
+positions on the contig. FISH assigns each marker a unique identification
+number,
+from 1 to the total number of markers in all the contigs, which serves as a
+linear coordinate for subsequent calculations.
+Markers cannot appear more than once on a contig, <I>i.e</I> each marker on a
+contig must be unique; otherwise, an error will result.
+
+<P>
+Individual homologies between markers are read from a set of <I>match files</I>.  There
+is at least one, and no more than two, such files for each pair of contigs.  Each
+match is associated
+with a score that reflects the strength of that match.  Larger scores indicate stronger matches.
+When two matches between the same markers are present in two different match files (<I>i.e.</I>
+contig 1 vs contig 2, and contig 2 vs, contig 1), the score is taken to be either the maximum
+or the average of the two according to the user's choice (refer <A HREF="node22.html#paramtable">3</A>).
+
+<P>
+On the basis of the map positions and matches, FISH
+performs <I>detandemization</I>, in which
+multiple markers may be collapsed into single features. Two parameters control the
+detandemization process: MIN_SCORE and
+MAX_DIST.
+Markers with coordinates that are separated by MIN_DIST or less will be
+collapsed into a single feature if they are homologous to each other or to a
+third marker with a score at least as great as MIN_SCORE.
+
+<P>
+To calculate the relative order of features in the detandemized contig, each
+feature inherits the position of the marker having the lowest valued coordinate
+within the set of markers comprising the feature.
+The coordinates are then reassigned for features in all contigs from
+zero to one less than the number of features in the whole dataset.
+When transcriptional orientations are known, the feature inherits the majority
+orientation (either '1' or '-1') of the markers that comprise it.
+For example, if three out of the five markers that comprise a feature have a transcriptional
+orientation of '1', then the feature inherits that orientation. If there is no majority,
+then it is assigned a value of zero, for 'unknown'.
+
+<P>
+The score of a match between two features, when one or both of
+the features represents multiple markers, is taken, depending on the
+runtime parameter chosen, to be either the highest score or
+the average score for any of the pairs of component markers, one from each feature.
+
+<P>
+<HR>
+<!--Navigation Panel-->
+<A NAME="tex2html268"
+  HREF="node14.html">
+<IMG WIDTH="37" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next"
+ SRC="file:/usr/share/latex2html/icons/next.png"></A> 
+<A NAME="tex2html264"
+  HREF="node12.html">
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="file:/usr/share/latex2html/icons/up.png"></A> 
+<A NAME="tex2html258"
+  HREF="node12.html">
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="file:/usr/share/latex2html/icons/prev.png"></A> 
+<A NAME="tex2html266"
+  HREF="node1.html">
+<IMG WIDTH="65" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="contents"
+ SRC="file:/usr/share/latex2html/icons/contents.png"></A>  
+<BR>
+<B> Next:</B> <A NAME="tex2html269"
+  HREF="node14.html">Step 2: From features</A>
+<B> Up:</B> <A NAME="tex2html265"
+  HREF="node12.html">How it works</A>
+<B> Previous:</B> <A NAME="tex2html259"
+  HREF="node12.html">How it works</A>
+ &nbsp <B>  <A NAME="tex2html267"
+  HREF="node1.html">Contents</A></B> 
+<!--End of Navigation Panel-->
+<ADDRESS>
+root
+2003-06-27
+</ADDRESS>
+</BODY>
+</HTML>
