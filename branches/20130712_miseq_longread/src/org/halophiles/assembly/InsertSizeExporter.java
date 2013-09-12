@@ -79,9 +79,10 @@ public class InsertSizeExporter {
 				PrintStream distOut = new PrintStream(distFile);
 				exportInsertDistances(reads.values(), distOut);*/
 				
-				double[] insTot = ReadPair.estimateInsertSize(reads.values());
+				double[] insTot = ReadPair.estimateInsertSizeIQR(reads.values());
 				double[] ret = {insTot[0],insTot[1],insTot[2],ReadPair.getOrientation(reads.values())};
-				if (insTot[0]>1500){
+				if (insTot[0]>2000){
+					System.err.println("[a5_ise] Average insert size > 2000. Assuming this is a mate-pair library");			
 					System.err.println("[a5_ise] EM Clustering with K = 3 to remove noisy reads and shadow library");			
 					EMClusterer em = new EMClusterer(reads.values(), 3);
 					em.iterate(1000,0.0001);

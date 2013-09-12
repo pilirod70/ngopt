@@ -209,8 +209,8 @@ public class ReadPair{
 	}
 	
 
-	public static double[] estimateInsertSizeIQR(Map<String,ReadPair> reads){
-		Iterator<ReadPair> it = reads.values().iterator();
+	public static double[] estimateInsertSizeIQR(Collection<ReadPair> reads){
+		Iterator<ReadPair> it = reads.iterator();
 		ReadPair tmp = null;
 		Vector<Double> vals = new Vector<Double>();
 		while(it.hasNext()){
