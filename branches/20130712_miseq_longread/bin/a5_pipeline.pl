@@ -489,16 +489,25 @@ sub qfilter_correct_scythe_paired {
 	my $p1_name = basename($r1file);
 	shuffle_fastq($r1file, $r2file, "$WD/$p1_name.both.fastq");
 
-	# tagdust
-	my $scythe_cmd = "$DIR/scythe -a $DIR/../adapter.fasta -o $WD/$p1_name.both.scythe.fastq $WD/$p1_name.both.fastq";
+	# run trimmomatic on the reads
+	my $phred64 = get_phred64($r1file);
+	my $trim_phred = $phred64 ? "-phred64 " : "-phred33 ";
+	# run trimmomatic on the reads
+	my $trim_cmd = "java -jar $DIR/trimmomatic-0.30.jar SE $trim_phred $WD/$p1_name.both.fastq $WD/$p1_name.trim.fastq ILLUMINACLIP:$DIR/../adapter.fasta:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36";
+	print STDERR "[a5] $trim_cmd\n";
+	$trim_cmd = $TIME.$trim_cmd if $debug;	
+	system($trim_cmd);
+
+	# scythe
+	my $scythe_cmd = "$DIR/scythe -a $DIR/../scythe_adapter.fasta -o $WD/$p1_name.scythe.fastq $WD/$p1_name.trim.fastq";
 	print STDERR "[a5] $scythe_cmd\n";
 	$scythe_cmd = $TIME.$scythe_cmd if $debug;	
 	system($scythe_cmd);
 
 	# quality filter
 	my $pp_cmd = "$DIR/sga preprocess --permute-ambiguous -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH."  --pe-mode=0 ";
-	$pp_cmd .= "--phred64 " if (get_phred64($r1file));
-	$pp_cmd .= " $WD/$p1_name.both.fastq > $WD/$p1_name.both.pp 2> /dev/null";
+	$pp_cmd .= "--phred64 " if $phred64;
+	$pp_cmd .= " $WD/$p1_name.scythe.fastq > $WD/$p1_name.both.pp 2> /dev/null";
 	print STDERR "[a5] $pp_cmd\n";
 	$pp_cmd = $TIME.$pp_cmd if $debug;	
 	system($pp_cmd);
@@ -746,16 +755,8 @@ sub map_all_libs {
 			my $fq2 = $libs{$lib}{"p2"};
 			my $aln1_cmd = "bwa aln $OUTBASE.final.scaffolds.fasta $fq1 > $fq1.sai";
 			my $aln2_cmd = "bwa aln $OUTBASE.final.scaffolds.fasta $fq2 > $fq2.sai";
-			my $sampe_cmd = "bwa sampe $OUTBASE.final.scaffolds.fasta $fq1.sai $fq2.sai $fq1 $fq2 | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.pe";
+			my $sampe_cmd = "bwa mem $OUTBASE.final.scaffolds.fasta $fq1 $fq2 | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.pe";
 			my $bamindex_cmd = "samtools index $lib.pe.bam";
-			print STDERR "[a5] $aln1_cmd\n";
-			$aln1_cmd = "$DIR/$aln1_cmd";
-			$aln1_cmd = $TIME.$aln1_cmd if $debug;	
-			system($aln1_cmd);
-			print STDERR "[a5] $aln2_cmd\n";
-			$aln2_cmd = "$DIR/$aln2_cmd";
-			$aln2_cmd = $TIME.$aln2_cmd if $debug;	
-			system($aln2_cmd);
 			print STDERR "[a5] $sampe_cmd\n";
 			$sampe_cmd = "$DIR/$sampe_cmd";
 			$sampe_cmd = $TIME.$sampe_cmd if $debug;	
@@ -764,7 +765,6 @@ sub map_all_libs {
 			$bamindex_cmd = "$DIR/$bamindex_cmd";
 			$bamindex_cmd = $TIME.$bamindex_cmd if $debug;	
 			system($bamindex_cmd);
-			`rm $fq1.sai $fq2.sai`;
 		}
 		if (defined($libs{$lib}{"up"})){
 			my $up = $libs{$lib}{"up"}; 
