@@ -80,7 +80,7 @@ If no misassemblies are detected, `assembly.out.broken.scaffolds.fasta` will not
 
 The library file must contain file paths to all libraries being assembled. 
 Separate libraries are delimited in the library file by `[LIB]`. 
-For a paired-end or mate-pair library, reads can passed as two files, one for each end, or as a single shuffled (aka interleaved) file. 
+For a paired-end or mate-pair library, reads can be passed as two files, one for each end, or as a single shuffled (aka interleaved) file. 
 Additionally, unpaired reads can be passed as a single file. 
 For a single-end library, reads must be passed as a single file.
 Reads must be in FASTQ format. In addition to file locations, you can also give an insert size for paired reads. Please note that this is NOT necessary. The given number will only be used when _A5_ is not able to reliably calculate the insert size.
