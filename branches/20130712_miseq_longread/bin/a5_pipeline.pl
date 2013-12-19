@@ -80,7 +80,7 @@ my $def_up_id="upReads";
 my @KEYS = ("id","p1","p2","shuf","up","rc","ins","err","nlibs","libfile");
 my $pname = basename($0);
 my $usage= qq{
-Usage: $pname [--begin=1-5] [--end=1-5] [--preprocessed] [--debug] <lib_file> <out_base>
+Usage: $pname [--begin=1-5] [--end=1-5] [--preprocessed] [--debug] [--metagenome] <lib_file> <out_base>
 
 Or: $pname <Read 1 FastQ> <Read 2 FastQ> <out_base>
 
@@ -102,10 +102,12 @@ my $start = 1;
 my $end = 5;
 my $preproc = 0;
 my $debug = 0;
+my $metagenome = 0;
 GetOptions( 'begin=i' => \$start,
             'end=i' => \$end,
 			'preprocessed' => \$preproc,
-			'debug' => \$debug);
+			'debug' => \$debug,
+			'metagenome' => \$metagenome);
 
 die $usage if (@ARGV < 2);
 
@@ -204,6 +206,9 @@ my $WD="$OUTBASE";
 
 print "[a5] Starting pipeline at step $start\n";
 
+# if we are assembling metagenomic data do not run the scaffolding
+$end = ($end < 2 ? $end : 2) if $metagenome;
+
 if ($start <= 1) {
 	print "[a5] Cleaning reads with SGA\n";
 	print STDERR "[a5] Cleaning reads with SGA\n";
@@ -211,8 +216,8 @@ if ($start <= 1) {
 	mkdir($WD) if ! -d $WD;
 	$reads = sga_clean($OUTBASE, \%RAW_LIBS);
 	`mv $reads $OUTBASE.ec.fastq`;
-	`rm $WD/*.fastq`;
-	`rm $WD/*.ec.fa`;
+	`rm -f $WD/*.fastq`;
+	`rm -f $WD/*.ec.fa`;
 } 
 if ($end == 1){
 	print STDERR "[a5] Done cleaning reads. Results at $OUTBASE.ec.fastq\n";
@@ -320,7 +325,7 @@ if ($end == 5){
 }
 
 # clean up any files we unzipped files if the raw input was compressed
-my @unzipped = glob("*.$UNZIP_EXT");
+my @unzipped = glob("$OUTBASE/*.$UNZIP_EXT");
 for my $file (@unzipped){
 	print STDERR "[a5] Removing unzipped file $file\n";
 	`rm $file`;
@@ -366,81 +371,6 @@ sub get_availmem {
 		}
 	}
 	return $mem
-}
-
-=item
-
-Read a single entry from an Illumina-platform generated FastQ file, and removed the paired 
-read id (e.g. "/1") from the end of the read id
-
-=cut
-sub readFastqEntry {
-	my $bufref = shift;
-	my $infile = shift;
-	my %buf = %$bufref;
-	my $name = <$infile>;
-	my $barename = $name;
-	chomp($barename);
-	$barename =~ s/\/\d$//g;	# trim off paired read id
-	$buf{$barename} = $name;
-	$buf{$barename} .= <$infile>;	# seq line
-	$buf{$barename} .= <$infile>;	# qual name line
-	$buf{$barename} .= <$infile>;	# qual seq line
-	return $barename;
-}
-
-=item
-
-3-read sequencing protocols can set the paired read ID to /3 instead of /2
-and some softwares don't like this
-
-=cut
-sub fix_read_id {
-	my $fastq = shift;
-	my $expected_id = shift;
-	open( FQ, $fastq );
-	my $line = <FQ>;
-	chomp $line;
-	$line =~ /\/(\d+)$/;
-	my $id = $1;
-	if(defined($id) && $id != $expected_id){
-		# swap in the correct read id
-		print STDERR "[a5] Swapping read identifier from $id to $expected_id\n";
-		my $swap_cmd = "perl -p -i -e \"s/^(@.+)\\\/$id\$/\\\$1\\\/$expected_id/g\" $fastq";
-		print STDERR "[a5] $swap_cmd\n";
-		`$swap_cmd`;
-	}
-}
-
-=item qfilter_paired_easy
-
-Preprocess paired reads with SGA by filtering and quality trimming. Discard unpaired reads.
-
-=cut
-sub qfilter_paired_easy {
-	my $r1file = shift;
-	my $r2file = shift;
-	my $r1file_in = $r1file;
-	my $r2file_in = $r2file;
-	my $r1file_out = "$r1file.pp";
-	my $r2file_out = "$r2file.pp";
-	
-
-	my $cmd = "sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH." --permute-ambiguous --pe-mode=1 ";
-	$cmd .= "--phred64 " if (get_phred64($r1file_in));
-	$cmd .= " $r1file_in $r2file_in";
-	print STDERR "[a5] $cmd\n";
-	open(R1OUT, ">$r1file_out");
-	open(R2OUT, ">$r2file_out");
-	$cmd = "$DIR/$cmd";
-	$cmd = $TIME.$cmd if $debug;	
-	open(PPPIPE, "$DIR/$cmd |");
-	my $lc = -1;
-	while( my $line = <PPPIPE> ){
-		$lc++;
-		print R1OUT $line if( $lc % 8 < 4 );
-		print R2OUT $line if( $lc % 8 >= 4 );
-	}
 }
 
 sub shuffle_fastq {
@@ -537,8 +467,6 @@ sub correct_paired {
 	system($ec_cmd);
 	system("rm -rf $WD/$p1_name.both.pp"); # clear up some disk space
 	
-	# re-pair the reads
-	repair_fastq("$WD/$p1_name.both.pp.ec.fastq", "$WD/$p1_name.both.repair.fastq", "$WD/$p1_name.both.unpaired.fastq");
 }
 
 sub repair_fastq{
@@ -669,10 +597,6 @@ sub sga_clean {
 		next unless defined($libs{$lib}{"p1"});
 		my $ec1 = $libs{$lib}{"p1"};
 		my $ec2 = $libs{$lib}{"p2"};
-		# bwa and sga require paired reads to have /1 and /2
-		# make sure our reads have that
-		fix_read_id($ec1,1);
-		fix_read_id($ec2,2);
 		# clean these reads!
 		print STDERR "Cleaning reads\n\n";
 		qfilter_trim_scythe_paired($ec1, $ec2, $t, $lib);
@@ -681,42 +605,45 @@ sub sga_clean {
 	}
 
 	# build a bwt index for all of the reads
-	my $sga_ind = "";
-	my $sga_ind_kb = $AVAILMEM/4;
-	my $err_file = "$WD/index.err";
-	do{
-		my $cmd = "sga index -d ".($sga_ind_kb)." -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
-		print STDERR "[a5] $cmd\n";
-		$cmd = "$DIR/$cmd";
-		$cmd = $TIME.$cmd if $debug;	
-		$sga_ind = `$cmd`;
-		$sga_ind = read_file($err_file);
-		$sga_ind_kb = int($sga_ind_kb/2);
-	}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 500000);
-
-	`rm -f $WD/$outbase.pp.fastq`;
+	if(!$metagenome){
+		my $sga_ind = "";
+		my $sga_ind_kb = $AVAILMEM/4;
+		my $err_file = "$WD/index.err";
+		do{
+			my $cmd = "sga index -d ".($sga_ind_kb)." -t $t $WD/$outbase.pp.fastq > $WD/index.out 2> $err_file";
+			print STDERR "[a5] $cmd\n";
+			$cmd = "$DIR/$cmd";
+			$cmd = $TIME.$cmd if $debug;	
+			$sga_ind = `$cmd`;
+			$sga_ind = read_file($err_file);
+			$sga_ind_kb = int($sga_ind_kb/2);
+		}while(($sga_ind =~ /bad_alloc/ || $? != 0) && $sga_ind_kb > 500000);
+	
+		`rm -f $WD/$outbase.pp.fastq`;
+	}
 
 	#
 	# error correct individual paired-end libraries
-	for my $lib (keys %libs) {
-		next unless defined($libs{$lib}{"p1"});
-		correct_paired($libs{$lib}{"p1"}, $libs{$lib}{"p2"}, $t, $lib);
-	}
-
-	# construct a merged fasta
+	# and construct a merged fasta
 	my $merged_pe_fa = "$WD/$OUTBASE.ec.fastq";
 	`rm -f $merged_pe_fa`; #ensure we are starting fresh
 	for my $lib (keys %libs) {
-		if (defined($libs{$lib}{"p1"})) {
-			# skip if this is a mate pair lib
-			next if(defined($libs{$lib}{"ins"}) && $libs{$lib}{"ins"} > 1000);
-			my $p1_name = basename($libs{$lib}{"p1"});
-			my $both = "$OUTBASE.s1/$p1_name.both.repair.fastq";
-			print STDERR "Running cat $both >> $merged_pe_fa\n";
-			`cat $both >> $merged_pe_fa`;
-			if( -f "$OUTBASE.s1/$p1_name.both.unpaired.fastq" ){
-				`cat $OUTBASE.s1/$p1_name.both.unpaired.fastq >> $WD/$OUTBASE.merged.clean.unpaired.fa`;
-			}
+		next unless defined($libs{$lib}{"p1"});
+		my $p1_name = basename($libs{$lib}{"p1"});
+		if(!$metagenome){
+			correct_paired($libs{$lib}{"p1"}, $libs{$lib}{"p2"}, $t, $lib);
+		}else{
+			`mv $WD/$p1_name.both.pp $WD/$p1_name.both.pp.ec.fastq`;
+		}
+		# re-pair the reads
+		repair_fastq("$WD/$p1_name.both.pp.ec.fastq", "$WD/$p1_name.both.repair.fastq", "$WD/$p1_name.both.unpaired.fastq");
+		# don't merge if this is a mate pair lib
+		next if(defined($libs{$lib}{"ins"}) && $libs{$lib}{"ins"} > 1000);
+		my $both = "$OUTBASE.s1/$p1_name.both.repair.fastq";
+		print STDERR "Running cat $both >> $merged_pe_fa\n";
+		`cat $both >> $merged_pe_fa`;
+		if( -f "$OUTBASE.s1/$p1_name.both.unpaired.fastq" ){
+			`cat $OUTBASE.s1/$p1_name.both.unpaired.fastq >> $WD/$OUTBASE.merged.clean.unpaired.fa`;
 		}
 	}
 	print STDERR "Done merging libraries\n";
@@ -735,10 +662,10 @@ sub check_and_unzip {
 	my $bname = basename($file);
 	if ($file_type =~ /gzip/){
 		$ret = "$OUTBASE/$bname.$UNZIP_EXT";
-		`gunzip -c $file > $ret`;
+		`mkdir -p $OUTBASE ; gunzip -c $file > $ret`;
 	} elsif ($file_type =~ /bzip2/) {
 		$ret = "$OUTBASE/$bname.$UNZIP_EXT";
-		`bunzip2 -c $file > $ret`;
+		`mkdir -p $OUTBASE ; bunzip2 -c $file > $ret`;
 	}
 	return $ret;
 }
@@ -874,7 +801,7 @@ sub fastq_to_fasta {
 	return ($fasta, $maxrdlen - 2); # -1 removes newline char
 }
 
-=item split_shuif
+=item split_shuf
 Splits a shuffled (a.k.a. interleaved) fastq file into two separate fastq files. 
 
 Takes two parameters: $shuf, $outbase
@@ -932,7 +859,7 @@ sub idba_pe_assemble {
 	$idba_bin = "idba_ud250" if $maxrdlen > 120;
 	$idba_bin = "idba_ud400" if $maxrdlen > 250;
 	die "[a5] Reads are too long to be assembled with A5. This version of A5 supports read lengths up to 400nt." if $maxrdlen > 400;
-	my $idba_cmd = "$DIR/$idba_bin -r $merged_pe_fa $unpaired_option -o $WD/$outbase --mink ".IDBA_MIN_K." --maxk $maxrdlen --min_pairs 2 --min_count 1";
+	my $idba_cmd = "/usr/bin/time -v $DIR/$idba_bin -r $merged_pe_fa $unpaired_option -o $WD/$outbase --mink ".IDBA_MIN_K." --maxk $maxrdlen --min_pairs 2 --min_count 1";
 	my $pe_size = -s $merged_pe_fa;
 	print STDERR "[a5] $merged_pe_fa has $pe_size bytes of FastA sequence data\n";
 	print STDERR "[a5] $idba_cmd\n";
@@ -1554,18 +1481,6 @@ sub get_insert($$$$) {
 		$ins_error *= -1;
 	}
 	return ($ins_mean, $ins_error, $ori);
-}
-
-=item get_rdlen
-Return the read length of reads in the given fastq/a. This assumes that all reads in the given file are the same length
-=cut
-sub get_rdlen($$){
-	open(FILE, shift);
-	my $line = <FILE>;
-	$line = <FILE>;
-	chomp $line;
-	close FILE;
-	return length($line);
 }
 
 
