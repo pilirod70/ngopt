@@ -2,7 +2,7 @@
 
 
 function copy_bin {
-	bin="bwa sga scythe idba_ud idba_ud250 idba_ud400 tagdust samtools trimmomatic-0.30.jar"
+	bin="bwa sga scythe idba_ud idba_ud250 idba_ud400 samtools trimmomatic-0.30.jar"
 	for ex in $bin; do
 		cp -v $1/$ex $findir/bin
 		if [ ! $? ]; then return 1; fi;
