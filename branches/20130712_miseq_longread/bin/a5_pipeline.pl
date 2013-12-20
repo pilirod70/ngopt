@@ -321,6 +321,7 @@ if ($start <= 5 && $need_qc) {
 	map_all_libs($OUTBASE, \%RAW_LIBS);
 } 
 if ($end == 5){
+	finalize($OUTBASE, \%RAW_LIBS);
 	print "[a5] Final assembly in $OUTBASE.final.scaffolds.fasta\n"; 
 }
 
@@ -434,8 +435,8 @@ sub qfilter_trim_scythe_paired {
 	$scythe_cmd = $TIME.$scythe_cmd if $debug;	
 	system($scythe_cmd);
 
-	# quality filter
-	my $pp_cmd = "$DIR/sga preprocess --permute-ambiguous -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH."  --pe-mode=0 ";
+	# quality filter. unsure whether to use --permute-ambiguous
+	my $pp_cmd = "$DIR/sga preprocess -q ".SGA_Q_TRIM." -f ".SGA_Q_FILTER." -m ".SGA_MIN_READ_LENGTH."  --pe-mode=0 ";
 	$pp_cmd .= "--phred64 " if $phred64;
 	$pp_cmd .= " $WD/$p1_name.scythe.fastq > $WD/$p1_name.both.pp 2> /dev/null";
 	print STDERR "[a5] $pp_cmd\n";
@@ -688,41 +689,73 @@ sub map_all_libs {
 	$index_cmd = "$DIR/$index_cmd";
 	$index_cmd = $TIME.$index_cmd if $debug;	
 	system($index_cmd);
+	my %coverage;
 	for my $lib (keys %libs) {
 		if (defined($libs{$lib}{"p1"})) {
-			my $fq1 = $libs{$lib}{"p1"}; 
-			my $fq2 = $libs{$lib}{"p2"};
-			my $sampe_cmd = "bwa mem $OUTBASE.final.scaffolds.fasta $fq1 $fq2 | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.pe";
-			my $bamindex_cmd = "samtools index $lib.pe.bam";
-			print STDERR "[a5] $sampe_cmd\n";
-			$sampe_cmd = "$DIR/$sampe_cmd";
-			$sampe_cmd = $TIME.$sampe_cmd if $debug;	
-			system($sampe_cmd);
-			print STDERR "[a5] $bamindex_cmd\n";
-			$bamindex_cmd = "$DIR/$bamindex_cmd";
-			$bamindex_cmd = $TIME.$bamindex_cmd if $debug;	
-			system($bamindex_cmd);
+			my $seqs = $libs{$lib}{"p1"}." ".$libs{$lib}{"p2"};
+			map_lib("$lib.pe", $seqs, \%coverage);
+			# report insert size
+			open(VIEW, "$DIR/samtools view $lib.pe.sort.bam |");
+			my $count = 0;
+			my $ins = 0;
+			my @sdlist;
+			while(my $line = <VIEW>){
+				my @d = split(/\t/, $line);
+				$ins += $d[8] if $d[8] > 0;
+				$count++ if $d[8] > 0;
+				$sdlist[$count % 1000] = $d[8] if $d[8] > 0;
+			}
+			my $sd = int(stddev($ins/$count, \@sdlist));
+			print "[a5] Library $lib avg. insert size ".int($ins/$count)." +/- $sd\n";
 		}
 		if (defined($libs{$lib}{"up"})){
-			my $up = $libs{$lib}{"up"}; 
-			my $aln1_cmd = "bwa aln $OUTBASE.final.scaffolds.fasta $up > $up.sai";
-			my $samse_cmd = "bwa sampe $OUTBASE.final.scaffolds.fasta $up.sai $up | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.up";
-			my $bamindex_cmd = "samtools index $lib.up.bam";
-			print STDERR "[a5] $aln1_cmd\n";
-			$aln1_cmd = "$DIR/$aln1_cmd";
-			$aln1_cmd = $TIME.$aln1_cmd if $debug;	
-			system($aln1_cmd);
-			print STDERR "[a5] $samse_cmd\n";
-			$samse_cmd = "$DIR/$samse_cmd";
-			$samse_cmd = $TIME.$samse_cmd if $debug;	
-			system($samse_cmd);
-			print STDERR "[a5] $bamindex_cmd\n";
-			$bamindex_cmd = "$DIR/$bamindex_cmd";
-			$bamindex_cmd = $TIME.$bamindex_cmd if $debug;	
-			system($bamindex_cmd);
-			`rm $up.sai`;
+			map_lib("$lib.up", $libs{$lib}{"up"}, \%coverage);
 		}
 	}
+	# calculate median cov
+	my @c;
+	foreach my $scaf(keys(%coverage)){
+		foreach my $i(keys(%{$coverage{$scaf}})){
+			push(@c, $coverage{$scaf}{$i});
+		}
+	}
+	my @cc = sort {$a <=> $b} @c;
+	print "[a5] Median depth of coverage: ".$cc[@cc/2].", 10th percentile: ".$cc[@cc/10]."\n";
+}
+
+sub map_lib {
+	my $lib = shift;
+	my $seqs = shift;
+	my $coverage = shift;
+	my $sampe_cmd = "bwa mem $OUTBASE.final.scaffolds.fasta $seqs | $DIR/samtools view -b -S - | $DIR/samtools sort - $lib.sort";
+	my $bamindex_cmd = "samtools index $lib.sort.bam";
+	print STDERR "[a5] $sampe_cmd\n";
+	$sampe_cmd = "$DIR/$sampe_cmd";
+	$sampe_cmd = $TIME.$sampe_cmd if $debug;	
+	system($sampe_cmd);
+	print STDERR "[a5] $bamindex_cmd\n";
+	$bamindex_cmd = "$DIR/$bamindex_cmd";
+	$bamindex_cmd = $TIME.$bamindex_cmd if $debug;	
+	system($bamindex_cmd);
+	open(MPILEUP, "$DIR/samtools mpileup -d1000000 -BQ0 $lib.sort.bam |");
+	my $i=0;
+	while(my $line = <MPILEUP>){
+		my @d = split(/\t/, $line);
+		$coverage->{$d[0]}{$d[1]} = 0 unless defined $coverage->{$d[0]}{$d[1]};
+		$coverage->{$d[0]}{$d[1]} += $d[3];
+	}	
+}
+
+sub stddev{
+	my $average = shift;
+	my($data) = @_;
+	return 0 if(@$data == 1);
+	my $sqtotal = 0;
+	foreach(@$data) {
+		$sqtotal += ($average-$_) ** 2;
+	}
+	my $std = ($sqtotal / (@$data-1)) ** 0.5;
+	return $std;
 }
 
 =item read_lib_file
@@ -859,7 +892,7 @@ sub idba_pe_assemble {
 	$idba_bin = "idba_ud250" if $maxrdlen > 120;
 	$idba_bin = "idba_ud400" if $maxrdlen > 250;
 	die "[a5] Reads are too long to be assembled with A5. This version of A5 supports read lengths up to 400nt." if $maxrdlen > 400;
-	my $idba_cmd = "/usr/bin/time -v $DIR/$idba_bin -r $merged_pe_fa $unpaired_option -o $WD/$outbase --mink ".IDBA_MIN_K." --maxk $maxrdlen --min_pairs 2 --min_count 1";
+	my $idba_cmd = "$DIR/$idba_bin -r $merged_pe_fa $unpaired_option -o $WD/$outbase --mink ".IDBA_MIN_K." --maxk $maxrdlen --min_pairs 2 --min_count 1";
 	my $pe_size = -s $merged_pe_fa;
 	print STDERR "[a5] $merged_pe_fa has $pe_size bytes of FastA sequence data\n";
 	print STDERR "[a5] $idba_cmd\n";
@@ -1481,6 +1514,40 @@ sub get_insert($$$$) {
 		$ins_error *= -1;
 	}
 	return ($ins_mean, $ins_error, $ori);
+}
+
+sub finalize {
+	# get rid of |size... in FastA header because NCBI doesn't like it
+	`perl -p -i -e "s/\\|size.+//g" $OUTBASE.final.scaffolds.fasta`;
+
+	# check whether we need to generate an AGP for NCBI submission
+	# any scaffold containing more than 10 N's needs to be reported with an AGP
+	# calculate some basic assembly stats while we're at it
+	my $agp = 0;
+	open(SCAFIN, "$OUTBASE.final.scaffolds.fasta");
+	my @lens;
+	my $total = 0;
+	my ($gc,$at) = 0;
+	while(my $line = <SCAFIN>){
+		$agp = 1 if $line =~ /NNNNNNNNNN/;
+		next if $line =~ /^>/;
+		push(@lens, length($line)-1);
+		$total += length($line)-1;
+		$gc += $line =~ tr/GCgc//;
+		$at += $line =~ tr/ATat//;
+	}
+	@lens = sort{$b<=>$a} @lens;
+	my ($i, $cumsum) = (0,0);
+	for(; $i < @lens; $i++){
+		$cumsum += $lens[$i];
+		last if $cumsum > $total / 2;
+	}
+	print "[a5] Total size: $total nt, scaffolds: ".@lens.", max $lens[0], N50 $lens[$i], ".substr(100*$gc/($gc+$at), 0, 4)."% GC\n";
+	if($agp){
+		print "[a5] Large scaffold gaps present in assembly...generating an AGP for NCBI submission\n";
+		print "[a5] This process requires BioPerl to be installed\n";
+		`fasta2agp.pl $OUTBASE.final.scaffolds.fasta > $OUTBASE.agp`;
+	}
 }
 
 
