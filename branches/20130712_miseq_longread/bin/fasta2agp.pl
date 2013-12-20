@@ -12,12 +12,13 @@
 use strict;
 use warnings ;
 use Bio::SeqIO ;
+use File::Basename
 
 my $sequence_file = shift or die "Usage: $0 <sequence file>\n" ;
 
 
 ### Output file for contigs in Fasta format
-my $fasta_outfile = "$sequence_file.contigs.fsa";
+my $fasta_outfile = basename("$sequence_file.ncbi_contigs.fna", ".final.scaffolds.fasta");
 open (FILE, ">$fasta_outfile") and
    warn "Will write contigs to file '$fasta_outfile' and AGP to STDOUT\n" or
    die "Failed to write to file '$fasta_outfile'\n";
