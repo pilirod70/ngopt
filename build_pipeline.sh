@@ -23,7 +23,7 @@ function copy_bowtie {
 }
 
 function copy_adhoc {
-	cp -v bin/a5_pipeline.pl bin/GetInsertSize.jar bin/A5qc.jar $findir/bin && \
+	cp -v bin/a5_pipeline.pl bin/fasta2agp.pl bin/GetInsertSize.jar bin/A5qc.jar $findir/bin && \
 	cp -v adapter.fasta scythe_adapter.fasta $findir/
 	if [ ! $? ]; then return 1; fi
 	echo "Removing unnecessary .svn directories"
