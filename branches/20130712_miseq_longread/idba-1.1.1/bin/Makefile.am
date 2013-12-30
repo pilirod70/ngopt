@@ -1,6 +1,6 @@
-AM_LDFLAGS = -fopenmp -pthread
+AM_LDFLAGS = -fopenmp
 LIBS = $(top_srcdir)/lib/libassembly.a
-AM_CXXFLAGS = -Wall -O3 -fopenmp -pthread
+AM_CXXFLAGS = -Wall -O3 -fopenmp
 INCLUDES =  -I$(top_srcdir)/src -I$(top_srcdir)/gtest_src 
 
 sort_reads_SOURCES = $(top_srcdir)/src/tools/sort_reads.cpp

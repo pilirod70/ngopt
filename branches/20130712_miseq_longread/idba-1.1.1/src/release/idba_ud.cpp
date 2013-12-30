@@ -25,7 +25,6 @@
 #include "graph/hash_graph.h"
 #include "graph/scaffold_graph.h"
 #include "misc/hash_aligner.h"
-#include "misc/log.h"
 #include "misc/options_description.h"
 #include "misc/utils.h"
 #include "sequence/read_library.h"
@@ -195,7 +194,7 @@ int main(int argc, char *argv[])
 
     MakeDir(option.directory);
 
-    LogThread log_thread(option.log_file());
+   // LogThread log_thread(option.log_file());
 
     string begin_file = option.directory + "/begin";
     fclose(OpenFile(begin_file, "wb"));
@@ -405,9 +404,9 @@ void LocalAssembly(int kmer_size, int new_kmer_size)
     //if (median == 0)
         //EstimateDistance(kmer_size);
     EstimateDistance(option.align_file(kmer_size), median, sd);
-    if (median < 0 || median != median || sd != sd || sd > 2*median)
+    if (median < 0 || median != median || sd != sd || sd > 10*median)
     {
-        cout << "invalid insert distance" << endl;
+        cout << "invalid insert distance. median " << median << " sd " << sd << endl;
         deque<Sequence> local_contigs;
         WriteSequence(option.local_contig_file(kmer_size), local_contigs, FormatString("local_contig_%d", kmer_size));
         return;
@@ -550,9 +549,9 @@ void AddPairs(int level, ScaffoldGraph &scaffold_graph, const string &read_file,
     AlignReads(option.contig_file(option.maxk), short_read_library, align_file);
 
     EstimateDistance(align_file, median, sd);
-    if (median < 0 || median != median || sd != sd || sd > 2*median)
+    if (median < 0 || median != median || sd != sd || sd > 10*median)
     {
-        cout << "invalid insert distance" << endl;
+        cout << "invalid insert distance. median " << median << " sd " << sd << endl;
         return;
     }
 
