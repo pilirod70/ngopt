@@ -8,7 +8,7 @@
 
 #include "assembly/local_assembler.h"
 
-#include <pthread.h>
+//#include <pthread.h>
 
 #include <cstdlib>
 #include <deque>
@@ -68,20 +68,22 @@ int64_t LocalAssembler::Assemble(deque<Sequence> &contigs)
 
     contigs.clear();
     omp_set_num_threads(1);
+    num_threads_ = 1;
 
-    vector<pthread_t> threads(num_threads_);
+//    vector<pthread_t> threads(num_threads_);
     vector<LocalAssemblyTask> tasks(num_threads_);
     for (int i = 0; i < num_threads_; ++i)
     {
         tasks[i].id = i;
         tasks[i].local_assembler = this;
-        pthread_create(&threads[i], NULL, LocalAssembleThread, (void *)&tasks[i]);
+//        pthread_create(&threads[i], NULL, LocalAssembleThread, (void *)&tasks[i]);
+        LocalAssembleThread(&tasks[i]);
     }
     
     //cout << "thread" << endl;
     for (int i = 0; i < num_threads_; ++i)
     {
-        pthread_join(threads[i], NULL);
+//        pthread_join(threads[i], NULL);
         contigs.insert(contigs.end(), tasks[i].local_contigs.begin(), tasks[i].local_contigs.end());
     }
     //cout << "end" << endl;

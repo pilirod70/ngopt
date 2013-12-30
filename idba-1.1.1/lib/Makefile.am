@@ -1,5 +1,5 @@
-AM_LDFLAGS = -fopenmp -pthread
-AM_CXXFLAGS = -Wall -O3 -fopenmp -pthread
+AM_LDFLAGS = -fopenmp 
+AM_CXXFLAGS = -Wall -O3 -fopenmp
 INCLUDES =  -I$(top_srcdir)/src -I$(top_srcdir)/gtest_src 
 
 libassembly_a_SOURCES = \

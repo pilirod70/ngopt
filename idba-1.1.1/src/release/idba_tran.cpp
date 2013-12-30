@@ -25,7 +25,7 @@
 #include "graph/contig_graph.h"
 #include "graph/hash_graph.h"
 #include "misc/hash_aligner.h"
-#include "misc/log.h"
+//#include "misc/log.h"
 #include "misc/options_description.h"
 #include "misc/utils.h"
 #include "sequence/sequence.h"
@@ -336,7 +336,7 @@ int main(int argc, char *argv[])
 
     MakeDir(option.directory);
 
-    LogThread log_thread(option.log_file());
+//    LogThread log_thread(option.log_file());
 
     string begin_file = option.directory + "/begin";
     fclose(OpenFile(begin_file, "wb"));
