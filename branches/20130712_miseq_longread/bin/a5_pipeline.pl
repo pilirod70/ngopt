@@ -889,10 +889,9 @@ sub idba_pe_assemble {
 	my $unpaired_option = "";
 	$unpaired_option = " -l $WD/$outbase.merged.clean.unpaired.fa " if -f "$WD/$outbase.merged.clean.unpaired.fa";
 	my $idba_bin = "idba_ud";
-	$idba_bin = "idba_ud250" if $maxrdlen > 120;
-	$idba_bin = "idba_ud400" if $maxrdlen > 250;
-	die "[a5] Reads are too long to be assembled with A5. This version of A5 supports read lengths up to 400nt." if $maxrdlen > 400;
-	my $idba_cmd = "$DIR/$idba_bin -r $merged_pe_fa $unpaired_option -o $WD/$outbase --mink ".IDBA_MIN_K." --maxk $maxrdlen --min_pairs 2 --min_count 1";
+	$idba_bin = "idba_ud500" if $maxrdlen > 120;
+	die "[a5] Reads are too long to be assembled with A5. This version of A5 supports read lengths up to 500nt." if $maxrdlen > 500;
+	my $idba_cmd = "$DIR/$idba_bin -r $merged_pe_fa $unpaired_option -o $WD/$outbase --mink ".IDBA_MIN_K." --maxk $maxrdlen --min_pairs 2 ";
 	my $pe_size = -s $merged_pe_fa;
 	print STDERR "[a5] $merged_pe_fa has $pe_size bytes of FastA sequence data\n";
 	print STDERR "[a5] $idba_cmd\n";
