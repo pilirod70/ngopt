@@ -1245,7 +1245,7 @@ void ContigGraph::GetContigs(deque<Sequence> &contigs, deque<ContigInfo> &contig
 double ContigGraph::GetSimilarity(const Sequence &a, const Sequence &b)
 {
     vector<vector<int> > table;
-    if((uint64_t)a.size()*(uint64_t)b.size() > 4000000000)
+    if((uint64_t)a.size()*(uint64_t)b.size() > 1000000000)
        return 0;
     table.resize(a.size() + 1);
     for (unsigned i = 0; i < table.size(); ++i)
