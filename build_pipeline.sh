@@ -58,7 +58,7 @@ function reset {
 	mkdir -p $findir/bin
 }
 
-findir_base="ngopt_a5pipeline"
+findir_base="a5_miseq"
 
 ############################# Linux Build #############################
 
@@ -66,7 +66,7 @@ findir_base="ngopt_a5pipeline"
 function build_linux_x64 {
 
 	echo "Building pipeline for Linux x64"
-	findir="${findir_base}_linux-x64_`date +%Y%m%d`"
+	findir="${findir_base}_linux_`date +%Y%m%d`"
 
 	reset && \
 	echo "Copying Linux binaries to $findir" && \
@@ -89,7 +89,7 @@ function build_linux_x64 {
 function build_osx {
 
 	echo -e "\nBuilding pipeline for Mac OSX"
-	findir="${findir_base}_macOS-x64_`date +%Y%m%d`"
+	findir="${findir_base}_macOS_`date +%Y%m%d`"
 
 	reset && \
 	echo "Copying Mac binaries to $findir" && \
