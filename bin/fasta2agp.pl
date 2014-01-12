@@ -1,42 +1,62 @@
 #!/usr/bin/perl
-
 ### david.studholme@tsl.ac.uk
-
+### modified for input from A5 assemblies and updated NCBI requirements for contigs: aaron.darling@uts.edu.au
+### Bio::SeqIO requirement removed by Guillaume Jospin: gjospin@ucdavis.edu
 ### Generates contigs (in FastA) and scaffolding information (in AGP) from Velvet 'contigs.fa' supercontigs file
 
 ### Use entirely at you own risk!! There may be bugs!
 
-#
-# further modifications by Aaron Darling, with helpful feedback from David Coil
-#
 use strict;
-use warnings ;
-use Bio::SeqIO ;
-use File::Basename
+use warnings;
 
 my $sequence_file = shift or die "Usage: $0 <sequence file>\n" ;
 
 
 ### Output file for contigs in Fasta format
-my $fasta_outfile = basename("$sequence_file.ncbi_contigs.fna", ".final.scaffolds.fasta");
+my $fasta_outfile = "$sequence_file.contigs.fsa";
 open (FILE, ">$fasta_outfile") and
-   warn "Will write contigs to file '$fasta_outfile' and AGP to STDOUT\n" or
-   die "Failed to write to file '$fasta_outfile'\n";
-print "# Generated from A5 assembly file $sequence_file using script $0\n";
+    warn "Will write contigs to file '$fasta_outfile' and AGP to STDOUT\n" or
+    die "Failed to write to file '$fasta_outfile'\n";
+print "# Generated from assembly file $sequence_file using script $0\n";
 
 
 my $i = 0;# a counter, used for generating unique contig names
 
-my $inseq = Bio::SeqIO->new('-file' => "<$sequence_file",
-               '-format' => 'fasta' ) ;
+my %sequences = ();
+my %desc = ();
+open(INSEQ, $sequence_file);
+my $seq = "";
+my $seqID = "";
+my $seqDesc = "";
+while (<INSEQ>) {
+    chomp($_);
+    if($_ =~ m/^>(\S+)\s?(.*)$/){
+	if ($seq ne ""){
+	    $sequences{$seqID} = $seq;
+	    $desc{$seqID}= $seqDesc;
+	}
+	$seqID = $1;
+	$seqDesc = $2;
+	$seq = "";
+    }
+    else{
+	$seq .= $_;
+    }
+}
+#adding the last sequence read.
+$sequences{$seqID}=$seq;
+$desc{$seqID}=$seqDesc;
+close(INSEQ);
+#print "Found : ".scalar(keys(%sequences))."\n";
 
-while (my $seq_obj = $inseq->next_seq ) {
+foreach my $sID(keys %sequences){
 
-   my $supercontig_id = $seq_obj->id ;
-   my $supercontig_seq = $seq_obj->seq ;
-   my $supercontig_desc = $seq_obj->description ;
-   my $supercontig_length = length($supercontig_seq);
 
+    my $supercontig_id = $sID ;
+    my $supercontig_seq = $sequences{$sID} ;
+    my $supercontig_desc = $desc{$sID} ;
+    my $supercontig_length = length($supercontig_seq);
+    
    ### NCBI do not allow coverage and length information in the FastA identifier
    ### e.g. NODE_1160_length_397673_cov_14.469489 is an illegal FastA ID
    ### So we will replace these with simple numbers
@@ -48,7 +68,7 @@ while (my $seq_obj = $inseq->next_seq ) {
 
    my $j = 1;# another counter, to generate part IDs
    my $start_pos = 1; # keep track of whereabouts in this supercontig we are
-     my %substring_sequences;
+    my %substring_sequences;
 
    ## contigs < 200nt must be eliminated as NCBI does not accept these. Replace with N and merge to neighboring contig
    my $subseqs_join;
@@ -109,7 +129,7 @@ while (my $seq_obj = $inseq->next_seq ) {
              ### Print FastA formatted contig
        print FILE ">$component_id6a\n$substring_sequence\n";
    } else {
-       die "Illegal characters in sequence\n$substring_sequence\n";
+       die "Illegal characters in sequence $sID\n";#$substring_sequence\n";
    }
      $start_pos += length ($substring_sequence);
      if ($component_type5 eq 'N') {
