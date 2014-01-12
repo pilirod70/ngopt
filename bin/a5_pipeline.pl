@@ -1544,8 +1544,7 @@ sub finalize {
 	print "[a5] Total size: $total nt, scaffolds: ".@lens.", max $lens[0], N50 $lens[$i], ".substr(100*$gc/($gc+$at), 0, 4)."% GC\n";
 	if($agp){
 		print "[a5] Large scaffold gaps present in assembly...generating an AGP for NCBI submission\n";
-		print "[a5] This process requires BioPerl to be installed\n";
-		`fasta2agp.pl $OUTBASE.final.scaffolds.fasta > $OUTBASE.agp`;
+		`$DIR/fasta2agp.pl $OUTBASE.final.scaffolds.fasta > $OUTBASE.agp`;
 	}
 }
 
