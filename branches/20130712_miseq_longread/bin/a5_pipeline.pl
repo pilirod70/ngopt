@@ -180,6 +180,9 @@ if ($debug){
 	close FILE;
 }
 
+#variables used for stats generation
+my ($total_reads,$total_bases,$EC_reads,$EC_bases) = 0;
+
 # An extension to give unzipped files.
 my $UNZIP_EXT = "a5unzipped";
 my %RAW_LIBS = read_lib_file($libfile);
@@ -481,8 +484,16 @@ sub repair_fastq{
 	my $prev_read = "";
 	my $prev_record = "";
 	my $faq_modulo = 4;
+	my $base_count = 0;
+	my $read_count = 0;
 	while( my $line = <TDPIPE> ){
 		$lc++;
+		if($lc%$faq_modulo == 1){
+		    # We are reading the sequence line
+		    # -1 to not count the \n character
+		    $base_count += length($line) - 1;
+		    $read_count++;
+		}
 		if($lc%$faq_modulo != 0){
 			$prev_record .= $line;
 			next;
@@ -503,8 +514,11 @@ sub repair_fastq{
 		# read the rest of the current FastQ entry
 		my $cur_record = $line;
 		for(my $i=1; $i<$faq_modulo; $i++){
-			$cur_record .= <TDPIPE>;
-			$lc++;
+		    my $newline = <TDPIPE>;
+		    $cur_record .= $newline;
+		    $lc++;
+		    $base_count += length($newline) - 1 if $i == 1;
+		    $read_count++ if $i ==1;
 		}
 		# if records are paired, write them out
 		# otherwise ignore the previous entry
@@ -520,6 +534,7 @@ sub repair_fastq{
 	}
 	close REPAIR;
 	close UNPAIR;
+	return ($base_count,$read_count);
 }
 
 =item get_phred64
@@ -588,7 +603,6 @@ sub sga_clean {
 			$files .= "$up ";
 		}
 	}
-	
 	print STDERR "cleaning each PE lib\n\n";
 	`rm -f $WD/$outbase.pp.fastq`;
 	#
@@ -598,6 +612,14 @@ sub sga_clean {
 		next unless defined($libs{$lib}{"p1"});
 		my $ec1 = $libs{$lib}{"p1"};
 		my $ec2 = $libs{$lib}{"p2"};
+		# capturing raw reads counts and raw base counts
+		my ($reads_c, $bases_c) = get_counts( $ec1 );
+		$total_reads += $reads_c;
+		$total_bases += $bases_c;
+		($reads_c, $bases_c) = get_counts( $ec2 );
+		$total_reads += $reads_c;
+		$total_bases += $bases_c;
+
 		# clean these reads!
 		print STDERR "Cleaning reads\n\n";
 		qfilter_trim_scythe_paired($ec1, $ec2, $t, $lib);
@@ -637,7 +659,7 @@ sub sga_clean {
 			`mv $WD/$p1_name.both.pp $WD/$p1_name.both.pp.ec.fastq`;
 		}
 		# re-pair the reads
-		repair_fastq("$WD/$p1_name.both.pp.ec.fastq", "$WD/$p1_name.both.repair.fastq", "$WD/$p1_name.both.unpaired.fastq");
+		($EC_bases,$EC_reads)=repair_fastq("$WD/$p1_name.both.pp.ec.fastq", "$WD/$p1_name.both.repair.fastq", "$WD/$p1_name.both.unpaired.fastq");
 		# don't merge if this is a mate pair lib
 		next if(defined($libs{$lib}{"ins"}) && $libs{$lib}{"ins"} > 1000);
 		my $both = "$OUTBASE.s1/$p1_name.both.repair.fastq";
@@ -651,6 +673,32 @@ sub sga_clean {
 	
 	die "[a5] Error correcting reads with SGA\n" if( $? != 0 );
 	return $merged_pe_fa;
+}
+
+=item get_counts
+ 
+ Reads through a fastq file and returns the number of reads and the number of bases
+ 
+ Input : 1 fastQ files 
+ 
+=cut
+ 
+sub get_counts {
+    my $file = shift;
+    open(INFILE, $file);
+    my ($r_count, $b_count) = 0;
+    my @read = ();
+    while(<INFILE>){
+	$read[0] = $_;
+	$read[1] = <INFILE>;
+	$read[2] = <INFILE>;
+	$read[3] = <INFILE>;
+	$r_count++;
+	$b_count += length($read[1])-1;
+	@read=();
+    }
+    close(INFILE);
+    return ($r_count, $b_count);
 }
 
 =item check_and_unzip
@@ -1542,6 +1590,17 @@ sub finalize {
 		last if $cumsum > $total / 2;
 	}
 	print "[a5] Total size: $total nt, scaffolds: ".@lens.", max $lens[0], N50 $lens[$i], ".substr(100*$gc/($gc+$at), 0, 4)."% GC\n";
+	my $ec_reads_pct = sprintf("%.2f", 100*$EC_reads/$total_reads);
+	my $ec_bases_pct = sprintf("%.2f", 100*$EC_bases/$total_bases);
+	my $x_cov = sprintf("%.2f", $EC_bases/$total);
+	my $contig_num = `grep -c '>' $OUTBASE.contigs.fasta`;
+	chomp($contig_num);
+	print "[a5] Total reads used : $total_reads, Error Corrected reads used : $EC_reads, Pct of reads that passed EC step : $ec_reads_pct\n";
+	print "[a5] Total bases used : $total_bases, Error Corrected bases used : $EC_bases, Pct of bases that passed EC step : $ec_bases_pct\n";
+	print "[a5] Theoretical X coverage : $x_cov\n";
+	print "[a5] Tab separated values\n";
+	print "[a5] Contigs\tScaffolds\tGenome Size\tLongest Scaffold\tN50\tRaw reads\tEC Reads\tPct\tRaw nt\tEC nt\tPct\tX_cov\n";
+	print "[a5] $contig_num\t".@lens."\t$total\t$lens[0]\t$lens[$i]\t$total_reads\t$EC_reads\t$ec_reads_pct\t$total_bases\t$EC_bases\t$ec_bases_pct\t$x_cov\n";
 	if($agp){
 		print "[a5] Large scaffold gaps present in assembly...generating an AGP for NCBI submission\n";
 		`$DIR/fasta2agp.pl $OUTBASE.final.scaffolds.fasta > $OUTBASE.agp`;
