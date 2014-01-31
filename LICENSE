@@ -1,3 +1,17 @@
+A5 is licensed under the GNU General Public License, a copy of which is below.
+
+Parts of A5 were developed by third parties and are distributed under the terms of their own licenses.
+SGA is licensed under the GPL and source code is available from:
+https://github.com/jts/sga
+Source code for the modified IDBA-UD software is available from:
+https://code.google.com/p/ngopt/source/browse/#svn%2Fbranches%2F20130712_miseq_longread%2Fidba-1.1.1
+Source code for SSPACE is included with the A5 software distribution.
+Trimmomatic is available from: 
+http://www.usadellab.org/cms/?page=trimmomatic
+Scythe is available from:
+https://github.com/vsbuffalo/scythe
+
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 

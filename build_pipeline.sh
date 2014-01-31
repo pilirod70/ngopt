@@ -2,7 +2,7 @@
 
 
 function copy_bin {
-	bin="bwa fish sga idba tagdust samtools"
+	bin="bwa sga scythe idba_ud idba_ud500 samtools trimmomatic-0.30.jar"
 	for ex in $bin; do
 		cp -v $1/$ex $findir/bin
 		if [ ! $? ]; then return 1; fi;
@@ -23,8 +23,8 @@ function copy_bowtie {
 }
 
 function copy_adhoc {
-	cp -v bin/a5_pipeline.pl bin/GetInsertSize.jar bin/A5qc.jar $findir/bin && \
-	cp -v adapter.fasta $findir/
+	cp -v bin/a5_pipeline.pl bin/fasta2agp.pl bin/GetInsertSize.jar bin/A5qc.jar $findir/bin && \
+	cp -v adapter.fasta scythe_adapter.fasta $findir/
 	if [ ! $? ]; then return 1; fi
 	echo "Removing unnecessary .svn directories"
 	for dir in `find $findir/ -name .svn`; do 
@@ -58,7 +58,7 @@ function reset {
 	mkdir -p $findir/bin
 }
 
-findir_base="ngopt_a5pipeline"
+findir_base="a5_miseq"
 
 ############################# Linux Build #############################
 
@@ -66,7 +66,7 @@ findir_base="ngopt_a5pipeline"
 function build_linux_x64 {
 
 	echo "Building pipeline for Linux x64"
-	findir="${findir_base}_linux-x64_`date +%Y%m%d`"
+	findir="${findir_base}_linux_`date +%Y%m%d`"
 
 	reset && \
 	echo "Copying Linux binaries to $findir" && \
@@ -89,7 +89,7 @@ function build_linux_x64 {
 function build_osx {
 
 	echo -e "\nBuilding pipeline for Mac OSX"
-	findir="${findir_base}_macOS-x64_`date +%Y%m%d`"
+	findir="${findir_base}_macOS_`date +%Y%m%d`"
 
 	reset && \
 	echo "Copying Mac binaries to $findir" && \
