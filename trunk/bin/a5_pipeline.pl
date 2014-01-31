@@ -427,7 +427,7 @@ sub qfilter_trim_scythe_paired {
 	my $phred64 = get_phred64($r1file);
 	my $trim_phred = $phred64 ? "-phred64 " : "-phred33 ";
 	# run trimmomatic on the reads
-	my $trim_cmd = "java -jar $DIR/trimmomatic-0.30.jar SE $trim_phred $WD/$p1_name.both.fastq $WD/$p1_name.trim.fastq ILLUMINACLIP:$DIR/../adapter.fasta:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36";
+	my $trim_cmd = "java -jar $DIR/trimmomatic.jar SE $trim_phred $WD/$p1_name.both.fastq $WD/$p1_name.trim.fastq ILLUMINACLIP:$DIR/../adapter.fasta:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36";
 	print STDERR "[a5] $trim_cmd\n";
 	$trim_cmd = $TIME.$trim_cmd if $debug;	
 	system($trim_cmd);
