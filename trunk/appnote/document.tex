@@ -1,0 +1,162 @@
+\documentclass{bioinfo}
+\copyrightyear{2013}
+\pubyear{2014}
+\application
+\usepackage{hyperref}
+
+\begin{document}
+\firstpage{1}
+
+\title[A5-miseq]{An integrated pipeline to assemble microbial genomes from Illumina MiSeq data}
+\author[Coil \textit{et~al}]{David Coil\,$^{1}$, Guillaume Jospin\,$^{2}$, The Genome Assembly Boogeyman\,$^{3}$ and Aaron E. Darling\,$^{2}$\footnote{to whom correspondence should be addressed}}
+\address{$^{1}$Genome Center, University of California Davis, USA\\
+$^{2}$ithree institute, University of Technology Syndey, Australia\\
+$^{3}$hiding in your "ultrapure" reagents}
+
+
+\history{Received on XXXXX; revised on XXXXX; accepted on XXXXX}
+
+\editor{Associate Editor: XXXXXXX}
+
+\maketitle
+
+\begin{abstract}
+
+\section{Motivation:}
+Bacterial genome assembly. 
+Current generation of sequencers.
+Swabs to genomes.
+
+\section{Results:}
+A5 does an ok job.
+
+\section{Availability:}
+A5 is licensed under the GPL open source license. Source code and precompiled binaries for Mac OS X and Linux are available from \url{http://code.google.com/p/ngopt}
+
+\section{Contact:} \href{aaron.darling@uts.edu.au}{aaron.darling@uts.edu.au}
+\end{abstract}
+
+\section{Introduction}
+
+Genome assembly A B C...1 2 3
+
+The old version of A5 topped out at 100nt reads\citep{Tritt12}.
+
+MiSeq kept breaking our software by pushing reads longer.
+
+The old version used a contig assembly algorithm (implemented in the IDBA software) that was unaware of read pairing information and which frequently introduced misassemblies into the contigs.
+The misassemblies had to be detected and corrected by identifying clusters of reads whose alignment to the assembly indicated the presence of misassembly.
+
+
+\section{Approach}
+
+Equation~(\ref{eq:01}) Text Text Text Text Text Text  Text Text Text Text Text Text Text Text Text  Text Text Text Text Text Text. Figure \ref{fig:01} shows that the above method  Text Text Text Text  Text Text Text Text Text Text  Text Text.  \citealp{Boffelli03} might want to know about  text text text text.
+
+
+\begin{methods}
+\section{Methods}
+
+Say something smart here.
+
+Previously A5 would discard entire reads found to contain any amount of adapter readthrough. 
+New version does trims out only the contaminated portion of the read.
+Uses a combination of Trimmomatic~\citep{Lohse12} and Scythe to do this.
+Neither one of these alone is able to eliminate adapter contamination from the assembled sequence in our testing.
+This could be due to the presence of mismatches or errors in the reads which prevents detection of the adapter sequence but are later corrected either by error correction or assembly process.
+
+\begin{itemize}
+\item for bulleted list, use itemize
+\item for bulleted list, use itemize
+\item for bulleted list, use itemize
+\end{itemize}
+
+
+
+\end{methods}
+
+\begin{figure}[!tpb]%figure1
+%\centerline{\includegraphics{fig01.eps}}
+\caption{Processing steps in the A5 pipeline.}\label{fig:01}
+\end{figure}
+
+\section{Discussion}
+
+Text Text Text Text Text Text  Text Text Text Text Text Text Text Text Text  Text Text Text Text Text Text. Figure \ref{fig:01} shows that the above method  Text Text Text Text  Text Text Text Text Text Text  Text Text.  \citealp{Boffelli03} might want to know about  text text text text
+Text Text Text Text Text Text  Text Text Text Text Text Text Text Text Text  Text Text Text Text Text Text. Figure \ref{fig:01} shows that the above method  Text Text Text Text  Text Text Text Text Text Text  Text Text.  \citealp{Boffelli03} might want to know about  text text text text
+Text Text Text Text Text Text  Text Text Text Text.
+
+Table~\ref{Tab:01} shows that Text Text Text Text Text  Text Text Text Text Text Text. Figure \ref{fig:01} shows that
+the above method Text Text. Text Text Text  Text Text Text Text Text Text. Figure \ref{fig:01} shows that
+the above method Text Text. Text Text Text  Text Text Text Text Text Text. Figure \ref{fig:01} shows that
+the above method Text Text.
+
+
+\begin{table*}[!t]
+\processtable{Comparison of assembly accuracy between A5-miseq and other assemblers\label{Tab:01}}
+{\begin{tabular}{ll|ccccc|ccccc}\toprule
+& & \multicolumn{5}{ c| }{A5-miseq} & \multicolumn{5}{ c }{GAGE-B} \\
+Organism                & Size & GenFrac & NGA50 & MA & MM & Genes & GenFrac & NGA50 & MA & MM & Genes \\\midrule
+\textit{B. cereus}      & 5.43 & 98.8 & 486.2 & & & & 99.9 (S) & 456 (sdn) & & & 5439 (M) \\
+\textit{R. sphaeroides} & 4.60 & 99.4 & 139.4 & & & & 99.9 (S) & 151.8 (S) & & & 3562 (S) \\
+\textit{M. abscessus}   & 5.09 & 99.4 & 225.6 & & & & 99.4 (S) & 215.4 (S) & & & 4361 (S) \\
+\textit{V. cholerae}    & 4.03 & 98.2 & 205.6 & & & & 99.6 (S) & 246.6 (S) & & & 3564 (S) \\\botrule
+\end{tabular}}{Assembly accuracy for the A5-miseq pipeline measured on raw 100x coverage GAGE-B data using QUAST. GenFrac is the fraction of the reference genome represented in assembly scaffolds. S=SPAdes, sdn=SOAPdenovo, M=MaSuRCA.}
+\end{table*}
+
+The GAGE-B authors evaluated programs on data sets that had been randomly subsampled to 100x coverage.
+In order to provide a direct comparison of A5-miseq to the programs evaluated in GAGE-B we used these same datasets.
+It is possible that the assemblies calculated by A5-miseq might improve with greater depth of coverage.
+
+\section{Conclusion}
+
+(Table~\ref{Tab:01}) Text Text Text Text Text Text  Text Text Text Text Text Text Text Text Text  Text Text Text Text Text Text. Figure \ref{fig:01} 
+
+Genome assembly is a quickly evolving field and software is advancing rapidly. 
+Although A5-miseq produces assemblies that are competitive with results in a recently published assembler evaluation~\citep{Magoc13} it is likely that versions of other software that have not yet been published in a peer-reviewed journal (notably SPAdes 3.0) might produce even better results.
+
+
+\section*{Acknowledgement}
+We would like to thank the many users of the A5 pipeline for reporting bugs and other usability problems with the software.
+
+\paragraph{Funding\textcolon} This work was supported in part by a collaborative agreement with the NSW Department of Primary Industries.
+
+%\bibliographystyle{natbib}
+%\bibliographystyle{achemnat}
+%\bibliographystyle{plainnat}
+%\bibliographystyle{abbrv}
+%\bibliographystyle{bioinformatics}
+%
+%\bibliographystyle{plain}
+%
+%\bibliography{Document}
+
+
+
+\begin{thebibliography}{}
+% old A5
+\bibitem[Tritt {\it et~al}., 2012]{Tritt12} 
+Tritt, A., Eisen, J.A., Facciotti, M.F., and Darling, A.E. (2012) An Integrated Pipeline for de Novo Assembly of Microbial Genomes, {\it PLoS One}, {\bf 7}(9): e42304.
+
+% QUAST
+\bibitem[Gurevich {\it et~al}., 2013]{Gurevich13} 
+Gurevich A, Saveliev V, Vyahhi N, Tesler G. (2013) QUAST: quality assessment tool for genome assemblies, {\it Bioinformatics}, {\bf 29}(8): 1072-5.
+
+% GAGE-B
+\bibitem[Magoc \textit{et~al}., 2013]{Magoc13}
+Magoc,T. \textit{et~al}. (2013) GAGE-B: An Evaluation of Genome Assemblers for Bacterial Organisms. \textit{Bioinformatics}, \textbf{29}(14), 1718-25.
+
+% SPAdes
+\bibitem[Bankevich {\it et~al}, 2012]{Bankevich12}
+Bankevich, A \textit{et~al} (2012) SPAdes: a new genome assembly algorithm and its applications to single-cell sequencing. \textit{J Comput. Biol.}, \textbf{19}(5):455-77.
+
+% IDBA-UD
+\bibitem[Peng {\it et~al}, 2012]{Peng12}
+Peng, Y, Leung, HC, Yiu, SM, Chin, FY (2003) IDBA-UD: a de novo assembler for single-cell and metagenomic sequencing data with highly uneven depth. \textit{Bioinformatics},\textbf{28}(11):1420-8.
+
+% Trimmomatic
+\bibitem[Lohse \textit{et~al}. (2012)]{Lohse12}
+Lohse M, Bolger AM, Nagel A, Fernie AR, Lunn JE, Stitt M, Usadel B. (2012) RobiNA: a user-friendly, integrated software solution for RNA-Seq-based transcriptomics. \textit{Nucleic Acids Research}, 40:W622-7.
+
+
+\end{thebibliography}
+\end{document}
