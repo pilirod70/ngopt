@@ -944,13 +944,20 @@ sub idba_pe_assemble {
 	print STDERR "[a5] $merged_pe_fa has $pe_size bytes of FastA sequence data\n";
 	print STDERR "[a5] $idba_cmd\n";
 	`$idba_cmd > $WD/idba.out`;
+	# idba_ud has a race condition that appears to crop up only on Macs when running multi-threaded.
+	# if we're on a Mac try running it single-threaded in the hope that it works.
+	# if it still fails then there may be a problem with the sequence input, or another bug.
+	if($? != 0 && $^O =~ m/darwin/){
+		$idba_cmd .= " --num_threads 1 ";
+		print STDERR "[a5] Previous IDBA-UD run failed. Trying again single-threaded.\n";
+		`$idba_cmd > $WD/idba.out`;
+	}
 	if ($? != 0){
 		# idba_ud has a bug in estimating the insert size which causes a crash before scaffolding.
 		# when that happens, the contigs can still be used. If contigs were not generated then
 		# idba failed early and there is no point continuing.
 		die "[a5] Error building contigs with IDBA\n" unless -e "$WD/$outbase/contig.fa";
-		`cp $WD/$outbase/contig.fa $WD/$outbase-contig.fa`;
-		
+		`cp $WD/$outbase/contig.fa $WD/$outbase-contig.fa`;		
 	}else{
 		`cp $WD/$outbase/scaffold.fa $WD/$outbase-contig.fa`;
 	}
@@ -1599,8 +1606,10 @@ sub finalize {
 	print "[a5] Total bases used : $total_bases, Error Corrected bases used : $EC_bases, Pct of bases that passed EC step : $ec_bases_pct\n";
 	print "[a5] Theoretical X coverage : $x_cov\n";
 	print "[a5] Tab separated values\n";
-	print "[a5] Contigs\tScaffolds\tGenome Size\tLongest Scaffold\tN50\tRaw reads\tEC Reads\tPct\tRaw nt\tEC nt\tPct\tX_cov\n";
-	print "[a5] $contig_num\t".@lens."\t$total\t$lens[0]\t$lens[$i]\t$total_reads\t$EC_reads\t$ec_reads_pct\t$total_bases\t$EC_bases\t$ec_bases_pct\t$x_cov\n";
+	open(STATS, ">assembly_stats.csv");
+	print STATS "Contigs\tScaffolds\tGenome Size\tLongest Scaffold\tN50\tRaw reads\tEC Reads\tPct\tRaw nt\tEC nt\tPct\tX_cov\n";
+	print STATS "$contig_num\t".@lens."\t$total\t$lens[0]\t$lens[$i]\t$total_reads\t$EC_reads\t$ec_reads_pct\t$total_bases\t$EC_bases\t$ec_bases_pct\t$x_cov\n";
+	close STATS;
 	if($agp){
 		print "[a5] Large scaffold gaps present in assembly...generating an AGP for NCBI submission\n";
 		`$DIR/fasta2agp.pl $OUTBASE.final.scaffolds.fasta > $OUTBASE.agp`;
