@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #
 # a5 pipeline
-# (c) 2011-2013 Andrew Tritt and Aaron Darling
+# (c) 2011-2014 Andrew Tritt and Aaron Darling
 # This is free software licensed under the GPL, v3. Please see the file LICENSE for details.
 #
 # Usage: a5_pipeline.pl <library file> <output directory or basename>
@@ -1606,7 +1606,7 @@ sub finalize {
 	print "[a5] Total bases used : $total_bases, Error Corrected bases used : $EC_bases, Pct of bases that passed EC step : $ec_bases_pct\n";
 	print "[a5] Theoretical X coverage : $x_cov\n";
 	print "[a5] Tab separated values\n";
-	open(STATS, ">assembly_stats.csv");
+	open(STATS, ">$OUTBASE.assembly_stats.csv");
 	print STATS "Contigs\tScaffolds\tGenome Size\tLongest Scaffold\tN50\tRaw reads\tEC Reads\tPct\tRaw nt\tEC nt\tPct\tX_cov\n";
 	print STATS "$contig_num\t".@lens."\t$total\t$lens[0]\t$lens[$i]\t$total_reads\t$EC_reads\t$ec_reads_pct\t$total_bases\t$EC_bases\t$ec_bases_pct\t$x_cov\n";
 	close STATS;
