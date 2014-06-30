@@ -15,6 +15,7 @@ my $no_reflexive = 0;
 my $help = 0;
 my $quiet = 0;
 my $numargs = scalar(@ARGV);
+my $header = 0;
 GetOptions( 'alnlen|a=i' => \$min_aln,
 			'percid|p=f' => \$min_pid,
 			'bitscore|b=i' => \$min_bit,
@@ -22,6 +23,7 @@ GetOptions( 'alnlen|a=i' => \$min_aln,
 			'eval|E=f' => \$max_eval,
 			'gap|g=i' => \$max_gap, 
 			'noreflex' => \$no_reflexive,
+            'header' => \$header,
 			'quiet|q' => \$quiet,
 			'help|h' => \$help );
 
@@ -83,6 +85,9 @@ while(<>) {
 #	} else { 
 #		$num_too_short++;
 #	}
+}
+if ($header){
+    print STDOUT "query\tsubject\tpid\tlength\tmismatches\tgap_openings\tquery_start\tquery_end\tsubject_start\tsubject_end\te-value\tbit_score\n";
 }
 
 foreach my $ctg1 (keys %hits) {
@@ -178,4 +183,5 @@ sub summary {
 	print STDERR "maximum no. mismatches:   $max_mis\n";
 	print STDERR "maximum no. gap openings: $max_gap \n";
 	print STDERR "keep reflexive hits?      ".($no_reflexive ? "no" : "yes")."\n";
+    
 }
